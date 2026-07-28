@@ -14,24 +14,19 @@ export async function GET(request: NextRequest) {
     if (!latest) {
       return NextResponse.json({
         success: true,
-        version: '2.0.0',
-        releaseDate: '2026-06-30',
+        version: '2.0.1',
+        releaseDate: '2026-07-29',
         changelog: [
-          'Version 2.0 — Nouvelle identité visuelle',
-          'QR Code personnel noir & blanc',
-          'Paiement par scan : /pay/[userId]',
-          'Temps réel : WebSocket Socket.IO',
-          'Mode hors ligne : files d\'attente IndexedDB',
-          'Authentification à deux facteurs (2FA/TOTP)',
-          'Dépôt 4 méthodes : Mobile Money, Banque, Visa, Agent',
-          'Système de support client avec historique',
-          'Admin KYC : validation documents + selfie',
-          'Changement de PIN sécurisé',
+          'Page d\'accueil premium avec design editorial luxury',
+          'Sélecteur de langue intégré (FR, EN, Lingala, Swahili...)',
+          'Sécurité des transactions renforcée (anti double-dépense)',
+          'Notifications temps réel améliorées',
+          'Corrections du système d\'authentification',
         ],
         minAppVersion: '0.2.0',
-        hasUpdate: false,
-        latestVersion: '2.0.0',
-        downloadUrl: null,
+        hasUpdate: true,
+        latestVersion: '2.0.1',
+        downloadUrl: '/downloads/trait.apk',
       });
     }
 
@@ -45,7 +40,7 @@ export async function GET(request: NextRequest) {
       minAppVersion: '0.2.0',
       hasUpdate,
       latestVersion: latest.version,
-      downloadUrl: latest.downloadUrl,
+      downloadUrl: latest.downloadUrl || '/downloads/trait.apk',
     });
   } catch (error) {
     console.error('Version error:', error);
