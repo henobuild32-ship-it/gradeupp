@@ -33,6 +33,7 @@ export default function AuthOtpScreen() {
   const goBack = useAppStore((s) => s.goBack);
   const navigateTo = useAppStore((s) => s.navigateTo);
   const setUser = useAppStore((s) => s.setUser);
+  const setToken = useAppStore((s) => s.setToken);
   const setOtpCode = useAppStore((s) => s.setOtpCode);
   const setOtpVerified = useAppStore((s) => s.setOtpVerified);
   const phoneNumber = useAppStore((s) => s.phoneNumber);
@@ -137,6 +138,7 @@ export default function AuthOtpScreen() {
       }
       const loggedInUser = data.user as User;
       setUser(loggedInUser);
+      if (data.token) setToken(data.token);
 
       // New users go through pin-setup → onboarding → home
       if (!loggedInUser.hasCompletedOnboarding) {

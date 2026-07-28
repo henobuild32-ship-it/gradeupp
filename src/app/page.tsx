@@ -1,5 +1,6 @@
 'use client';
 
+import '@/lib/api';
 import { useEffect, Suspense, lazy } from 'react';
 import { useAppStore, PageName } from '@/lib/store';
 import { Skeleton } from '@/components/ui/skeleton';

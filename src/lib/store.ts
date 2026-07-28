@@ -332,6 +332,7 @@ export const useAppStore = create<AppStore>()(
       },
       partialize: (state) => ({
         user: state.user,
+        token: state.token,
         isDarkMode: state.isDarkMode,
         selectedRole: state.selectedRole,
         language: state.language,

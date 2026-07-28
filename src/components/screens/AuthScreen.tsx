@@ -60,6 +60,7 @@ export default function AuthScreen() {
   const navigateTo = useAppStore((s) => s.navigateTo);
   const goBack = useAppStore((s) => s.goBack);
   const setUser = useAppStore((s) => s.setUser);
+  const setToken = useAppStore((s) => s.setToken);
   const setPhoneNumber = useAppStore((s) => s.setPhoneNumber);
   const setRegistrationPassword = useAppStore((s) => s.setRegistrationPassword);
   const user = useAppStore((s) => s.user);
@@ -133,6 +134,7 @@ export default function AuthScreen() {
         return;
       }
       setUser(loggedInUser);
+      if (data.token) setToken(data.token);
       if (!loggedInUser.hasCompletedOnboarding && loggedInUser.role !== 'seller') {
         navigateTo('onboarding');
       } else if (loggedInUser.role === 'agent') {

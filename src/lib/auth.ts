@@ -108,7 +108,7 @@ export async function verifyAndMigratePin(
 
 export async function requireUser(request: NextRequest) {
   try {
-    const token = request.cookies.get(TOKEN_COOKIE)?.value;
+    const token = request.cookies.get(TOKEN_COOKIE)?.value || request.headers.get('Authorization')?.replace('Bearer ', '');
     if (!token) {
       return NextResponse.json({ success: false, message: 'Non authentifié' }, { status: 401 });
     }
