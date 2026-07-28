@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { verifyAndMigratePin, requireUser } from '@/lib/auth'
 import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { QRPaymentSchema, validateRequest } from '@/lib/validations'
+import { safeDeductWithFee } from '@/lib/balance'
 
 export async function POST(request: NextRequest) {
   try {
@@ -70,45 +71,41 @@ export async function POST(request: NextRequest) {
       }
     }
     const fee = isChild ? Math.round(payAmount * 0.007 * 100) / 100 : 0
-    const totalDeduction = payAmount + fee
 
-    // Check Balance
-    if (isUSD) {
-      if (client.realBalance < totalDeduction) {
-        return NextResponse.json({ success: false, message: `Solde insuffisant (Requis: ${totalDeduction.toFixed(2)} USD)` }, { status: 400 })
-      }
-    } else {
-      if (client.realBalanceFC < totalDeduction) {
-        return NextResponse.json({ success: false, message: `Solde insuffisant (Requis: ${totalDeduction.toFixed(2)} FC)` }, { status: 400 })
-      }
+    // Atomic balance check + deduction (race-condition safe)
+    const cur = currency || 'USD'
+    const deductResult = await safeDeductWithFee(client.id, payAmount, fee, cur)
+    if (!deductResult.success) {
+      return NextResponse.json({ success: false, message: deductResult.message }, { status: 400 })
     }
 
-    // Process Payment
+    // Credit seller and record
     await db.$transaction(async (tx) => {
-      // Deduct from client (including fee)
-      await tx.user.update({
-        where: { id: client.id },
-        data: isUSD ? { realBalance: { decrement: totalDeduction } } : { realBalanceFC: { decrement: totalDeduction } }
-      })
-
-      // Credit to seller (amount only, fee goes to TRAIT)
       await tx.user.update({
         where: { id: seller.id },
         data: isUSD ? { realBalance: { increment: payAmount } } : { realBalanceFC: { increment: payAmount } }
       })
 
-      // Record Transaction
       await tx.transaction.create({
         data: {
           type: 'qr_payment',
           amount: payAmount,
           fee,
-          currency: currency || 'USD',
+          currency: cur,
           status: 'completed',
           senderId: client.id,
           receiverId: seller.id,
-          description: `Paiement QR chez ${seller.businessName || 'Service'}${isChild ? ` (Commission Enfant: ${fee} ${currency || 'USD'})` : ''}`,
+          description: `Paiement QR chez ${seller.businessName || 'Service'}${isChild ? ` (Commission Enfant: ${fee} ${cur})` : ''}`,
         }
+      })
+
+      await tx.notification.create({
+        data: {
+          userId: seller.id,
+          title: 'Paiement reçu',
+          message: `Paiement de ${payAmount.toFixed(2)} ${cur} reçu via QR code.`,
+          type: 'transfer_received',
+        },
       })
     })
 

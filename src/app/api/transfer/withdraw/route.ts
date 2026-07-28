@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { findActiveAgentByIdentifier } from '@/lib/agents';
 import { requireUser } from '@/lib/auth';
 import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
+import { safeDeductWithFee } from '@/lib/balance';
 
 function round2(n: number) {
   return Math.round(n * 100) / 100;
@@ -127,21 +128,18 @@ export async function POST(request: NextRequest) {
     }
 
     const cur = currency;
-    const realBal = cur === 'FC' ? user.realBalanceFC : user.realBalance;
     const fee = round2(amount * 0.007);
-    const totalDeduction = round2(amount + fee);
 
-    if (realBal < totalDeduction) {
+    // Atomic balance check + deduction (race-condition safe)
+    const deductResult = await safeDeductWithFee(userId, amount, fee, cur);
+    if (!deductResult.success) {
       return NextResponse.json(
-        {
-          success: false,
-          message: `Solde insuffisant. Solde : ${realBal.toFixed(2)} ${cur}, requis : ${totalDeduction.toFixed(2)} ${cur}`,
-        },
+        { success: false, message: deductResult.message },
         { status: 400 },
       );
     }
 
-    // Atomic transaction: create withdrawal, deduct sender (agent credited only after validation)
+    // Create withdrawal, transaction record, and notify
     const [withdrawal] = await db.$transaction([
       db.withdrawal.create({
         data: {
@@ -153,12 +151,6 @@ export async function POST(request: NextRequest) {
           status: 'pending',
           agentId: agent.id,
         },
-      }),
-      db.user.update({
-        where: { id: userId },
-        data: cur === 'FC'
-          ? { realBalanceFC: { decrement: totalDeduction } }
-          : { realBalance: { decrement: totalDeduction } },
       }),
       db.transaction.create({
         data: {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireUser } from '@/lib/auth'
+import { safeDeduct } from '@/lib/balance'
 
 export async function POST(request: NextRequest) {
   try {
@@ -163,23 +164,31 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // Pure real payment
-      const realBalance = isFC ? buyer.realBalanceFC : buyer.realBalance
-      if (realBalance < effectivePrice) {
-        return NextResponse.json(
-          {
-            success: false,
-            message: `Insufficient real balance. You need ${effectivePrice.toFixed(2)} ${currency} but have ${realBalance.toFixed(2)} ${currency}.`,
-          },
-          { status: 400 }
-        )
-      }
-      usedBonus = 0
       usedReal = effectivePrice
     }
 
-    // ─── Atomic: create purchase, deduct buyer, credit seller ────────
-    const [purchase, buyerUpdate, sellerUpdate] = await db.$transaction([
-      // 1. Create purchase record
+    // Deduct real balance atomically (race-condition safe)
+    if (usedReal > 0) {
+      const deductResult = await safeDeduct(buyerId, usedReal, currency)
+      if (!deductResult.success) {
+        return NextResponse.json({ success: false, message: deductResult.message }, { status: 400 })
+      }
+    }
+
+    // Deduct bonus balance atomically (race-condition safe)
+    if (usedBonus > 0) {
+      const bonusField = isFC ? 'bonusBalanceFC' : 'bonusBalance'
+      const bonusResult = await db.user.updateMany({
+        where: { id: buyerId, [bonusField]: { gte: usedBonus } },
+        data: { [bonusField]: { decrement: usedBonus } },
+      })
+      if (bonusResult.count === 0) {
+        return NextResponse.json({ success: false, message: 'Bonus balance insufficient (concurrence)' }, { status: 400 })
+      }
+    }
+
+    // ─── Atomic: create purchase, credit seller ──────────────────────
+    const [purchase] = await db.$transaction([
       db.purchase.create({
         data: {
           productId,
@@ -194,15 +203,6 @@ export async function POST(request: NextRequest) {
           buyer: { select: { id: true, name: true, pseudo: true } },
         },
       }),
-      // 2. Deduct from buyer
-      db.user.update({
-        where: { id: buyerId },
-        data: {
-          ...(usedBonus > 0 ? { [isFC ? 'bonusBalanceFC' : 'bonusBalance']: { decrement: usedBonus } } : {}),
-          ...(usedReal > 0 ? { [isFC ? 'realBalanceFC' : 'realBalance']: { decrement: usedReal } } : {}),
-        },
-      }),
-      // 3. Credit seller with real balance
       ...(product.sellerId
         ? [
             db.user.update({
@@ -221,7 +221,7 @@ export async function POST(request: NextRequest) {
         data: {
           userId: buyerId,
           type: 'purchase',
-          amount: -usedBonus, // Negative because bonus was consumed
+          amount: -usedBonus,
           currency,
           description: `Purchased "${product.name}" using bonus balance`,
           metadata: JSON.stringify({

@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { logSecurityEvent } from '@/lib/security';
 import { requireUser, verifyAndMigratePin, verifyAndMigratePassword } from '@/lib/auth';
 import { createNotification, updateBalanceAndNotify } from '@/lib/notifications';
+import { safeDeduct } from '@/lib/balance';
 
 export async function POST(request: NextRequest) {
   try {
@@ -89,35 +90,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check parent balance
-    const currentParentBal = isFC ? parent.realBalanceFC : parent.realBalance;
-    if (currentParentBal < amount) {
+    // Atomic balance check + deduction (race-condition safe)
+    const deductResult = await safeDeduct(parentId, amount, currency);
+    if (!deductResult.success) {
       return NextResponse.json(
-        {
-          success: false,
-          message: `Solde du parent insuffisant. Requis: ${amount.toFixed(2)} ${currency}, Disponible: ${currentParentBal.toFixed(2)} ${currency}.`,
-        },
+        { success: false, message: deductResult.message },
         { status: 400 }
       );
     }
 
     // Perform transaction
-    const [updatedParent, updatedChild, transaction] = await db.$transaction([
-      // Deduct parent
-      db.user.update({
-        where: { id: parentId },
-        data: isFC
-          ? { realBalanceFC: { decrement: amount } }
-          : { realBalance: { decrement: amount } },
-      }),
-      // Credit child
+    const [updatedChild, transaction] = await db.$transaction([
       db.user.update({
         where: { id: childId },
         data: isFC
           ? { realBalanceFC: { increment: amount } }
           : { realBalance: { increment: amount } },
       }),
-      // Log transaction
       db.transaction.create({
         data: {
           type: 'child_recharge',
@@ -150,17 +139,25 @@ export async function POST(request: NextRequest) {
 
     await createNotification(childId, 'Carte rechargée', `Votre parent a rechargé votre carte TRAIT de ${amount.toFixed(2)} ${currency}.`, 'general', true)
 
+    // Fetch updated parent balance for response
+    const updatedParent = await db.user.findUnique({
+      where: { id: parentId },
+      select: { realBalance: true, realBalanceFC: true },
+    });
+
     // Emit balance updates in real-time
-    await updateBalanceAndNotify(parentId, updatedParent.realBalance, updatedParent.realBalanceFC)
+    if (updatedParent) {
+      await updateBalanceAndNotify(parentId, updatedParent.realBalance, updatedParent.realBalanceFC)
+    }
     await updateBalanceAndNotify(childId, updatedChild.realBalance, updatedChild.realBalanceFC)
 
     return NextResponse.json({
       success: true,
       message: `Recharge de ${amount.toFixed(2)} ${currency} effectuée avec succès pour ${child.name}.`,
-      parentBalances: {
+      parentBalances: updatedParent ? {
         realBalance: updatedParent.realBalance,
         realBalanceFC: updatedParent.realBalanceFC,
-      },
+      } : null,
       childBalances: {
         realBalance: updatedChild.realBalance,
         realBalanceFC: updatedChild.realBalanceFC,

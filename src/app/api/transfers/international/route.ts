@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { checkDailyLimit, checkKYC, detectSuspiciousActivity, logSecurityEvent } from '@/lib/security';
 import { requireUser } from '@/lib/auth';
 import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
+import { safeDeductWithFee } from '@/lib/balance';
 
 const FEE_RATES: Record<string, number> = {
   wallet: 0.005,
@@ -153,15 +154,15 @@ export async function POST(request: NextRequest) {
     const feeRate = FEE_RATES[type] || 0.01;
     const fee = Math.round(transferAmount * feeRate * 100) / 100;
     const commission = Math.round(transferAmount * COMMISSION_RATE * 100) / 100;
-    const totalDeduction = transferAmount + fee + commission;
 
     const isFC = currency === 'FC';
-    const userBalance = isFC ? user.realBalanceFC : user.realBalance;
 
-    if (userBalance < totalDeduction) {
+    // Atomic balance check + deduction (race-condition safe)
+    const deductResult = await safeDeductWithFee(userId, transferAmount, fee + commission, currency);
+    if (!deductResult.success) {
       return NextResponse.json({
         success: false,
-        message: `Solde insuffisant. Solde: ${userBalance.toFixed(2)} ${currency}, nécessaire: ${totalDeduction.toFixed(2)} ${currency}`,
+        message: deductResult.message,
       }, { status: 400 });
     }
 
@@ -175,7 +176,7 @@ export async function POST(request: NextRequest) {
     });
     exchangeRate = rateConfig ? parseFloat(rateConfig.value) : 2850;
 
-    // Atomic transaction
+    // Create records
     const [transfer] = await db.$transaction([
       db.internationalTransfer.create({
         data: {
@@ -197,10 +198,6 @@ export async function POST(request: NextRequest) {
           status: 'processing',
           description: description || null,
         },
-      }),
-      db.user.update({
-        where: { id: userId },
-        data: isFC ? { realBalanceFC: { decrement: totalDeduction } } : { realBalance: { decrement: totalDeduction } },
       }),
       db.transaction.create({
         data: {

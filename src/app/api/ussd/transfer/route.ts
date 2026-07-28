@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireUser } from '@/lib/auth';
 import { checkChildBalanceLimit } from '@/lib/security';
+import { safeDeductWithFee } from '@/lib/balance';
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,18 +32,24 @@ export async function POST(request: NextRequest) {
     }
 
     const isFC = currency === 'FC';
-    const realBal = isFC ? sender.realBalanceFC : sender.realBalance;
+    const cur = currency || 'USD';
     const fee = Math.round(amount * 0.007 * 100) / 100;
-    const totalDeduction = amount + fee;
 
-    if (realBal < totalDeduction) {
-      return NextResponse.json({ success: false, message: `Solde insuffisant. Solde réel: ${realBal.toFixed(2)} ${currency}, requis: ${totalDeduction.toFixed(2)} ${currency}. Le bonus ne peut pas être utilisé pour les transferts.` }, { status: 400 });
+    // Atomic balance check + deduction (race-condition safe)
+    const deductResult = await safeDeductWithFee(senderId, amount, fee, cur);
+    if (!deductResult.success) {
+      return NextResponse.json({ success: false, message: deductResult.message }, { status: 400 });
     }
 
     let receiver = await db.user.findUnique({ where: { phone: receiverPhone.trim() } });
     if (receiver) {
-      const limitCheck = await checkChildBalanceLimit(receiver.id, amount, currency || 'USD');
+      const limitCheck = await checkChildBalanceLimit(receiver.id, amount, cur);
       if (!limitCheck.allowed) {
+        // Refund on limit check failure
+        await db.user.update({
+          where: { id: senderId },
+          data: isFC ? { realBalanceFC: { increment: amount + fee } } : { realBalance: { increment: amount + fee } },
+        });
         return NextResponse.json({ success: false, message: limitCheck.message }, { status: 400 });
       }
     }
@@ -61,12 +68,6 @@ export async function POST(request: NextRequest) {
 
     const result = await db.$transaction(async (tx) => {
       await tx.user.update({
-        where: { id: senderId },
-        data: isFC
-          ? { realBalanceFC: { decrement: totalDeduction } }
-          : { realBalance: { decrement: totalDeduction } },
-      });
-      await tx.user.update({
         where: { id: receiver.id },
         data: isFC
           ? { realBalanceFC: { increment: amount } }
@@ -77,18 +78,18 @@ export async function POST(request: NextRequest) {
           type: 'send',
           amount,
           fee,
-          currency: currency || 'USD',
+          currency: cur,
           status: 'completed',
           senderId,
           receiverId: receiver.id,
-          description: `Transfert de ${amount.toFixed(2)} ${currency} via USSD`,
+          description: `Transfert de ${amount.toFixed(2)} ${cur} via USSD`,
         },
       });
       await tx.notification.create({
         data: {
           userId: receiver.id,
           title: 'Transfert reçu',
-          message: `Vous avez reçu ${amount.toFixed(2)} ${currency} de ${sender.phone || sender.name || 'Inconnu'}`,
+          message: `Vous avez reçu ${amount.toFixed(2)} ${cur} de ${sender.phone || sender.name || 'Inconnu'}`,
           type: 'transfer_received',
         },
       });

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireUser } from '@/lib/auth';
 import { findActiveAgentByIdentifier } from '@/lib/agents';
+import { safeDeductWithFee } from '@/lib/balance';
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,12 +37,13 @@ export async function POST(request: NextRequest) {
     }
 
     const isFC = currency === 'FC';
-    const realBal = isFC ? user.realBalanceFC : user.realBalance;
+    const cur = currency || 'USD';
     const fee = Math.round(amount * 0.01 * 100) / 100;
-    const totalDeduction = amount + fee;
 
-    if (realBal < totalDeduction) {
-      return NextResponse.json({ success: false, message: `Solde insuffisant. Solde: ${realBal.toFixed(2)} ${currency}, Requis: ${totalDeduction.toFixed(2)} ${currency}` }, { status: 400 });
+    // Atomic balance check + deduction (race-condition safe)
+    const deductResult = await safeDeductWithFee(userId, amount, fee, cur);
+    if (!deductResult.success) {
+      return NextResponse.json({ success: false, message: deductResult.message }, { status: 400 });
     }
 
     const result = await db.$transaction(async (tx) => {
@@ -50,17 +52,11 @@ export async function POST(request: NextRequest) {
           userId,
           amount,
           fee,
-          currency: currency || 'USD',
+          currency: cur,
           method: 'ussd_agent',
           status: 'completed',
           agentId: agent.id,
         },
-      });
-      await tx.user.update({
-        where: { id: userId },
-        data: isFC
-          ? { realBalanceFC: { decrement: totalDeduction } }
-          : { realBalance: { decrement: totalDeduction } },
       });
       await tx.user.update({
         where: { id: agent.id },
@@ -73,19 +69,19 @@ export async function POST(request: NextRequest) {
           type: 'withdrawal',
           amount,
           fee,
-          currency: currency || 'USD',
+          currency: cur,
           status: 'completed',
           senderId: userId,
           receiverId: agent.id,
           agentId: agent.id,
-          description: `Retrait de ${amount.toFixed(2)} ${currency} via agent ${agent.agentCode}`,
+          description: `Retrait de ${amount.toFixed(2)} ${cur} via agent ${agent.agentCode}`,
         },
       });
       await tx.notification.create({
         data: {
           userId,
           title: 'Retrait effectué',
-          message: `Votre retrait de ${amount.toFixed(2)} ${currency} (frais: ${fee.toFixed(2)} ${currency}) a été effectué via l'agent ${agent.agentCode}.`,
+          message: `Votre retrait de ${amount.toFixed(2)} ${cur} (frais: ${fee.toFixed(2)} ${cur}) a été effectué via l'agent ${agent.agentCode}.`,
           type: 'withdrawal_validated',
         },
       });

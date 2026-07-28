@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getAuthUser } from '@/lib/auth'
+import { safeDeduct } from '@/lib/balance'
 
 const billerToType: Record<string, string> = {
   snel: 'electricity',
@@ -32,61 +33,47 @@ export async function POST(request: NextRequest) {
 
     const billType = billerToType[billerId] || 'other'
     const reference = (fields.contractNumber || fields.studentId || fields.meterNumber || 'REF-' + Math.random().toString(36).substring(7).toUpperCase()).trim()
+    const cur = currency || 'USD'
 
-    const user = await prisma.user.findUnique({ where: { id: auth.userId } })
-    if (!user) {
-      return NextResponse.json({ success: false, message: 'Utilisateur non trouvé' }, { status: 404 })
-    }
-
-    const isFC = currency === 'FC'
-    const balanceField = isFC ? 'realBalanceFC' : 'realBalance'
-    const userBalance = isFC ? user.realBalanceFC : user.realBalance
-
-    if (userBalance < amount) {
-      return NextResponse.json({ success: false, message: 'Solde insuffisant' }, { status: 400 })
+    // Atomic balance check + deduction (race-condition safe)
+    const deductResult = await safeDeduct(auth.userId, parseFloat(amount), cur)
+    if (!deductResult.success) {
+      return NextResponse.json({ success: false, message: deductResult.message }, { status: 400 })
     }
 
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Decrement user balance
-      await tx.user.update({
-        where: { id: auth.userId },
-        data: {
-          [balanceField]: { decrement: amount },
-        },
-      })
-
-      // 2. Create bill payment record
+      // Create bill payment record
       const billPayment = await tx.billPayment.create({
         data: {
           userId: auth.userId,
           billType,
           reference,
           amount: parseFloat(amount),
-          currency: currency || 'USD',
+          currency: cur,
           status: 'completed',
         },
       })
 
-      // 3. Create transaction record
+      // Create transaction record
       await tx.transaction.create({
         data: {
           type: 'bill_payment',
           amount: parseFloat(amount),
           fee: 0,
-          currency: currency || 'USD',
+          currency: cur,
           status: 'completed',
           senderId: auth.userId,
-          receiverId: auth.userId, // paid to utility
+          receiverId: auth.userId,
           description: `Paiement facture ${typeLabels[billType] || billType} (Réf: ${reference})`,
         },
       })
 
-      // 4. Create notification record
+      // Create notification record
       await tx.notification.create({
         data: {
           userId: auth.userId,
           title: 'Paiement de facture',
-          message: `Vous avez payé ${amount.toFixed(2)} ${currency} pour ${typeLabels[billType] || billType} (Réf: ${reference})`,
+          message: `Vous avez payé ${parseFloat(amount).toFixed(2)} ${cur} pour ${typeLabels[billType] || billType} (Réf: ${reference})`,
           type: 'purchase',
         },
       })

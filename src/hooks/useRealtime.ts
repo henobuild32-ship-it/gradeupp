@@ -8,7 +8,7 @@ const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || ''
 
 export function useRealtime() {
   const socketRef = useRef<Socket | null>(null)
-  const { user, setNotifications, notifications } = useAppStore()
+  const { user } = useAppStore()
 
   useEffect(() => {
     if (!user?.id) return
@@ -24,22 +24,34 @@ export function useRealtime() {
 
     socketRef.current = socket
 
-    socket.on('connect', () => {})
+    socket.on('connect', () => {
+      console.log('[TRAIT Realtime] Connected')
+    })
 
     socket.on('new_notification', (data: any) => {
-      setNotifications([data, ...notifications])
+      const current = useAppStore.getState().notifications
+      useAppStore.getState().setNotifications([data, ...current])
     })
 
     socket.on('notification_read', (data: { id: string }) => {
-      setNotifications(
-        notifications.map((n) => (n.id === data.id ? { ...n, read: true } : n))
+      const current = useAppStore.getState().notifications
+      useAppStore.getState().setNotifications(
+        current.map((n) => (n.id === data.id ? { ...n, read: true } : n))
+      )
+    })
+
+    socket.on('notifications_read_all', () => {
+      const current = useAppStore.getState().notifications
+      useAppStore.getState().setNotifications(
+        current.map((n) => ({ ...n, read: true }))
       )
     })
 
     socket.on('balance_update', (data: { realBalance?: number; realBalanceFC?: number }) => {
-      if (data.realBalance !== undefined || data.realBalanceFC !== undefined) {
+      const currentUser = useAppStore.getState().user
+      if (currentUser && (data.realBalance !== undefined || data.realBalanceFC !== undefined)) {
         useAppStore.getState().setUser({
-          ...useAppStore.getState().user!,
+          ...currentUser,
           ...(data.realBalance !== undefined ? { realBalance: data.realBalance } : {}),
           ...(data.realBalanceFC !== undefined ? { realBalanceFC: data.realBalanceFC } : {}),
         })
@@ -47,8 +59,11 @@ export function useRealtime() {
     })
 
     socket.on('new_message', () => {
-      // Trigger messages refresh
       window.dispatchEvent(new CustomEvent('new-message'))
+    })
+
+    socket.on('disconnect', () => {
+      console.log('[TRAIT Realtime] Disconnected')
     })
 
     return () => {

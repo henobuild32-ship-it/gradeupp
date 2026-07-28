@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireUser } from '@/lib/auth';
+import { safeDeduct } from '@/lib/balance';
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,9 +33,12 @@ export async function POST(request: NextRequest) {
     }
 
     const isFC = currency === 'FC';
-    const realBal = isFC ? user.realBalanceFC : user.realBalance;
-    if (realBal < amount) {
-      return NextResponse.json({ success: false, message: `Solde insuffisant. Solde: ${realBal.toFixed(2)} ${currency}` }, { status: 400 });
+    const cur = currency || 'USD';
+
+    // Atomic balance check + deduction (race-condition safe)
+    const deductResult = await safeDeduct(userId, amount, cur);
+    if (!deductResult.success) {
+      return NextResponse.json({ success: false, message: deductResult.message }, { status: 400 });
     }
 
     const result = await db.$transaction(async (tx) => {
@@ -44,15 +48,9 @@ export async function POST(request: NextRequest) {
           billType,
           reference: reference.trim(),
           amount,
-          currency: currency || 'USD',
+          currency: cur,
           status: 'completed',
         },
-      });
-      await tx.user.update({
-        where: { id: userId },
-        data: isFC
-          ? { realBalanceFC: { decrement: amount } }
-          : { realBalance: { decrement: amount } },
       });
       const typeLabels: Record<string, string> = {
         electricity: 'Électricité',
@@ -65,7 +63,7 @@ export async function POST(request: NextRequest) {
         data: {
           userId,
           title: 'Paiement de facture',
-          message: `Paiement de ${amount.toFixed(2)} ${currency} pour ${typeLabels[billType] || billType} (Réf: ${reference})`,
+          message: `Paiement de ${amount.toFixed(2)} ${cur} pour ${typeLabels[billType] || billType} (Réf: ${reference})`,
           type: 'purchase',
         },
       });

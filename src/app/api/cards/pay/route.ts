@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireUser, verifyAndMigratePin } from '@/lib/auth';
+import { safeDeductWithFee } from '@/lib/balance';
 
 export async function POST(request: NextRequest) {
   try {
@@ -86,7 +87,6 @@ export async function POST(request: NextRequest) {
     }
 
     const isFC = currency === 'FC';
-    const realBal = isFC ? user.realBalanceFC : user.realBalance;
 
     const isChild = user.parentId !== null;
 
@@ -116,21 +116,19 @@ export async function POST(request: NextRequest) {
     }
 
     const fee = isChild ? Math.round(amount * 0.007 * 100) / 100 : 0;
-    const totalDeduction = amount + fee;
 
-    if (realBal < totalDeduction) {
+    // Atomic balance check + deduction (race-condition safe)
+    const deductResult = await safeDeductWithFee(userId, amount, fee, currency);
+    if (!deductResult.success) {
       return NextResponse.json(
-        {
-          success: false,
-          message: `Solde insuffisant. Solde réel: ${realBal.toFixed(2)} ${currency}, requis: ${totalDeduction.toFixed(2)} ${currency}${fee > 0 ? ` (dont commission parrainage: ${fee} ${currency})` : ''}`,
-        },
+        { success: false, message: deductResult.message },
         { status: 400 }
       );
     }
 
     const paymentDesc = description || `Paiement par carte ${card.cardNumber}${isChild ? ` (Commission Enfant: ${fee} ${currency})` : ''}`;
 
-    // Atomic transaction
+    // Create records
     const [cardPayment] = await db.$transaction([
       db.cardPayment.create({
         data: {
@@ -141,12 +139,6 @@ export async function POST(request: NextRequest) {
           description: paymentDesc,
           status: 'completed',
         },
-      }),
-      db.user.update({
-        where: { id: userId },
-        data: isFC
-          ? { realBalanceFC: { decrement: totalDeduction } }
-          : { realBalance: { decrement: totalDeduction } },
       }),
       db.transaction.create({
         data: {

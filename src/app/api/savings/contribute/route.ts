@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getAuthUser } from '@/lib/auth'
+import { safeDeduct } from '@/lib/balance'
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,27 +30,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Cet objectif d\'épargne n\'est plus actif' }, { status: 400 })
     }
 
-    const isFC = goal.currency === 'FC'
-    const balanceField = isFC ? 'realBalanceFC' : 'realBalance'
+    const parseAmount = parseFloat(amount)
 
-    const user = await prisma.user.findUnique({ where: { id: auth.userId } })
-    if (!user) {
-      return NextResponse.json({ success: false, message: 'Utilisateur non trouvé' }, { status: 404 })
+    // Atomic balance check + deduction (race-condition safe)
+    const deductResult = await safeDeduct(auth.userId, parseAmount, goal.currency)
+    if (!deductResult.success) {
+      return NextResponse.json({ success: false, message: deductResult.message }, { status: 400 })
     }
 
-    const userBalance = isFC ? user.realBalanceFC : user.realBalance
-    if (userBalance < parseFloat(amount)) {
-      return NextResponse.json({ success: false, message: 'Solde insuffisant' }, { status: 400 })
-    }
-
-    const newAmount = goal.currentAmount + parseFloat(amount)
+    const newAmount = goal.currentAmount + parseAmount
     const isCompleted = newAmount >= goal.targetAmount
 
     await prisma.$transaction([
       prisma.savingsContribution.create({
         data: {
           goalId,
-          amount: parseFloat(amount),
+          amount: parseAmount,
           currency: goal.currency,
           type: 'manual',
         },
@@ -57,13 +53,9 @@ export async function POST(request: NextRequest) {
       prisma.savingsGoal.update({
         where: { id: goalId },
         data: {
-          currentAmount: { increment: parseFloat(amount) },
+          currentAmount: { increment: parseAmount },
           ...(isCompleted ? { status: 'completed', completedAt: new Date() } : {}),
         },
-      }),
-      prisma.user.update({
-        where: { id: auth.userId },
-        data: { [balanceField]: { decrement: parseFloat(amount) } },
       }),
     ])
 

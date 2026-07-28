@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireUser } from '@/lib/auth';
+import { safeDeduct } from '@/lib/balance';
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,9 +33,12 @@ export async function POST(request: NextRequest) {
     }
 
     const isFC = currency === 'FC';
-    const realBal = isFC ? user.realBalanceFC : user.realBalance;
-    if (realBal < amount) {
-      return NextResponse.json({ success: false, message: `Solde insuffisant. Solde: ${realBal.toFixed(2)} ${currency}` }, { status: 400 });
+    const cur = currency || 'USD';
+
+    // Atomic balance check + deduction (race-condition safe)
+    const deductResult = await safeDeduct(userId, amount, cur);
+    if (!deductResult.success) {
+      return NextResponse.json({ success: false, message: deductResult.message }, { status: 400 });
     }
 
     const result = await db.$transaction(async (tx) => {
@@ -44,21 +48,15 @@ export async function POST(request: NextRequest) {
           network,
           phoneNumber: phoneNumber.trim(),
           amount,
-          currency: currency || 'USD',
+          currency: cur,
           status: 'completed',
         },
-      });
-      await tx.user.update({
-        where: { id: userId },
-        data: isFC
-          ? { realBalanceFC: { decrement: amount } }
-          : { realBalance: { decrement: amount } },
       });
       await tx.notification.create({
         data: {
           userId,
           title: 'Achat de crédit',
-          message: `Achat de ${amount.toFixed(2)} ${currency} de crédit ${network} pour ${phoneNumber}`,
+          message: `Achat de ${amount.toFixed(2)} ${cur} de crédit ${network} pour ${phoneNumber}`,
           type: 'purchase',
         },
       });

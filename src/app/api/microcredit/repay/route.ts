@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getAuthUser } from '@/lib/auth'
+import { safeDeduct } from '@/lib/balance'
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,35 +33,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Ce crédit ne peut pas être remboursé' }, { status: 400 })
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: auth.userId },
-    })
-
-    if (!user) {
-      return NextResponse.json({ success: false, message: 'Utilisateur introuvable' }, { status: 404 })
-    }
-
-    const isFC = credit.currency === 'FC'
-    const balanceField = isFC ? 'realBalanceFC' : 'realBalance'
-    const userBalance = isFC ? user.realBalanceFC : user.realBalance
-
-    if (userBalance < amount) {
-      return NextResponse.json({ success: false, message: 'Solde insuffisant' }, { status: 400 })
-    }
-
     const remainingDue = credit.totalDue - credit.paidSoFar
     const payAmount = Math.min(amount, remainingDue)
 
-    await prisma.$transaction(async (tx) => {
-      // 1. Deduct balance from user
-      await tx.user.update({
-        where: { id: auth.userId },
-        data: {
-          [balanceField]: { decrement: payAmount },
-        },
-      })
+    // Atomic balance check + deduction (race-condition safe)
+    const deductResult = await safeDeduct(auth.userId, payAmount, credit.currency)
+    if (!deductResult.success) {
+      return NextResponse.json({ success: false, message: deductResult.message }, { status: 400 })
+    }
 
-      // 2. Update credit record
+    await prisma.$transaction(async (tx) => {
+      // Update credit record
       const newPaidSoFar = credit.paidSoFar + payAmount
       const isFullyPaid = newPaidSoFar >= credit.totalDue
 
@@ -73,7 +56,7 @@ export async function POST(request: NextRequest) {
         },
       })
 
-      // 3. Create transaction log
+      // Create transaction log
       await tx.transaction.create({
         data: {
           type: 'microcredit_repay',
@@ -81,12 +64,12 @@ export async function POST(request: NextRequest) {
           currency: credit.currency,
           status: 'completed',
           senderId: auth.userId,
-          receiverId: auth.userId, // sender/receiver is same for self-payment
+          receiverId: auth.userId,
           description: `Remboursement de micro-crédit (${credit.currency})`,
         },
       })
 
-      // 4. Send notification
+      // Send notification
       await tx.notification.create({
         data: {
           userId: auth.userId,

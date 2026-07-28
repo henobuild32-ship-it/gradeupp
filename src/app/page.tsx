@@ -5,6 +5,7 @@ import { useEffect, Suspense, lazy } from 'react';
 import { useAppStore, PageName } from '@/lib/store';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OfflineBanner } from '@/components/layout/OfflineBanner';
+import { useRealtime } from '@/hooks/useRealtime';
 
 // Auth screens
 const WelcomeScreen = lazy(() => import('@/components/screens/WelcomeScreen'));
@@ -218,6 +219,9 @@ const adminPages: PageName[] = ['admin-login', 'admin-dashboard', 'admin-users',
 export default function TraitApp() {
   const { currentPage, user, admin, navigateTo } = useAppStore();
   const Screen = screenMap[currentPage];
+
+  // Enable real-time WebSocket for notifications and balance updates
+  useRealtime();
 
   useEffect(() => {
     if (user && currentPage === 'welcome') {

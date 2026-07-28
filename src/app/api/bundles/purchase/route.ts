@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getAuthUser } from '@/lib/auth'
 import crypto from 'crypto'
+import { safeDeduct } from '@/lib/balance'
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,17 +35,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Numéro de téléphone requis pour ce type de produit' }, { status: 400 })
     }
 
-    const isFC = product.currency === 'FC'
-    const balanceField = isFC ? 'realBalanceFC' : 'realBalance'
-
-    const user = await prisma.user.findUnique({ where: { id: auth.userId } })
-    if (!user) {
-      return NextResponse.json({ success: false, message: 'Utilisateur non trouvé' }, { status: 404 })
-    }
-
-    const userBalance = isFC ? user.realBalanceFC : user.realBalance
-    if (userBalance < product.price) {
-      return NextResponse.json({ success: false, message: 'Solde insuffisant' }, { status: 400 })
+    // Atomic balance check + deduction (race-condition safe)
+    const deductResult = await safeDeduct(auth.userId, product.price, product.currency)
+    if (!deductResult.success) {
+      return NextResponse.json({ success: false, message: deductResult.message }, { status: 400 })
     }
 
     const reference = `BUN-${crypto.randomBytes(4).toString('hex').toUpperCase()}`
@@ -60,10 +54,6 @@ export async function POST(request: NextRequest) {
           status: 'completed',
           reference,
         },
-      }),
-      prisma.user.update({
-        where: { id: auth.userId },
-        data: { [balanceField]: { decrement: product.price } },
       }),
     ])
 

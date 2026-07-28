@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { checkChildBalanceLimit } from '@/lib/security'
 import { requireUser } from '@/lib/auth'
 import { SendMoneySchema, validateRequest } from '@/lib/validations'
+import { safeDeductWithFee } from '@/lib/balance'
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,17 +40,14 @@ export async function POST(request: NextRequest) {
 
     const isFC = currency === 'FC'
     const cur = isFC ? 'FC' : (currency || 'USD')
-    const realBal = isFC ? sender.realBalanceFC : sender.realBalance
 
     const fee = Math.round(amount * 0.007 * 100) / 100
-    const totalDeduction = amount + fee
 
-    if (realBal < totalDeduction) {
+    // Atomic balance check + deduction (race-condition safe)
+    const deductResult = await safeDeductWithFee(senderId, amount, fee, cur)
+    if (!deductResult.success) {
       return NextResponse.json(
-        {
-          success: false,
-          message: `Solde insuffisant. Solde réel: ${realBal.toFixed(2)} ${cur}, requis: ${totalDeduction.toFixed(2)} ${cur}. Le bonus ne peut pas être utilisé pour les transferts.`,
-        },
+        { success: false, message: deductResult.message },
         { status: 400 }
       )
     }
@@ -82,7 +80,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Atomic transaction: deduct sender, credit receiver, create tx record
+    // Atomic transaction: credit receiver, create tx record, notify
     const [transaction] = await db.$transaction([
       db.transaction.create({
         data: {
@@ -95,12 +93,6 @@ export async function POST(request: NextRequest) {
           receiverId: receiver.id,
           description: `Transfert de ${amount.toFixed(2)} ${cur} vers ${receiver.phone}`,
         },
-      }),
-      db.user.update({
-        where: { id: senderId },
-        data: isFC
-          ? { realBalanceFC: { decrement: totalDeduction } }
-          : { realBalance: { decrement: totalDeduction } },
       }),
       db.user.update({
         where: { id: receiver.id },

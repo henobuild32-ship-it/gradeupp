@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getAuthUser } from '@/lib/auth'
+import { safeDeduct } from '@/lib/balance'
 
 export async function POST(
   request: NextRequest,
@@ -47,16 +48,11 @@ export async function POST(
     }
 
     const isFC = paymentRequest.currency === 'FC'
-    const balanceField = isFC ? 'realBalanceFC' : 'realBalance'
 
-    const payer = await prisma.user.findUnique({ where: { id: auth.userId } })
-    if (!payer) {
-      return NextResponse.json({ success: false, message: 'Utilisateur non trouvé' }, { status: 404 })
-    }
-
-    const payerBalance = isFC ? payer.realBalanceFC : payer.realBalance
-    if (payerBalance < paymentRequest.amount) {
-      return NextResponse.json({ success: false, message: 'Solde insuffisant' }, { status: 400 })
+    // Atomic balance check + deduction (race-condition safe)
+    const deductResult = await safeDeduct(auth.userId, paymentRequest.amount, paymentRequest.currency)
+    if (!deductResult.success) {
+      return NextResponse.json({ success: false, message: deductResult.message }, { status: 400 })
     }
 
     const [transaction] = await prisma.$transaction([
@@ -73,12 +69,8 @@ export async function POST(
         },
       }),
       prisma.user.update({
-        where: { id: auth.userId },
-        data: { [balanceField]: { decrement: paymentRequest.amount } },
-      }),
-      prisma.user.update({
         where: { id: paymentRequest.requesterId },
-        data: { [balanceField]: { increment: paymentRequest.amount } },
+        data: isFC ? { realBalanceFC: { increment: paymentRequest.amount } } : { realBalance: { increment: paymentRequest.amount } },
       }),
       prisma.paymentRequest.update({
         where: { id },

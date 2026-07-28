@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { findActiveAgentByIdentifier } from '@/lib/agents'
 import { requireUser } from '@/lib/auth'
+import { safeDeductWithFee } from '@/lib/balance'
 
 export async function PUT(
   request: NextRequest,
@@ -48,6 +49,24 @@ export async function PUT(
       )
     }
 
+    if (user.tempBlocked) {
+      return NextResponse.json({ success: false, message: 'Votre compte est temporairement bloqué.' }, { status: 403 })
+    }
+
+    if (user.suspended) {
+      return NextResponse.json({ success: false, message: 'Votre compte est suspendu.' }, { status: 403 })
+    }
+
+    const cur = currency || 'USD'
+    const feeAmount = fee || 0
+    const totalDeduction = amount + feeAmount
+
+    // Check and deduct balance atomically (race-condition safe)
+    const deductResult = await safeDeductWithFee(userId, amount, feeAmount, cur)
+    if (!deductResult.success) {
+      return NextResponse.json({ success: false, message: deductResult.message }, { status: 400 })
+    }
+
     // Resolve agentId from agentCode if provided
     let linkedAgentId: string | undefined
     if (agentCode) {
@@ -55,26 +74,45 @@ export async function PUT(
       if (agent) linkedAgentId = agent.id
     }
 
-    // Create a pending Withdrawal record
+    // Create withdrawal and transaction records
     const withdrawal = await db.withdrawal.create({
       data: {
         userId,
         amount,
-        fee: fee || 0,
-        currency: currency || 'USD',
+        fee: feeAmount,
+        currency: cur,
         method: method || 'mobile_money',
         status: 'pending',
         agentId: linkedAgentId,
       },
     })
 
-    // Deduct balance immediately when creating pending withdrawal
-    const isFC = (currency || 'USD') === 'FC';
-    await db.user.update({
+    await db.transaction.create({
+      data: {
+        type: 'withdrawal',
+        amount,
+        fee: feeAmount,
+        currency: cur,
+        status: 'pending',
+        senderId: userId,
+        receiverId: linkedAgentId || userId,
+        agentId: linkedAgentId,
+        description: `Retrait via agent ${agentCode || 'N/A'}`,
+      },
+    })
+
+    await db.notification.create({
+      data: {
+        userId,
+        title: 'Retrait en cours',
+        message: `Votre demande de retrait de ${amount.toFixed(2)} ${cur} a été soumise et est en attente de validation.`,
+        type: 'withdrawal_validated',
+      },
+    })
+
+    const updatedUser = await db.user.findUnique({
       where: { id: userId },
-      data: isFC
-        ? { realBalanceFC: { decrement: amount + (fee || 0) } }
-        : { realBalance: { decrement: amount + (fee || 0) } },
+      select: { realBalance: true, realBalanceFC: true, bonusBalance: true, bonusBalanceFC: true },
     })
 
     return NextResponse.json({
@@ -90,6 +128,7 @@ export async function PUT(
         agentId: withdrawal.agentId,
         createdAt: withdrawal.createdAt,
       },
+      updatedBalances: updatedUser,
     })
   } catch (error) {
     console.error('Create withdrawal error:', error)
