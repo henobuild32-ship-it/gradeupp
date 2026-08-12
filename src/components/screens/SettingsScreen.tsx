@@ -12,6 +12,7 @@ import {
   Info,
   LogOut,
   ChevronRight,
+  Bell,
   Lock,
   LayoutDashboard,
   GraduationCap,
@@ -30,6 +31,7 @@ import { useAppStore } from '@/lib/store';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
 import { useTranslation, languageNames, languages, type Language } from '@/lib/i18n';
 import { useState } from 'react';
+import { usePushSubscription } from '@/hooks/usePushSubscription';
 
 function LanguageModal({ onClose }: { onClose: () => void }) {
   const { language, setLanguage } = useTranslation();
@@ -197,12 +199,14 @@ export default function SettingsScreen() {
   const { goBack, user, logout, navigateTo, isDarkMode, toggleTheme } =
     useAppStore();
   const { canInstall, isIOS, isInstalled, isStandalone, installApp } = usePWAInstall();
+  const { isSubscribed, permission, subscribe } = usePushSubscription();
   const { t, language, setLanguage } = useTranslation();
   const [showIOSGuide, setShowIOSGuide] = useState(false);
   const [showAndroidGuide, setShowAndroidGuide] = useState(false);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [installing, setInstalling] = useState(false);
   const [updateLoading, setUpdateLoading] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
 
   const isAgent = user?.role === 'agent';
 
@@ -223,6 +227,27 @@ export default function SettingsScreen() {
       toast.success(t('welcome.install_success'));
     } else {
       setShowAndroidGuide(true);
+    }
+  };
+
+  const handlePushPermission = async () => {
+    if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+      toast.error('Les notifications ne sont pas prises en charge sur cet appareil.');
+      return;
+    }
+
+    setPushLoading(true);
+    try {
+      const success = await subscribe();
+      if (success) {
+        toast.success('Notifications activées. Vous recevrez désormais les mises à jour et alertes importantes.');
+      } else if (permission === 'denied') {
+        toast.error('Les notifications sont bloquées dans votre navigateur. Vous pouvez les réactiver dans les paramètres du site.');
+      } else {
+        toast.info('Autorisation demandée. Confirmez la notification dans la fenêtre du navigateur.');
+      }
+    } finally {
+      setPushLoading(false);
     }
   };
 
@@ -301,6 +326,13 @@ export default function SettingsScreen() {
           label: t('settings.tutorial'),
           value: null,
           action: () => navigateTo('onboarding'),
+        },
+        {
+          icon: Bell,
+          label: isSubscribed ? 'Notifications activées' : 'Activer les notifications',
+          value: pushLoading ? 'Demande...' : isSubscribed ? 'Activées' : permission === 'denied' ? 'Bloquées' : 'Désactivées',
+          action: handlePushPermission,
+          badge: !isSubscribed,
         },
         {
           icon: Download,
