@@ -42,6 +42,7 @@ function maskEmail(email: string): string {
 export default function ForgotPasswordScreen() {
   const goBack = useAppStore((s) => s.goBack);
   const navigateTo = useAppStore((s) => s.navigateTo);
+  const pageParams = useAppStore((s) => s.pageParams) as { email?: string; code?: string };
 
   const [step, setStep] = useState<Step>('email');
 
@@ -60,6 +61,14 @@ export default function ForgotPasswordScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
 
+  useEffect(() => {
+    if (pageParams?.email && pageParams?.code) {
+      setEmail(pageParams.email);
+      setOtp(pageParams.code);
+      setStep('password');
+    }
+  }, [pageParams]);
+
   // Countdown timer for resend
   useEffect(() => {
     if (step !== 'otp' || countdown <= 0) return;
@@ -69,10 +78,10 @@ export default function ForgotPasswordScreen() {
 
   // Auto-submit OTP
   useEffect(() => {
-    if (otp.length === 6 && !otpLoading) {
+    if (step === 'otp' && otp.length === 6 && !otpLoading) {
       handleVerifyOtp(otp);
     }
-  }, [otp]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [otp, otpLoading, step]);
 
   // Step 1 — Send email
   const handleSendEmail = async (e: React.FormEvent) => {
@@ -111,7 +120,7 @@ export default function ForgotPasswordScreen() {
       const res = await fetch('/api/auth/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), code }),
+        body: JSON.stringify({ email: email.trim(), code, mode: 'forgot' }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {

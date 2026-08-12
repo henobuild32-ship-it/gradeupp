@@ -39,10 +39,21 @@ export async function sendOTPEmail(email: string, otp: string): Promise<boolean>
   }
   try {
     const t = getTransporter()
+    const fromAddress = process.env.SMTP_FROM || process.env.SMTP_EMAIL
+    const fromName = process.env.SMTP_FROM_NAME || 'TRAIT'
+    const textBody = [
+      'TRAIT',
+      '',
+      'Code de vérification',
+      `Votre code: ${otp}`,
+      'Ce code expire dans 5 minutes.',
+    ].join('\n')
     const info = await t.sendMail({
-      from: `TRAIT <${process.env.SMTP_EMAIL}>`,
+      from: `${fromName} <${fromAddress}>`,
+      replyTo: process.env.SMTP_EMAIL,
       to: normalizedEmail,
       subject: 'Votre code de vérification TRAIT',
+      text: textBody,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; background: #f9fafb; border-radius: 12px;">
           <div style="text-align: center; margin-bottom: 24px;">
@@ -82,10 +93,20 @@ export async function sendPasswordResetEmail(email: string, newPassword: string)
   }
   try {
     const t = getTransporter()
+    const fromAddress = process.env.SMTP_FROM || process.env.SMTP_EMAIL
+    const fromName = process.env.SMTP_FROM_NAME || 'TRAIT'
     await t.sendMail({
-      from: `TRAIT <${process.env.SMTP_EMAIL}>`,
+      from: `${fromName} <${fromAddress}>`,
+      replyTo: process.env.SMTP_EMAIL,
       to: normalizedEmail,
       subject: 'Votre nouveau mot de passe TRAIT',
+      text: [
+        'TRAIT',
+        '',
+        'Réinitialisation de mot de passe',
+        `Nouveau mot de passe: ${newPassword}`,
+        'Veuillez le changer après votre connexion.',
+      ].join('\n'),
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; background: #f9fafb; border-radius: 12px;">
           <div style="text-align: center; margin-bottom: 24px;">

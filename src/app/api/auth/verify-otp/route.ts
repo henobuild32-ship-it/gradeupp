@@ -8,7 +8,7 @@ import { normalizeEmail } from '@/lib/email/service';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, phone, code } = body;
+    const { email, phone, code, mode } = body;
 
     if (!code) {
       return NextResponse.json(
@@ -37,10 +37,12 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      await db.verificationCode.update({
-        where: { id: record.id },
-        data: { used: true },
-      });
+      if (mode !== 'forgot') {
+        await db.verificationCode.update({
+          where: { id: record.id },
+          data: { used: true },
+        });
+      }
 
       const user = await db.user.findFirst({ where: { email: normalizedEmail } });
 

@@ -75,7 +75,7 @@ export default function AuthOtpScreen() {
       }
     };
     sendOtp();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // Countdown timer for resend
   useEffect(() => {
@@ -110,7 +110,7 @@ export default function AuthOtpScreen() {
     setLoading(true);
     try {
       const body = hasEmail
-        ? { email, code }
+        ? { email, code, mode }
         : { phone: phoneNumber, code };
       const res = await fetch('/api/auth/verify-otp', {
         method: 'POST',

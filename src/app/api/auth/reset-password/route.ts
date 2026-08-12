@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { hashPassword } from '@/lib/auth';
+import { isValidEmail, normalizeEmail } from '@/lib/email/service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,9 +21,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const normalizedEmail = typeof email === 'string' ? normalizeEmail(email) : '';
+    if (!normalizedEmail || !isValidEmail(normalizedEmail)) {
+      return NextResponse.json(
+        { success: false, message: 'Adresse email invalide' },
+        { status: 400 }
+      );
+    }
+
     const record = await db.verificationCode.findFirst({
       where: {
-        email,
+        email: normalizedEmail,
         code,
         used: false,
         expiresAt: { gt: new Date() },
@@ -45,7 +54,7 @@ export async function POST(request: NextRequest) {
         data: { used: true },
       }),
       db.user.updateMany({
-        where: { email },
+        where: { email: normalizedEmail },
         data: { password: hashedPassword },
       }),
     ]);
