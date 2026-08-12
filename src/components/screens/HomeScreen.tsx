@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Bell,
   Send,
@@ -38,14 +38,13 @@ import {
   Contact,
   Gift,
   Search,
-  X,
   User,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAppStore } from '@/lib/store';
-import { useTranslation, languages, languageNames, languageFlags, type Language } from '@/lib/i18n';
+import { useTranslation } from '@/lib/i18n';
 import { toast } from 'sonner';
 import TraitCard from '@/components/trait/TraitCard';
 import { usePushSubscription } from '@/hooks/usePushSubscription';
@@ -85,6 +84,14 @@ const clientPrimaryActions = [
   { labelKey: 'action.deposit', icon: ArrowUpFromLine, page: 'deposit' as const, color: '#059669' },
 ];
 
+const clientFinanceModules = [
+  { labelKey: 'Factures', icon: FileText, page: 'bills' as const, color: '#CA8A04' },
+  { labelKey: 'Paiements récurrents', icon: Repeat, page: 'recurring-payments' as const, color: '#7C3AED' },
+  { labelKey: 'Microcrédits', icon: PiggyBank, page: 'micro-credit' as const, color: '#059669' },
+  { labelKey: 'Objectifs d\'épargne', icon: Target, page: 'savings-goals' as const, color: '#0284C7' },
+  { labelKey: 'Parrainage & récompenses', icon: Gift, page: 'referral' as const, color: '#C026D3' },
+];
+
 const clientSecondaryActions = [
   { labelKey: 'action.intl_transfer', icon: Globe, page: 'international-transfer' as const, color: '#7C3AED' },
   { labelKey: 'action.history', icon: History, page: 'history' as const, color: '#D97706' },
@@ -94,12 +101,7 @@ const clientSecondaryActions = [
   { labelKey: 'Espace Service', icon: Store, page: 'seller-dashboard' as const, color: '#DB2777' },
   { labelKey: 'Liens de paie.', icon: Link, page: 'payment-links' as const, color: '#0D9488' },
   { labelKey: 'Demander', icon: Handshake, page: 'payment-requests' as const, color: '#EA580C' },
-  { labelKey: 'Récurrent', icon: Repeat, page: 'recurring-payments' as const, color: '#7C3AED' },
   { labelKey: 'Recharge', icon: Radio, page: 'bundle-catalog' as const, color: '#E11D48' },
-  { labelKey: 'Factures', icon: FileText, page: 'bills' as const, color: '#CA8A04' },
-  { labelKey: 'Micro-crédit', icon: PiggyBank, page: 'micro-credit' as const, color: '#059669' },
-  { labelKey: 'Épargne', icon: Target, page: 'savings-goals' as const, color: '#0284C7' },
-  { labelKey: 'Parrainage', icon: Gift, page: 'referral' as const, color: '#C026D3' },
   { labelKey: 'Analytics', icon: BarChart3, page: 'analytics' as const, color: '#0891B2' },
   { labelKey: 'Contacts', icon: Contact, page: 'contact-pay' as const, color: '#65A30D' },
   { labelKey: 'USSD', icon: Phone, page: 'ussd' as const, color: '#7C3AED' },
@@ -150,9 +152,7 @@ export default function HomeScreen() {
   const [codeCopied, setCodeCopied] = useState(false);
   const [userCards, setUserCards] = useState<UserCard[]>([]);
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
-  const [showLanguageSheet, setShowLanguageSheet] = useState(false);
   const [showAllActions, setShowAllActions] = useState(false);
-  const languageSheetRef = useRef<HTMLDivElement>(null);
 
   const isAgent = user?.role === 'agent';
   const realBalanceUSD = user?.realBalance ?? 0;
@@ -164,6 +164,12 @@ export default function HomeScreen() {
 
   const agentCode = user?.agentNumber || user?.agentCode;
   const { subscribe } = usePushSubscription();
+
+  useEffect(() => {
+    if (language !== 'fr') {
+      setLanguage('fr');
+    }
+  }, [language, setLanguage]);
 
   useEffect(() => {
     fetchRecentTransactions();
@@ -219,11 +225,6 @@ export default function HomeScreen() {
     setTimeout(() => setCodeCopied(false), 2000);
   }
 
-  const handleLanguageChange = useCallback((lang: Language) => {
-    setLanguage(lang);
-    setShowLanguageSheet(false);
-  }, [setLanguage]);
-
   return (
     <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#111827] pb-24">
       {/* ─── Premium Header ──────────────────────────────────── */}
@@ -241,9 +242,6 @@ export default function HomeScreen() {
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <button onClick={() => setShowLanguageSheet(true)} className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-              <Globe className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400" />
-            </button>
             <NotificationBadge onClick={() => navigateTo('notifications')} />
             <button onClick={() => navigateTo('profile')} className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
               <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#0D5C63] to-[#14888F] flex items-center justify-center">
@@ -414,6 +412,35 @@ export default function HomeScreen() {
           </motion.section>
         )}
 
+        {!isAgent && (
+          <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white tracking-tight">Modules financiers</h2>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {clientFinanceModules.map((action) => {
+                const Icon = action.icon;
+                return (
+                  <motion.button
+                    key={action.page}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => navigateTo(action.page)}
+                    className="flex items-center gap-3 p-3.5 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-all text-left"
+                  >
+                    <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${action.color}10` }}>
+                      <Icon className="size-5" style={{ color: action.color }} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">{action.labelKey}</p>
+                      <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate">Accéder au module</p>
+                    </div>
+                  </motion.button>
+                );
+              })}
+            </div>
+          </motion.section>
+        )}
+
         {/* ─── All Services ─────────────────────────────────── */}
         <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
           <div className="flex items-center justify-between mb-4">
@@ -501,51 +528,7 @@ export default function HomeScreen() {
         </motion.section>
       </main>
 
-      {/* ─── Language Selector Bottom Sheet ─────────────────── */}
-      <AnimatePresence>
-        {showLanguageSheet && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" onClick={() => setShowLanguageSheet(false)} />
-            <motion.div ref={languageSheetRef}
-              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 rounded-t-3xl shadow-2xl">
-              <div className="px-5 pt-5 pb-8">
-                <div className="flex items-center justify-between mb-5">
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">{t('home.language_select')}</h3>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Choisissez votre langue</p>
-                  </div>
-                  <button onClick={() => setShowLanguageSheet(false)} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                    <X className="w-4 h-4 text-gray-500" />
-                  </button>
-                </div>
-                <div className="space-y-1">
-                  {languages.map((lang) => (
-                    <button key={lang} onClick={() => handleLanguageChange(lang)}
-                      className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all ${
-                        language === lang
-                          ? 'bg-[#0D5C63]/10 dark:bg-teal-500/10'
-                          : 'hover:bg-gray-50 dark:hover:bg-gray-800'
-                      }`}>
-                      <span className="text-xl">{languageFlags[lang]}</span>
-                      <span className={`flex-1 text-left text-[14px] font-medium ${
-                        language === lang ? 'text-[#0D5C63] dark:text-teal-400' : 'text-gray-700 dark:text-gray-300'
-                      }`}>{languageNames[lang]}</span>
-                      {language === lang && (
-                        <div className="w-6 h-6 rounded-full bg-[#0D5C63] dark:bg-teal-500 flex items-center justify-center">
-                          <Check className="w-3.5 h-3.5 text-white" />
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      
     </div>
   );
 }
