@@ -287,7 +287,7 @@ export default function AdminChildrenScreen() {
                         <div className="flex gap-2 pt-2 border-t flex-wrap justify-end">
                           {card.status === 'pending_retrieval' && (
                             <Button
-                              size="xs"
+                              size="sm"
                               className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[10px] h-7 px-3 rounded-lg"
                               onClick={() => handleAction('confirm-delivery', { cardId: card.id })}
                             >
@@ -298,7 +298,7 @@ export default function AdminChildrenScreen() {
                           
                           {card.status === 'active' || card.status === 'delivered' || card.status === 'pending_retrieval' ? (
                             <Button
-                              size="xs"
+                              size="sm"
                               variant="outline"
                               className="border-purple-200 text-purple-600 hover:bg-purple-50 text-[10px] h-7 px-3 rounded-lg"
                               onClick={() => handleAction('suspend-card', { cardId: card.id })}
@@ -307,7 +307,7 @@ export default function AdminChildrenScreen() {
                             </Button>
                           ) : card.status === 'suspended' ? (
                             <Button
-                              size="xs"
+                              size="sm"
                               variant="outline"
                               className="border-emerald-200 text-emerald-600 hover:bg-emerald-50 text-[10px] h-7 px-3 rounded-lg"
                               onClick={() => handleAction('unblock-card', { cardId: card.id })}
@@ -318,7 +318,7 @@ export default function AdminChildrenScreen() {
 
                           {card.status !== 'blocked' && (
                             <Button
-                              size="xs"
+                              size="sm"
                               variant="outline"
                               className="border-red-200 text-red-600 hover:bg-red-50 text-[10px] h-7 px-3 rounded-lg"
                               onClick={() => handleAction('block-card', { cardId: card.id, reason: 'Bloquée par l\'administrateur' })}

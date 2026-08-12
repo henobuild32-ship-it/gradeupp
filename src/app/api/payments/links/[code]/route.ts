@@ -151,10 +151,14 @@ export async function POST(
 
     // Push notification to link owner
     try {
+      const payer = await prisma.user.findUnique({
+        where: { id: auth.userId },
+        select: { name: true, phone: true },
+      })
       const { sendPushToUser } = await import('@/lib/push')
       await sendPushToUser(link.userId, {
         title: 'Paiement reçu !',
-        body: `${payer.name || payer.phone} vous a payé ${link.amount.toFixed(2)} ${link.currency} via votre lien.`,
+        body: `${payer?.name || payer?.phone || 'Un utilisateur'} vous a payé ${link.amount.toFixed(2)} ${link.currency} via votre lien.`,
         url: '/history',
       })
     } catch {}

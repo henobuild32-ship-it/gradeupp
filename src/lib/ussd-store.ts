@@ -110,6 +110,6 @@ export function queueOfflineTransaction(url: string, method: string, body: any) 
     url,
     method,
     body: typeof body === 'string' ? body : JSON.stringify(body),
-    headers: { 'Content-Type': 'application/json' },
+    headers: JSON.stringify({ 'Content-Type': 'application/json' }),
   });
 }

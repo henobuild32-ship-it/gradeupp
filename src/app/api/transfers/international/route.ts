@@ -177,6 +177,8 @@ export async function POST(request: NextRequest) {
     exchangeRate = rateConfig ? parseFloat(rateConfig.value) : 2850;
 
     // Create records
+    const totalDeduction = fee + commission;
+
     const [transfer] = await db.$transaction([
       db.internationalTransfer.create({
         data: {

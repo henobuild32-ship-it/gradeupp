@@ -50,6 +50,7 @@ export type PageName =
   | 'admin-messages'
   | 'admin-developers'
   | 'developer-register'
+  | 'developer-dashboard'
   | 'international-transfer'
   | 'agent-register'
   | 'agent-pending'
@@ -179,7 +180,7 @@ interface PinState {
 interface NotificationState {
   notifications: Notification[];
   unreadCount: number;
-  setNotifications: (notifs: Notification[]) => void;
+  setNotifications: (notifs: Notification[] | ((prev: Notification[]) => Notification[])) => void;
   markAsRead: (id: string) => void;
   clearNotifications: () => void;
 }
@@ -285,9 +286,12 @@ export const useAppStore = create<AppStore>()(
       unreadCount: 0,
 
       setNotifications: (notifs) =>
-        set({
-          notifications: notifs,
-          unreadCount: notifs.filter((n) => !n.read).length,
+        set((state) => {
+          const next = typeof notifs === 'function' ? notifs(state.notifications) : notifs;
+          return {
+            notifications: next,
+            unreadCount: next.filter((n) => !n.read).length,
+          };
         }),
 
       markAsRead: (id) => {

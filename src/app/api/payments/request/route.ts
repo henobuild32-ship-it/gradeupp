@@ -9,6 +9,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Non authentifié' }, { status: 401 })
     }
 
+    const requesterUser = await prisma.user.findUnique({
+      where: { id: auth.userId },
+      select: { phone: true },
+    })
+
+    if (!requesterUser) {
+      return NextResponse.json({ success: false, message: 'Utilisateur non trouvé' }, { status: 404 })
+    }
+
     // Fetch requests where user is either requester or recipient
     const sent = await prisma.paymentRequest.findMany({
       where: { requesterId: auth.userId },
@@ -19,7 +28,7 @@ export async function GET(request: NextRequest) {
     })
 
     const received = await prisma.paymentRequest.findMany({
-      where: { targetPhone: auth.phone },
+      where: { targetPhone: requesterUser.phone },
       include: {
         requester: { select: { id: true, name: true, phone: true } },
       },

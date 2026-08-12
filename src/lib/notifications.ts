@@ -1,18 +1,31 @@
 import { db } from '@/lib/db'
 import { sendPushToUser, sendPushToAll } from '@/lib/push'
 
+let ioGetterPromise: Promise<null | (() => any)> | null = null
+
+async function getIoGetter() {
+  if (!ioGetterPromise) {
+    ioGetterPromise = import('@/lib/realtime-server')
+      .then((mod) => mod.getIO)
+      .catch(() => null)
+  }
+  return ioGetterPromise
+}
+
 // Try to emit a WebSocket event (works when running the custom server)
-function wsEmit(userId: string, event: string, data: any) {
+async function wsEmit(userId: string, event: string, data: any) {
   try {
-    const { getIO } = require('@/lib/realtime-server')
+    const getIO = await getIoGetter()
+    if (!getIO) return
     const io = getIO()
     if (io) io.to(`user:${userId}`).emit(event, data)
   } catch {}
 }
 
-function wsEmitAll(event: string, data: any) {
+async function wsEmitAll(event: string, data: any) {
   try {
-    const { getIO } = require('@/lib/realtime-server')
+    const getIO = await getIoGetter()
+    if (!getIO) return
     const io = getIO()
     if (io) io.emit(event, data)
   } catch {}
@@ -29,7 +42,7 @@ export async function createNotification(
     data: { userId, title, message, type },
   })
 
-  wsEmit(userId, 'new_notification', notification)
+  void wsEmit(userId, 'new_notification', notification)
 
   if (sendPush) {
     sendPushToUser(userId, { title, body: message, url: '/notifications' }).catch(() => {})
@@ -54,7 +67,7 @@ export async function createNotificationForUsers(
   )
 
   for (const notif of results) {
-    wsEmit(notif.userId, 'new_notification', notif)
+    void wsEmit(notif.userId, 'new_notification', notif)
   }
 
   if (sendPush) {
@@ -84,7 +97,7 @@ export async function broadcastNotification(
   const userIds = users.map((u) => u.id)
 
   const batchSize = 100
-  const notifications = []
+  const notifications: any[] = []
 
   for (let i = 0; i < userIds.length; i += batchSize) {
     const batch = userIds.slice(i, i + batchSize)
@@ -98,11 +111,11 @@ export async function broadcastNotification(
     notifications.push(...created)
 
     for (const notif of created) {
-      wsEmit(notif.userId, 'new_notification', notif)
+      void wsEmit(notif.userId, 'new_notification', notif)
     }
   }
 
-  wsEmitAll('broadcast_notification', { title, message, type })
+  void wsEmitAll('broadcast_notification', { title, message, type })
 
   if (sendPush) {
     sendPushToAll({ title, body: message, url: '/notifications' }).catch(() => {})

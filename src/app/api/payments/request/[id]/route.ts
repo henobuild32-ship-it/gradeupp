@@ -34,7 +34,12 @@ export async function POST(
       return NextResponse.json({ success: false, message: 'Cette demande a déjà été traitée' }, { status: 400 })
     }
 
-    if (paymentRequest.targetPhone !== auth.phone) {
+    const requesterUser = await prisma.user.findUnique({
+      where: { id: auth.userId },
+      select: { phone: true },
+    })
+
+    if (!requesterUser || paymentRequest.targetPhone !== requesterUser.phone) {
       return NextResponse.json({ success: false, message: 'Non autorisé' }, { status: 403 })
     }
 

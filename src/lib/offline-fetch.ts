@@ -16,15 +16,17 @@ export async function offlineFetch(url: string, options: FetchOptions = {}): Pro
       const body = typeof fetchOptions.body === 'string' ? fetchOptions.body : JSON.stringify(fetchOptions.body || {})
       const headers: Record<string, string> = {}
       if (fetchOptions.headers) {
-        const h = fetchOptions.headers as Record<string, string>
-        Object.keys(h).forEach((k) => { headers[k] = h[k] })
+        const h = new Headers(fetchOptions.headers)
+        h.forEach((value, key) => {
+          headers[key] = value
+        })
       }
 
       await savePendingTransaction({
         url,
         method: fetchOptions.method || 'POST',
         body,
-        headers,
+        headers: JSON.stringify(headers),
       })
 
       return new Response(JSON.stringify({

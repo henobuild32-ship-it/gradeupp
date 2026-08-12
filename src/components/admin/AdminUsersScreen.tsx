@@ -382,20 +382,6 @@ export default function AdminUsersScreen() {
                   <X className="h-4 w-4" />
                 </button>
                           )}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 rounded-md text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
-                            onClick={() => {
-                              setResetPwdTarget(user);
-                              setNewPassword('');
-                              setResetPwdOpen(true);
-                            }}
-                            title="Réinitialiser le mot de passe"
-                          >
-                            <Key className="h-4 w-4" />
-                            <span className="sr-only">Réinitialiser mot de passe</span>
-                          </Button>
                         </div>
           </form>
         </motion.div>

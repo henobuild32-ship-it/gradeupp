@@ -3,6 +3,7 @@ import { timingSafeEqual } from 'crypto';
 import { db } from '@/lib/db';
 import { otpStore } from '@/lib/otp-store';
 import { signToken, setTokenCookie } from '@/lib/auth';
+import { normalizeEmail } from '@/lib/email/service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,10 +17,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (email) {
+    const normalizedEmail = typeof email === 'string' ? normalizeEmail(email) : null;
+
+    if (email && normalizedEmail) {
       const record = await db.verificationCode.findFirst({
         where: {
-          email,
+          email: normalizedEmail,
           code,
           used: false,
           expiresAt: { gt: new Date() },
@@ -39,7 +42,7 @@ export async function POST(request: NextRequest) {
         data: { used: true },
       });
 
-      const user = await db.user.findFirst({ where: { email } });
+      const user = await db.user.findFirst({ where: { email: normalizedEmail } });
 
       if (!user) {
         return NextResponse.json({

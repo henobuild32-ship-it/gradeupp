@@ -11,9 +11,6 @@ import { toast } from 'sonner'
 
 export default function SellerProductsScreen() {
   const { user, goBack } = useAppStore()
-  if (!user) {
-    return null
-  }
   const [products, setProducts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
@@ -26,11 +23,8 @@ export default function SellerProductsScreen() {
   })
   const [submitting, setSubmitting] = useState(false)
 
-  useEffect(() => {
-    fetchProducts()
-  }, [])
-
   const fetchProducts = async () => {
+    if (!user) return
     try {
       const res = await fetch(`/api/seller/products?sellerId=${user.id}`)
       const data = await res.json()
@@ -42,6 +36,14 @@ export default function SellerProductsScreen() {
     } finally {
       setLoading(false)
     }
+  }
+
+  useEffect(() => {
+    void fetchProducts()
+  }, [user])
+
+  if (!user) {
+    return null
   }
 
   const handleAdd = async (e: React.FormEvent) => {

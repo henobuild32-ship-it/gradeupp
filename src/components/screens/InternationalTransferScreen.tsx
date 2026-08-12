@@ -143,6 +143,7 @@ interface FormData {
   // Merchant
   merchantId: string;
   merchantReference: string;
+  transactionReference: string;
   // QR Code (no extra fields)
 }
 
@@ -208,6 +209,7 @@ const EMPTY_FORM: FormData = {
   billingAddress: '',
   merchantId: '',
   merchantReference: '',
+  transactionReference: '',
 
 };
 
@@ -266,6 +268,7 @@ export default function InternationalTransferScreen() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const pendingStreamRef = useRef<MediaStream | null>(null);
   const scanningRef = useRef(false);
   const animationRef = useRef(0);
   const [qrCameraActive, setQrCameraActive] = useState(false);
@@ -359,10 +362,12 @@ export default function InternationalTransferScreen() {
 
   // ─── Fetch KYC + Security on mount ────────────────────────────────
   useEffect(() => {
-    if (!user?.id) return;
+    const currentUserId = user?.id;
+    if (!currentUserId) return;
+
     async function check() {
       try {
-        const res = await fetch(`/api/kyc?userId=${user.id}`);
+        const res = await fetch(`/api/kyc?userId=${currentUserId}`);
         const data = await res.json();
         if (data.success) {
           setKycStatus(data.kyc.status);

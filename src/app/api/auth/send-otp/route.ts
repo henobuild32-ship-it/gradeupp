@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { otpStore } from '@/lib/otp-store';
-import { sendOTPEmail } from '@/lib/email/service';
+import { isValidEmail, normalizeEmail, sendOTPEmail } from '@/lib/email/service';
 import { generateOTP } from '@/lib/otp';
 
 export async function POST(request: NextRequest) {
@@ -13,20 +13,26 @@ export async function POST(request: NextRequest) {
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
     if (email) {
-      // Always save OTP to DB first
+      const normalizedEmail = normalizeEmail(email);
+
+      if (!normalizedEmail || !isValidEmail(normalizedEmail)) {
+        return NextResponse.json(
+          { success: false, message: 'Adresse email invalide' },
+          { status: 400 }
+        );
+      }
+
       await db.verificationCode.create({
-        data: { email, code, expiresAt },
+        data: { email: normalizedEmail, code, expiresAt },
       }).catch(() => {})
 
-      // Try email, but don't fail if it doesn't work
-      const emailSent = await sendOTPEmail(email, code)
+      const emailSent = await sendOTPEmail(normalizedEmail, code)
 
-      // Also store in-memory for phone fallback
       if (phone) {
         otpStore.set(phone.trim(), { code, expires: expiresAt.getTime() });
       }
 
-      console.log(`[OTP] Code for ${email}: ${code}`)
+      console.log(`[OTP] Code for ${normalizedEmail}: ${code}`)
 
       return NextResponse.json({
         success: true,

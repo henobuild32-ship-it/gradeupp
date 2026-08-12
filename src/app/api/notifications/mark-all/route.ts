@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     })
 
     try {
-      const { getIO } = require('@/lib/realtime-server')
+      const { getIO } = await import('@/lib/realtime-server')
       const io = getIO()
       if (io) io.to(`user:${userId}`).emit('notifications_read_all')
     } catch {}

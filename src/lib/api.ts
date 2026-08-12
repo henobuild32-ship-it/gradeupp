@@ -1,4 +1,4 @@
-import { useAppStore } from '@/lib/store';
+﻿import { useAppStore } from '@/lib/store';
 
 const originalFetch = typeof window !== 'undefined' ? window.fetch.bind(window) : null;
 
@@ -9,7 +9,8 @@ if (typeof window !== 'undefined' && originalFetch) {
       if (token) {
         const existingHeaders = init?.headers instanceof Headers
           ? Object.fromEntries(init.headers.entries())
-          : (init?.headers as Record<string, string>) || {};
+          : (init?.headers as Record<string, string> | undefined) ?? {};
+
         init = {
           ...init,
           headers: {
@@ -19,7 +20,7 @@ if (typeof window !== 'undefined' && originalFetch) {
         };
       }
       return await originalFetch(input, init);
-    } catch (err) {
+    } catch {
       return originalFetch(input, init);
     }
   };
@@ -27,9 +28,11 @@ if (typeof window !== 'undefined' && originalFetch) {
 
 export function getAuthHeaders(): Record<string, string> {
   if (typeof window === 'undefined') return {};
+
   const token = useAppStore.getState().token;
   if (token) {
     return { Authorization: `Bearer ${token}` };
   }
+
   return {};
 }

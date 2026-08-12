@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { sendOTPEmail } from '@/lib/email/service';
+import { isValidEmail, normalizeEmail, sendOTPEmail } from '@/lib/email/service';
 import { generateOTP } from '@/lib/otp';
 
 export async function POST(request: NextRequest) {
@@ -14,7 +14,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = await db.user.findFirst({ where: { email } });
+    const normalizedEmail = normalizeEmail(email);
+    if (!normalizedEmail || !isValidEmail(normalizedEmail)) {
+      return NextResponse.json(
+        { success: false, message: 'Adresse email invalide' },
+        { status: 400 }
+      );
+    }
+
+    const user = await db.user.findFirst({ where: { email: normalizedEmail } });
 
     if (!user) {
       return NextResponse.json(
@@ -27,10 +35,10 @@ export async function POST(request: NextRequest) {
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
     await db.verificationCode.create({
-      data: { email, code, expiresAt },
+      data: { email: normalizedEmail, code, expiresAt },
     });
 
-    await sendOTPEmail(email, code);
+    await sendOTPEmail(normalizedEmail, code);
 
     return NextResponse.json({
       success: true,

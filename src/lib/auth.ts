@@ -66,8 +66,9 @@ export async function hashPassword(password: string): Promise<string> {
 export async function verifyAndMigratePassword(
   userId: string,
   inputPassword: string,
-  storedPassword: string
+  storedPassword: string | null
 ): Promise<boolean> {
+  if (!storedPassword) return false;
   if (isBcryptHash(storedPassword)) {
     return bcrypt.compare(inputPassword, storedPassword);
   }

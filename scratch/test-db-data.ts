@@ -9,7 +9,7 @@ async function main() {
   console.log(JSON.stringify(links, null, 2))
   
   const users = await prisma.user.findMany({
-    select: { id: true, phone: true, name: true, biometricEnabled: true, faceIdEnabled: true, fingerprintEnabled: true, biometricPublicKey: true }
+    select: { id: true, phone: true, name: true }
   })
   console.log('--- Users ---')
   console.log(JSON.stringify(users, null, 2))

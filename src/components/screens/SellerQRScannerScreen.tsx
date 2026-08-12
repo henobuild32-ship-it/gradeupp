@@ -320,7 +320,7 @@ export default function SellerQRScannerScreen() {
               className="text-center font-bold text-lg"
             />
             <Button
-              onClick={handleScanAndPay}
+              onClick={() => handleScanAndPay()}
               disabled={status === 'loading'}
               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-6"
             >

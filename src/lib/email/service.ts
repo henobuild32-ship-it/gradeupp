@@ -1,5 +1,14 @@
 import nodemailer from 'nodemailer'
 
+export function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase()
+}
+
+export function isValidEmail(email: string): boolean {
+  const normalized = normalizeEmail(email)
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)
+}
+
 let transporter: any = null
 
 function getTransporter() {
@@ -17,15 +26,22 @@ function getTransporter() {
 }
 
 export async function sendOTPEmail(email: string, otp: string): Promise<boolean> {
+  const normalizedEmail = normalizeEmail(email)
+
+  if (!normalizedEmail || !isValidEmail(normalizedEmail)) {
+    console.warn(`[OTP] Adresse email invalide: ${email}`)
+    return false
+  }
+
   if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
-    console.log(`[OTP] SMTP non configuré. Code pour ${email}: ${otp}`)
+    console.log(`[OTP] SMTP non configuré. Code pour ${normalizedEmail}: ${otp}`)
     return false
   }
   try {
     const t = getTransporter()
     const info = await t.sendMail({
       from: `TRAIT <${process.env.SMTP_EMAIL}>`,
-      to: email,
+      to: normalizedEmail,
       subject: 'Votre code de vérification TRAIT',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; background: #f9fafb; border-radius: 12px;">
@@ -44,24 +60,31 @@ export async function sendOTPEmail(email: string, otp: string): Promise<boolean>
         </div>
       `,
     })
-    console.log(`[OTP] Email sent to ${email}: ${info.messageId}`)
+    console.log(`[OTP] Email sent to ${normalizedEmail}: ${info.messageId}`)
     return true
   } catch (err) {
-    console.error(`[OTP] Email failed for ${email}:`, err)
+    console.error(`[OTP] Email failed for ${normalizedEmail}:`, err)
     return false
   }
 }
 
 export async function sendPasswordResetEmail(email: string, newPassword: string): Promise<boolean> {
+  const normalizedEmail = normalizeEmail(email)
+
+  if (!normalizedEmail || !isValidEmail(normalizedEmail)) {
+    console.warn(`[OTP] Adresse email invalide pour réinitialisation: ${email}`)
+    return false
+  }
+
   if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
-    console.log(`[OTP] SMTP non configuré. Nouveau mot de passe pour ${email}: ${newPassword}`)
+    console.log(`[OTP] SMTP non configuré. Nouveau mot de passe pour ${normalizedEmail}: ${newPassword}`)
     return false
   }
   try {
     const t = getTransporter()
     await t.sendMail({
       from: `TRAIT <${process.env.SMTP_EMAIL}>`,
-      to: email,
+      to: normalizedEmail,
       subject: 'Votre nouveau mot de passe TRAIT',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; background: #f9fafb; border-radius: 12px;">

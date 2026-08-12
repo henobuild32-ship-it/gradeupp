@@ -18,7 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useAppStore, type User } from '@/lib/store';
+import { useAppStore } from '@/lib/store';
+import type { User as AppUser } from '@/lib/store';
 import { useTranslation } from '@/lib/i18n';
 import { toast } from 'sonner';
 import Image from 'next/image';
@@ -127,7 +128,7 @@ export default function AuthScreen() {
         toast.error(data.message || t('validation.login_error'));
         return;
       }
-      const loggedInUser = data.user as User;
+      const loggedInUser = data.user as AppUser;
       if (loggedInUser.role !== selectedRole) {
         const roleLabel = loggedInUser.role === 'agent' ? 'Agent' : loggedInUser.role === 'seller' ? 'Service' : 'Client';
         toast.error(`Ce compte est un compte ${roleLabel}. Veuillez sélectionner le bon rôle.`);
