@@ -148,6 +148,9 @@ export default function AuthPhoneScreen() {
         <div className="flex flex-col gap-2 mb-6">
           <h1 className="text-2xl font-bold text-foreground">{t('auth.create_account')}</h1>
           <p className="text-muted-foreground">{t('auth.enter_info')}</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Un code OTP de 6 chiffres sera envoyé à votre adresse email pour vérifier votre compte.
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">

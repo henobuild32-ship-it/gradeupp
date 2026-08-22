@@ -41,6 +41,31 @@ export default function SendScreen() {
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
+  // Debounced phone lookup
+  useEffect(() => {
+    if (!receiverPhone || receiverPhone.length < 8) {
+      setReceiverName('');
+      return;
+    }
+    const timer = setTimeout(() => {
+      setLookingUp(true);
+      fetch(`/api/users/phone-lookup?phone=${encodeURIComponent(receiverPhone.trim())}`, {
+        headers: user?.id ? { 'Authorization': `Bearer ${localStorage.getItem('trait-token') || ''}` } : {},
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (data.success && data.found && data.user) {
+            setReceiverName(data.user.name);
+          } else {
+            setReceiverName('');
+          }
+        })
+        .catch(() => setReceiverName(''))
+        .finally(() => setLookingUp(false));
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [receiverPhone, user?.id]);
+
   // Handle pay recipient from QR code scan
   useEffect(() => {
     const recipientId = pageParams?.payRecipientId
@@ -200,18 +225,7 @@ export default function SendScreen() {
               <Label htmlFor="receiver" className="text-sm font-medium">
                 Numéro du destinataire
               </Label>
-              {lookingUp ? (
-                <div className="h-11 flex items-center gap-2 bg-gray-50 rounded-lg px-3">
-                  <Loader2 className="h-4 w-4 animate-spin text-[#0D5C63]" />
-                  <span className="text-sm text-gray-500">Recherche du destinataire...</span>
-                </div>
-              ) : receiverName ? (
-                <div className="h-11 flex items-center gap-2 bg-gray-50 rounded-lg px-3 border border-gray-200">
-                  <User className="h-4 w-4 text-[#0D5C63]" />
-                  <span className="text-sm text-gray-700">{receiverName}</span>
-                  <span className="text-xs text-gray-400 ml-auto">{receiverPhone}</span>
-                </div>
-              ) : (
+              <div className="relative">
                 <Input
                   id="receiver"
                   type="tel"
@@ -220,6 +234,24 @@ export default function SendScreen() {
                   onChange={(e) => setReceiverPhone(e.target.value)}
                   className="h-11"
                 />
+                {lookingUp && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <Loader2 className="h-4 w-4 animate-spin text-[#0D5C63]" />
+                  </div>
+                )}
+              </div>
+              {receiverPhone.length >= 8 && !lookingUp && (
+                receiverName ? (
+                  <div className="flex items-center gap-2 text-sm text-emerald-600 font-medium">
+                    <User className="h-3.5 w-3.5" />
+                    <span>{receiverName}</span>
+                    <span className="text-xs text-muted-foreground font-normal">— compte TRAIT trouvé</span>
+                  </div>
+                ) : (
+                  <div className="text-xs text-muted-foreground">
+                    Nouveau compte sera créé automatiquement
+                  </div>
+                )
               )}
             </div>
 

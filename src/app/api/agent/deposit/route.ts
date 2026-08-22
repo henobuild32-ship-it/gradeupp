@@ -113,6 +113,20 @@ export async function POST(request: NextRequest) {
     })
     updateBalanceAndNotify(agentId, updatedAgent?.realBalance, updatedAgent?.realBalanceFC).catch(() => {})
 
+    // Push notifications for both parties
+    const { sendPushToUser } = await import('@/lib/push').catch(() => ({ sendPushToUser: null }))
+    if (sendPushToUser) {
+      const amountStr = isFC ? amount.toLocaleString('fr-FR') : '$' + amount.toFixed(2)
+      sendPushToUser(client.id, {
+        title: 'Dépôt reçu',
+        body: `Dépôt de ${amountStr} ${currency || 'USD'} reçu via l'agent ${agent.name || agent.pseudo || 'N/A'}.`,
+      }).catch(() => {})
+      sendPushToUser(agentId, {
+        title: 'Dépôt effectué',
+        body: `Dépôt de ${amountStr} ${currency || 'USD'} effectué pour le client ${client.name || client.pseudo || client.phone}.`,
+      }).catch(() => {})
+    }
+
     await logSecurityEvent({
       userId: agent.id,
       action: 'agent_deposit',

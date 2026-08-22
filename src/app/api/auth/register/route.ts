@@ -142,6 +142,22 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json({
       success: true,
       message: 'Compte créé. Vérifiez votre code OTP.',
+      user: {
+        id: user.id,
+        phone: user.phone,
+        name: user.name,
+        pseudo: user.pseudo,
+        email: user.email,
+        country: user.country,
+        realBalance: user.realBalance,
+        realBalanceFC: user.realBalanceFC,
+        bonusBalance: user.bonusBalance,
+        bonusBalanceFC: user.bonusBalanceFC,
+        role: user.role,
+        hasCompletedOnboarding: user.hasCompletedOnboarding,
+        isVerified: user.isVerified,
+        referralCode: user.referralCode,
+      },
     })
     return response
   } catch (error) {

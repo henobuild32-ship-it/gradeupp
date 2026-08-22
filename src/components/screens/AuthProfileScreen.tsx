@@ -79,6 +79,16 @@ export default function AuthProfileScreen() {
       return;
     }
 
+    if (!isAgent && !email.trim()) {
+      toast.error('Email requis — un code OTP de 6 chiffres sera envoyé pour vérification');
+      return;
+    }
+
+    if (email.trim() && !email.includes('@')) {
+      toast.error('Adresse email invalide — un code OTP de 6 chiffres sera envoyé');
+      return;
+    }
+
     if (isAgent && !gender) {
       toast.error(t('validation.gender_required'));
       return;
@@ -116,7 +126,8 @@ export default function AuthProfileScreen() {
           pseudo: pseudo.trim(),
           country,
           pin: '', // PIN will be set in next step
-          ...(isAgent && { email: email.trim(), gender, city: city.trim() }),
+          email: email.trim() || undefined,
+          ...(isAgent && { gender, city: city.trim() }),
         }),
       });
 
@@ -129,7 +140,20 @@ export default function AuthProfileScreen() {
 
       const user = data.user as User;
       setUser(user);
-      navigateTo('pin-setup');
+
+      // Send OTP via email
+      try {
+        await fetch('/api/auth/send-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email.trim() }),
+        });
+      } catch {
+        // OTP send failed but account is created - continue anyway
+      }
+
+      toast.success('Compte créé ! Un code OTP de 6 chiffres a été envoyé à votre email.');
+      navigateTo('auth-otp', { email: email.trim(), mode: 'verify' });
     } catch {
       toast.error(t('validation.connection_error'));
     } finally {
@@ -252,7 +276,7 @@ export default function AuthProfileScreen() {
               {/* Email */}
               <div className="flex flex-col gap-2">
                 <Label htmlFor="email" className="text-foreground font-medium">
-                  {t('auth.email')}
+                  {t('auth.email')} <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="email"
@@ -264,6 +288,7 @@ export default function AuthProfileScreen() {
                   autoComplete="email"
                   disabled={loading}
                 />
+                <p className="text-xs text-muted-foreground">Un code OTP de 6 chiffres sera envoyé à cette adresse</p>
               </div>
 
               {/* Gender */}
@@ -302,10 +327,30 @@ export default function AuthProfileScreen() {
             </>
           )}
 
+          {/* Email - mandatory for all users */}
+          {!isAgent && (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="email-client" className="text-foreground font-medium">
+                {t('auth.email')} <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="email-client"
+                type="email"
+                placeholder="Ex: jean@trait.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-12 focus-visible:border-blue-500 focus-visible:ring-blue-500/20 text-base"
+                autoComplete="email"
+                disabled={loading}
+              />
+              <p className="text-xs text-muted-foreground">Un code OTP de 6 chiffres sera envoyé à cette adresse pour vérifier votre compte</p>
+            </div>
+          )}
+
           {/* Submit button */}
           <Button
             type="submit"
-            disabled={loading || !name.trim() || !pseudo.trim() || !country || (isAgent && (!email.trim() || !gender || !city.trim()))}
+            disabled={loading || !name.trim() || !pseudo.trim() || !country || !email.trim() || (isAgent && (!gender || !city.trim()))}
             className="w-full h-12 text-base font-semibold bg-[#0D5C63] hover:bg-[#083A3E] text-white rounded-xl shadow-lg shadow-blue-900/10 disabled:opacity-50 cursor-pointer mt-4"
           >
             {loading ? (
