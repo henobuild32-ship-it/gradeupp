@@ -126,7 +126,7 @@ export async function requireUser(request: NextRequest) {
 
 export async function requireAdmin(request: NextRequest) {
   try {
-    const token = request.cookies.get(ADMIN_TOKEN_COOKIE)?.value;
+    const token = request.cookies.get(ADMIN_TOKEN_COOKIE)?.value || request.headers.get('Authorization')?.replace('Bearer ', '');
     if (!token) {
       return NextResponse.json({ success: false, message: 'Non autorisé' }, { status: 401 });
     }

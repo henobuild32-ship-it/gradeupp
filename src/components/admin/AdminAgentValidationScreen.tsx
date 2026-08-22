@@ -159,6 +159,7 @@ function getCountryLabel(code: string): string {
 
 export default function AdminAgentValidationScreen() {
   const { admin, goBack } = useAppStore();
+  const adminHeaders: Record<string, string> = admin?.token ? { 'Authorization': `Bearer ${admin.token}` } : {};
 
   // Data
   const [pendingAgents, setPendingAgents] = useState<ValidationAgent[]>([]);
@@ -222,7 +223,7 @@ export default function AdminAgentValidationScreen() {
           if (search.trim()) {
             params.set('search', search.trim());
           }
-          const res = await fetch(`/api/admin/agent-validation?${params.toString()}`);
+          const res = await fetch(`/api/admin/agent-validation?${params.toString()}`, { headers: adminHeaders });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || 'Erreur');
           return { status, agents: (data.agents ?? []) as ValidationAgent[] };
@@ -326,7 +327,7 @@ export default function AdminAgentValidationScreen() {
     try {
       const res = await fetch('/api/admin/agent-validation', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...adminHeaders },
         body: JSON.stringify({
           adminId: admin.id,
           action: 'accept',
@@ -377,7 +378,7 @@ export default function AdminAgentValidationScreen() {
     try {
       const res = await fetch('/api/admin/agent-validation', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...adminHeaders },
         body: JSON.stringify({
           adminId: admin.id,
           action: 'reject',
@@ -416,7 +417,7 @@ export default function AdminAgentValidationScreen() {
     try {
       const res = await fetch('/api/admin/agent-validation', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...adminHeaders },
         body: JSON.stringify({
           adminId: admin.id,
           action: 'suspend',
@@ -454,7 +455,7 @@ export default function AdminAgentValidationScreen() {
     try {
       const res = await fetch('/api/admin/agent-validation', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...adminHeaders },
         body: JSON.stringify({
           adminId: admin.id,
           action: 'accept',
@@ -491,7 +492,7 @@ export default function AdminAgentValidationScreen() {
     try {
       const res = await fetch('/api/admin/agent-validation', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...adminHeaders },
         body: JSON.stringify({
           adminId: admin.id,
           action: 'resend_credentials',

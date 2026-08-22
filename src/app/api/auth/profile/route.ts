@@ -53,6 +53,23 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Auto-credit $30 USD for existing clients who never received it
+    if (
+      user.role === 'client' &&
+      user.realBalance === 0 &&
+      user.bonusBalance === 0 &&
+      user.realBalanceFC === 0 &&
+      user.bonusBalanceFC === 0
+    ) {
+      try {
+        await db.user.update({
+          where: { id: user.id },
+          data: { realBalance: 30 },
+        })
+        user.realBalance = 30
+      } catch {}
+    }
+
     return NextResponse.json({ success: true, user })
   } catch (error) {
     console.error('Profile error:', error)

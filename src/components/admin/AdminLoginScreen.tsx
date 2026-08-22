@@ -43,7 +43,7 @@ export default function AdminLoginScreen() {
       }
 
       if (data.success && data.admin) {
-        setAdmin(data.admin);
+        setAdmin({ ...data.admin, token: data.token });
         toast.success(`Bienvenue, ${data.admin.name}`);
         navigateTo('admin-dashboard');
       } else {
