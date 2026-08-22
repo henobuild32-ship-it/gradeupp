@@ -131,3 +131,76 @@ export async function sendPasswordResetEmail(email: string, newPassword: string)
     return false
   }
 }
+
+function agentCredentialsHtml(agentName: string, agentCode: string, systemPassword: string): string {
+  return `
+    <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; background: #f9fafb; border-radius: 12px;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <div style="width: 48px; height: 48px; background: #0D5C63; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 20px;">T</div>
+        <h1 style="color: #0D5C63; font-size: 20px; margin-top: 8px;">TRAIT</h1>
+      </div>
+      <h2 style="color: #1f2937; font-size: 18px; text-align: center;">Bienvenue en tant qu'agent TRAIT</h2>
+      <p style="color: #6b7280; font-size: 14px; text-align: center; margin-bottom: 24px;">Bonjour ${agentName}, votre compte agent a été validé. Voici vos identifiants de connexion :</p>
+      <div style="background: white; border-radius: 12px; padding: 24px; border: 1px solid #e5e7eb;">
+        <p style="color: #374151; font-size: 13px; margin-bottom: 12px;">Votre code agent :</p>
+        <p style="font-size: 28px; text-align: center; font-family: monospace; color: #0D5C63; font-weight: bold; margin: 8px 0; letter-spacing: 4px;">${agentCode}</p>
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 16px 0;" />
+        <p style="color: #374151; font-size: 13px; margin-bottom: 8px;">Votre mot de passe système :</p>
+        <p style="font-size: 24px; text-align: center; font-family: monospace; color: #0D5C63; font-weight: bold; margin: 12px 0; letter-spacing: 2px;">${systemPassword}</p>
+        <p style="color: #9ca3af; font-size: 12px; text-align: center;">Connectez-vous avec ces identifiants sur l'application TRAIT.</p>
+        <p style="color: #dc2626; font-size: 12px; text-align: center; font-weight: bold;">Changez votre mot de passe après la première connexion.</p>
+      </div>
+      <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+      <p style="color: #9ca3af; font-size: 11px; text-align: center;">&copy; 2026 TRAIT - RDC</p>
+    </div>
+  `
+}
+
+export async function sendAgentCredentialsEmail(
+  email: string,
+  agentName: string,
+  agentCode: string,
+  systemPassword: string
+): Promise<boolean> {
+  const normalizedEmail = normalizeEmail(email)
+
+  if (!normalizedEmail || !isValidEmail(normalizedEmail)) {
+    console.warn(`[Agent] Adresse email invalide: ${email}`)
+    return false
+  }
+
+  if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
+    console.log(`[Agent] SMTP non configuré. Identifiants pour ${normalizedEmail}: Code=${agentCode}, MDP=${systemPassword}`)
+    return false
+  }
+  try {
+    const t = getTransporter()
+    const fromAddress = process.env.SMTP_FROM || process.env.SMTP_EMAIL
+    const fromName = process.env.SMTP_FROM_NAME || 'TRAIT'
+    await t.sendMail({
+      from: `${fromName} <${fromAddress}>`,
+      replyTo: process.env.SMTP_EMAIL,
+      to: normalizedEmail,
+      subject: 'Vos identifiants agent TRAIT',
+      text: [
+        'TRAIT',
+        '',
+        'Bienvenue en tant qu\'agent TRAIT !',
+        '',
+        `Bonjour ${agentName},`,
+        '',
+        `Code Agent: ${agentCode}`,
+        `Mot de passe système: ${systemPassword}`,
+        '',
+        'Connectez-vous avec ces identifiants sur l\'application TRAIT.',
+        'Changez votre mot de passe après la première connexion.',
+      ].join('\n'),
+      html: agentCredentialsHtml(agentName, agentCode, systemPassword),
+    })
+    console.log(`[Agent] Email identifiants envoyé à ${normalizedEmail}`)
+    return true
+  } catch (err) {
+    console.error(`[Agent] Email failed for ${normalizedEmail}:`, err)
+    return false
+  }
+}
