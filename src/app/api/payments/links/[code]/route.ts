@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getAuthUser } from '@/lib/auth'
 import { safeDeduct } from '@/lib/balance'
+import { updateBalanceAndNotify } from '@/lib/notifications'
 
 export async function GET(
   _request: NextRequest,
@@ -147,6 +148,22 @@ export async function POST(
       }),
       prisma.user.update({ where: { id: link.userId }, data: isFC ? { realBalanceFC: { increment: link.amount } } : { realBalance: { increment: link.amount } } }),
       prisma.paymentLink.update({ where: { id: link.id }, data: { useCount: { increment: 1 } } }),
+      prisma.notification.create({
+        data: {
+          userId: link.userId,
+          title: 'Paiement reçu',
+          message: `Vous avez reçu ${link.amount.toFixed(2)} ${link.currency} via votre lien de paiement.`,
+          type: 'transfer_received',
+        },
+      }),
+      prisma.notification.create({
+        data: {
+          userId: auth.userId,
+          title: 'Paiement effectué',
+          message: `Paiement de ${link.amount.toFixed(2)} ${link.currency} envoyé via lien de paiement.`,
+          type: 'transfer_sent',
+        },
+      }),
     ])
 
     // Push notification to link owner
@@ -162,6 +179,29 @@ export async function POST(
         url: '/history',
       })
     } catch {}
+
+    // Push notification to payer confirming payment
+    try {
+      const { sendPushToUser } = await import('@/lib/push')
+      await sendPushToUser(auth.userId, {
+        title: 'Paiement effectué',
+        body: `Votre paiement de ${link.amount.toFixed(2)} ${link.currency} via lien de paiement a été envoyé.`,
+        url: '/history',
+      })
+    } catch {}
+
+    // Real-time balance update via WebSocket for both parties
+    const updatedPayer = await prisma.user.findUnique({
+      where: { id: auth.userId },
+      select: { realBalance: true, realBalanceFC: true },
+    })
+    updateBalanceAndNotify(auth.userId, updatedPayer?.realBalance, updatedPayer?.realBalanceFC).catch(() => {})
+
+    const updatedReceiver = await prisma.user.findUnique({
+      where: { id: link.userId },
+      select: { realBalance: true, realBalanceFC: true },
+    })
+    updateBalanceAndNotify(link.userId, updatedReceiver?.realBalance, updatedReceiver?.realBalanceFC).catch(() => {})
 
     return NextResponse.json({
       success: true,

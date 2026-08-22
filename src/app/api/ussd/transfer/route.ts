@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { requireUser } from '@/lib/auth';
 import { checkChildBalanceLimit } from '@/lib/security';
 import { safeDeductWithFee } from '@/lib/balance';
+import { updateBalanceAndNotify } from '@/lib/notifications';
 
 export async function POST(request: NextRequest) {
   try {
@@ -93,8 +94,29 @@ export async function POST(request: NextRequest) {
           type: 'transfer_received',
         },
       });
+      await tx.notification.create({
+        data: {
+          userId: senderId,
+          title: 'Transfert envoyé',
+          message: `Vous avez envoyé ${amount.toFixed(2)} ${cur} à ${receiver.phone || receiver.name || 'Inconnu'} via USSD`,
+          type: 'transfer_sent',
+        },
+      });
       return transaction;
     });
+
+    // Real-time balance update via WebSocket for both sender and receiver
+    const updatedSender = await db.user.findUnique({
+      where: { id: senderId },
+      select: { realBalance: true, realBalanceFC: true },
+    })
+    updateBalanceAndNotify(senderId, updatedSender?.realBalance, updatedSender?.realBalanceFC).catch(() => {})
+
+    const updatedReceiver = await db.user.findUnique({
+      where: { id: receiver.id },
+      select: { realBalance: true, realBalanceFC: true },
+    })
+    updateBalanceAndNotify(receiver.id, updatedReceiver?.realBalance, updatedReceiver?.realBalanceFC).catch(() => {})
 
     return NextResponse.json({
       success: true,

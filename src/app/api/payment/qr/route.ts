@@ -4,6 +4,7 @@ import { verifyAndMigratePin, requireUser } from '@/lib/auth'
 import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { QRPaymentSchema, validateRequest } from '@/lib/validations'
 import { safeDeductWithFee } from '@/lib/balance'
+import { updateBalanceAndNotify } from '@/lib/notifications'
 
 export async function POST(request: NextRequest) {
   try {
@@ -107,7 +108,49 @@ export async function POST(request: NextRequest) {
           type: 'transfer_received',
         },
       })
+
+      await tx.notification.create({
+        data: {
+          userId: client.id,
+          title: 'Paiement effectué',
+          message: `Paiement de ${payAmount.toFixed(2)} ${cur} effectué chez ${seller.businessName || 'Service'}.`,
+          type: 'transfer_sent',
+        },
+      })
     })
+
+    // Real-time balance update via WebSocket for both buyer and seller
+    const updatedClient = await db.user.findUnique({
+      where: { id: client.id },
+      select: { realBalance: true, realBalanceFC: true },
+    })
+    updateBalanceAndNotify(client.id, updatedClient?.realBalance, updatedClient?.realBalanceFC).catch(() => {})
+
+    const updatedSeller = await db.user.findUnique({
+      where: { id: seller.id },
+      select: { realBalance: true, realBalanceFC: true },
+    })
+    updateBalanceAndNotify(seller.id, updatedSeller?.realBalance, updatedSeller?.realBalanceFC).catch(() => {})
+
+    // Push notification to seller
+    try {
+      const { sendPushToUser } = await import('@/lib/push')
+      await sendPushToUser(seller.id, {
+        title: 'Paiement reçu',
+        body: `Paiement de ${payAmount.toFixed(2)} ${cur} reçu via QR code.`,
+        url: '/history',
+      })
+    } catch {}
+
+    // Push notification to buyer
+    try {
+      const { sendPushToUser } = await import('@/lib/push')
+      await sendPushToUser(client.id, {
+        title: 'Paiement effectué',
+        body: `Paiement de ${payAmount.toFixed(2)} ${cur} effectué chez ${seller.businessName || 'Service'}.`,
+        url: '/history',
+      })
+    } catch {}
 
     return NextResponse.json({ success: true, message: 'Paiement réussi' })
   } catch (error) {

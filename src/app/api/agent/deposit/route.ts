@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { checkChildBalanceLimit, logSecurityEvent } from '@/lib/security'
 import { requireUser } from '@/lib/auth'
+import { updateBalanceAndNotify } from '@/lib/notifications'
 
 export async function POST(request: NextRequest) {
   try {
@@ -63,7 +64,7 @@ export async function POST(request: NextRequest) {
 
     const isFC = (currency || 'USD') === 'FC';
 
-    // Atomic: create deposit, update client balance, create notification
+    // Atomic: create deposit, update client balance, create notifications for both parties
     await db.$transaction([
       db.deposit.create({
         data: {
@@ -89,7 +90,28 @@ export async function POST(request: NextRequest) {
           type: 'general',
         },
       }),
+      db.notification.create({
+        data: {
+          userId: agentId,
+          title: 'Dépôt effectué',
+          message: `Dépôt de ${isFC ? amount.toLocaleString('fr-FR') : '$' + amount.toFixed(2)} ${currency || 'USD'} effectué pour le client ${client.phone}.`,
+          type: 'general',
+        },
+      }),
     ]);
+
+    // Real-time balance update via WebSocket for both agent and client
+    const updatedClient = await db.user.findUnique({
+      where: { id: client.id },
+      select: { realBalance: true, realBalanceFC: true },
+    })
+    updateBalanceAndNotify(client.id, updatedClient?.realBalance, updatedClient?.realBalanceFC).catch(() => {})
+
+    const updatedAgent = await db.user.findUnique({
+      where: { id: agentId },
+      select: { realBalance: true, realBalanceFC: true },
+    })
+    updateBalanceAndNotify(agentId, updatedAgent?.realBalance, updatedAgent?.realBalanceFC).catch(() => {})
 
     await logSecurityEvent({
       userId: agent.id,

@@ -4,6 +4,7 @@ import { checkChildBalanceLimit } from '@/lib/security'
 import { requireUser } from '@/lib/auth'
 import { SendMoneySchema, validateRequest } from '@/lib/validations'
 import { safeDeductWithFee } from '@/lib/balance'
+import { updateBalanceAndNotify } from '@/lib/notifications'
 
 export async function POST(request: NextRequest) {
   try {
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Atomic transaction: credit receiver, create tx record, notify
+    // Atomic transaction: credit receiver, create tx record, notify both parties
     const [transaction] = await db.$transaction([
       db.transaction.create({
         data: {
@@ -108,6 +109,14 @@ export async function POST(request: NextRequest) {
           type: 'transfer_received',
         },
       }),
+      db.notification.create({
+        data: {
+          userId: senderId,
+          title: 'Transfert envoyé',
+          message: `Vous avez envoyé ${amount.toFixed(2)} ${cur} à ${receiver.phone || receiver.name || 'Inconnu'}`,
+          type: 'transfer_sent',
+        },
+      }),
     ])
 
     // Send push notification to receiver
@@ -122,10 +131,31 @@ export async function POST(request: NextRequest) {
       console.error('Push notification error:', err)
     }
 
+    // Send push notification to sender confirming transfer
+    try {
+      const { sendPushToUser } = await import('@/lib/push')
+      await sendPushToUser(senderId, {
+        title: 'Transfert envoyé',
+        body: `Votre transfert de ${amount.toFixed(2)} ${cur} à ${receiver.name || receiver.phone || 'un utilisateur'} a été envoyé avec succès.`,
+        url: '/history',
+      })
+    } catch (err) {
+      console.error('Push notification error (sender):', err)
+    }
+
     const updatedSender = await db.user.findUnique({
       where: { id: senderId },
       select: { realBalance: true, realBalanceFC: true, bonusBalance: true, bonusBalanceFC: true },
     })
+
+    // Real-time balance update via WebSocket for both sender and receiver
+    updateBalanceAndNotify(senderId, updatedSender?.realBalance, updatedSender?.realBalanceFC).catch(() => {})
+
+    const updatedReceiver = await db.user.findUnique({
+      where: { id: receiver.id },
+      select: { realBalance: true, realBalanceFC: true },
+    })
+    updateBalanceAndNotify(receiver.id, updatedReceiver?.realBalance, updatedReceiver?.realBalanceFC).catch(() => {})
 
     return NextResponse.json({
       success: true,
