@@ -65,6 +65,15 @@ export async function POST(request: NextRequest) {
             ? { realBalanceFC: { increment: withdrawal.amount } }
             : { realBalance: { increment: withdrawal.amount } },
         }),
+        db.transaction.updateMany({
+          where: {
+            senderId: withdrawal.userId,
+            receiverId: withdrawal.agentId!,
+            type: 'withdrawal',
+            status: 'pending',
+          },
+          data: { status: 'completed' },
+        }),
       ]);
 
       // Log agent validation
@@ -113,6 +122,16 @@ export async function POST(request: NextRequest) {
       // Refund the client: add back amount + fee
       await db.withdrawal.update({
         where: { id: withdrawalId },
+        data: { status: 'failed' },
+      })
+
+      await db.transaction.updateMany({
+        where: {
+          senderId: withdrawal.userId,
+          receiverId: withdrawal.agentId!,
+          type: 'withdrawal',
+          status: 'pending',
+        },
         data: { status: 'failed' },
       })
 

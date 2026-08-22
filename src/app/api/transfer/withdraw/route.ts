@@ -116,11 +116,11 @@ export async function POST(request: NextRequest) {
       }
 
       const currentWithdrawalUSD = currency === 'USD' ? amount : amount / exchangeRate;
-      if (totalWithdrawnUSD + currentWithdrawalUSD > 20) {
+      if (totalWithdrawnUSD + currentWithdrawalUSD > 100) {
         return NextResponse.json(
           {
             success: false,
-            message: `Limite de retrait dépassée. Les utilisateurs parrainés peuvent retirer un maximum de 20.00 USD au total. Déjà retiré/en cours: ${totalWithdrawnUSD.toFixed(2)} USD`,
+            message: `Limite de retrait dépassée. Les utilisateurs parrainés peuvent retirer un maximum de 100.00 USD au total. Déjà retiré/en cours: ${totalWithdrawnUSD.toFixed(2)} USD`,
           },
           { status: 400 },
         );
