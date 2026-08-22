@@ -407,12 +407,12 @@ export default function SettingsScreen() {
               </div>
 
               {/* Agent code display */}
-              {isAgent && user?.agentCode && (
+              {isAgent && (user?.agentCode || user?.agentNumber) && (
                 <div className="mt-3 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                   <BadgeCheck className="size-4 text-amber-600 shrink-0" />
                   <span className="text-sm text-amber-700">Code Agent :</span>
                   <span className="text-sm font-bold font-mono text-amber-800 tracking-wider">
-                    {user.agentCode}
+                    {(() => { const c = user?.agentCode || user?.agentNumber; return c ? (c.startsWith('AGT-') ? c : `AGT-${c}`) : ''; })()}
                   </span>
                 </div>
               )}

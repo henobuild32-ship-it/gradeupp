@@ -234,7 +234,7 @@ export default function AgentDashboardScreen() {
             <CardContent className="p-5">
               <p className="text-sm text-amber-100">{t('agent.agent_code')}</p>
               <p className="text-3xl font-bold font-mono tracking-wider mt-1">
-                {user?.agentNumber || user?.agentCode || 'N/A'}
+                {(() => { const c = user?.agentCode || user?.agentNumber; return c ? (c.startsWith('AGT-') ? c : `AGT-${c}`) : 'N/A'; })()}
               </p>
               <p className="text-sm text-amber-200 mt-2">
                 {user?.name || 'Agent'}

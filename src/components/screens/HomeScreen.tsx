@@ -162,7 +162,8 @@ export default function HomeScreen() {
   const bonusBalanceFC = user?.bonusBalanceFC ?? 0;
   const totalFC = realBalanceFC + bonusBalanceFC;
 
-  const agentCode = user?.agentNumber || user?.agentCode;
+  const agentCode = user?.agentCode || user?.agentNumber;
+  const displayAgentCode = agentCode ? (agentCode.startsWith('AGT-') ? agentCode : `AGT-${agentCode}`) : null;
   const { subscribe } = usePushSubscription();
 
   useEffect(() => {
@@ -175,8 +176,17 @@ export default function HomeScreen() {
     fetchRecentTransactions();
     refreshUserBalance();
     fetchUserCards();
-    if ('serviceWorker' in navigator && 'PushManager' in window && Notification.permission === 'granted') {
-      subscribe().catch(() => {});
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+      const perm = Notification.permission;
+      if (perm === 'granted') {
+        subscribe().catch(() => {});
+      } else if (perm !== 'denied') {
+        Notification.requestPermission().then((result) => {
+          if (result === 'granted') {
+            subscribe().catch(() => {});
+          }
+        });
+      }
     }
     const balanceInterval = setInterval(() => refreshUserBalance(), 30000);
     return () => clearInterval(balanceInterval);
@@ -218,8 +228,8 @@ export default function HomeScreen() {
   const showCardButton = !isAgent && !hasCards && !hasPendingRequests;
 
   function handleCopyCode() {
-    if (!agentCode) return;
-    navigator.clipboard?.writeText(agentCode);
+    if (!displayAgentCode) return;
+    navigator.clipboard?.writeText(displayAgentCode);
     setCodeCopied(true);
     toast.success(t('home.copied'));
     setTimeout(() => setCodeCopied(false), 2000);
@@ -254,7 +264,7 @@ export default function HomeScreen() {
 
       <main className="px-5 pt-6 space-y-8">
         {/* ─── Agent Code ───────────────────────────────────── */}
-        {isAgent && agentCode && (
+        {isAgent && displayAgentCode && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl p-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-[#0D5C63]/10 flex items-center justify-center shrink-0">
@@ -262,7 +272,7 @@ export default function HomeScreen() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] text-gray-400 dark:text-gray-500 font-semibold uppercase tracking-widest">{t('home.agent_code')}</p>
-                <p className="text-lg font-bold font-mono text-[#0D5C63] tracking-wider dark:text-teal-400">{agentCode}</p>
+                <p className="text-lg font-bold font-mono text-[#0D5C63] tracking-wider dark:text-teal-400">{displayAgentCode}</p>
               </div>
               <button onClick={handleCopyCode} className="px-3 py-1.5 rounded-lg bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                 {codeCopied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4 text-gray-400" />}

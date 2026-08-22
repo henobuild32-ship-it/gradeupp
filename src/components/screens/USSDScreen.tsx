@@ -1460,7 +1460,7 @@ export default function USSDScreen() {
                 <div className="flex justify-between text-sm"><span className="text-muted-foreground">Nom</span><span className="font-medium">{user?.name || user?.pseudo || 'N/A'}</span></div>
                 <div className="flex justify-between text-sm"><span className="text-muted-foreground">Téléphone</span><span className="font-medium font-mono">{user?.phone}</span></div>
                 <div className="flex justify-between text-sm"><span className="text-muted-foreground">Rôle</span><Badge variant="outline" className="text-xs">{user?.role === 'agent' ? 'Agent' : 'Client'}</Badge></div>
-                {user?.agentCode && <div className="flex justify-between text-sm"><span className="text-muted-foreground">Code agent</span><span className="font-mono font-semibold text-emerald-700">{user.agentCode}</span></div>}
+                {(user?.agentCode || user?.agentNumber) && <div className="flex justify-between text-sm"><span className="text-muted-foreground">Code agent</span><span className="font-mono font-semibold text-emerald-700">{(() => { const c = user?.agentCode || user?.agentNumber; return c ? (c.startsWith('AGT-') ? c : `AGT-${c}`) : ''; })()}</span></div>}
                 <div className="flex justify-between text-sm"><span className="text-muted-foreground">Inscrit le</span><span className="text-xs">{user?.createdAt ? new Date(user.createdAt).toLocaleDateString('fr-FR') : 'N/A'}</span></div>
               </CardContent>
             </Card>

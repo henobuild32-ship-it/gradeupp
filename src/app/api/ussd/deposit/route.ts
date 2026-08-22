@@ -87,6 +87,22 @@ export async function POST(request: NextRequest) {
       return deposit;
     });
 
+    // Push notifications to both client and agent
+    const { sendPushToUser } = await import('@/lib/push').catch(() => ({ sendPushToUser: null }))
+    if (sendPushToUser) {
+      const amt = isFC ? amount.toLocaleString('fr-FR') : '$' + amount.toFixed(2)
+      sendPushToUser(userId, {
+        title: 'Dépôt reçu',
+        body: `Dépôt de ${amt} ${currency || 'USD'} effectué par l'agent ${agent.businessName || agent.name || 'TRAIT'}.`,
+        url: '/home',
+      }).catch(() => {})
+      sendPushToUser(agent.id, {
+        title: 'Dépôt effectué',
+        body: `Dépôt de ${amt} ${currency || 'USD'} pour ${user.name || user.pseudo || user.phone}.`,
+        url: '/home',
+      }).catch(() => {})
+    }
+
     return NextResponse.json({
       success: true,
       deposit: {

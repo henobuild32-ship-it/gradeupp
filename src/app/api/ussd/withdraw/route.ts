@@ -88,6 +88,22 @@ export async function POST(request: NextRequest) {
       return withdrawal;
     });
 
+    // Push notifications to both client and agent
+    const { sendPushToUser } = await import('@/lib/push').catch(() => ({ sendPushToUser: null }))
+    if (sendPushToUser) {
+      const amt = isFC ? amount.toLocaleString('fr-FR') : '$' + amount.toFixed(2)
+      sendPushToUser(userId, {
+        title: 'Retrait effectué',
+        body: `Retrait de ${amt} ${cur} (frais: ${fee.toFixed(2)} ${cur}) effectué via l'agent ${agent.businessName || agent.name || 'TRAIT'}.`,
+        url: '/home',
+      }).catch(() => {})
+      sendPushToUser(agent.id, {
+        title: 'Retrait pour client',
+        body: `Retrait de ${amt} ${cur} effectué pour ${user.name || user.pseudo || user.phone}.`,
+        url: '/home',
+      }).catch(() => {})
+    }
+
     return NextResponse.json({
       success: true,
       withdrawal: {

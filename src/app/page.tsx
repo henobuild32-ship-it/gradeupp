@@ -5,6 +5,7 @@ import { useEffect, Suspense, lazy } from 'react';
 import { useAppStore, PageName } from '@/lib/store';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OfflineBanner } from '@/components/layout/OfflineBanner';
+import { PushPermissionBanner } from '@/components/layout/PushPermissionBanner';
 import { useRealtime } from '@/hooks/useRealtime';
 
 // Auth screens
@@ -267,96 +268,46 @@ export default function TraitApp() {
     }
   }, [user, navigateTo])
 
-  // Synchronize Push Notifications subscription
+  // Synchronize Push Notifications subscription (re-sync existing, don't auto-request)
   useEffect(() => {
     if (!user) return
 
-    const subscribeToPush = async () => {
+    const syncPushSubscription = async () => {
       try {
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-          console.warn('[TRAIT Push] ❌ Push notifications not supported on this browser.')
-          return
-        }
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
 
-        // ── Step 1 : Register Service Worker ──
         let reg: ServiceWorkerRegistration
         try {
           reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
-          console.log('[TRAIT Push] ✅ Service Worker registered:', reg.scope)
-        } catch (swErr) {
-          console.warn('[TRAIT Push] ❌ Service Worker registration failed:', swErr)
-          return
-        }
+        } catch { return }
 
-        // Wait until SW is active
         await navigator.serviceWorker.ready
-        console.log('[TRAIT Push] ✅ Service Worker is active and ready.')
 
-        // ── Step 2 : Request permission ──
-        const permission = await Notification.requestPermission()
-        console.log('[TRAIT Push] Permission:', permission)
-        if (permission !== 'granted') {
-          console.warn('[TRAIT Push] ❌ Notification permission denied.')
-          return
-        }
+        // Only re-sync if permission already granted AND subscription exists
+        if (Notification.permission !== 'granted') return
 
-        // ── Step 3 : Subscribe ──
-        const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-        if (!vapidPublicKey) {
-          console.warn('[TRAIT Push] ❌ NEXT_PUBLIC_VAPID_PUBLIC_KEY is not set.')
-          return
-        }
+        const sub = await reg.pushManager.getSubscription()
+        if (!sub) return
 
-        let sub = await reg.pushManager.getSubscription()
-
-        if (!sub) {
-          const padding = '='.repeat((4 - (vapidPublicKey.length % 4)) % 4)
-          const base64 = (vapidPublicKey + padding).replace(/\-/g, '+').replace(/_/g, '/')
-          const rawData = window.atob(base64)
-          const outputArray = new Uint8Array(rawData.length)
-          for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i)
-
-          sub = await reg.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: outputArray,
-          })
-          console.log('[TRAIT Push] ✅ New push subscription created.')
-        } else {
-          console.log('[TRAIT Push] ✅ Existing push subscription found.')
-        }
-
-        // ── Step 4 : Send subscription to server ──
         const p256dhKey = sub.getKey('p256dh')
         const authKey = sub.getKey('auth')
-        if (!p256dhKey || !authKey) {
-          console.warn('[TRAIT Push] ❌ Could not extract subscription keys.')
-          return
-        }
+        if (!p256dhKey || !authKey) return
 
         const keys = {
           p256dh: btoa(String.fromCharCode(...new Uint8Array(p256dhKey))),
           auth: btoa(String.fromCharCode(...new Uint8Array(authKey))),
         }
 
-        const pushRes = await fetch('/api/notifications/push', {
+        await fetch('/api/notifications/push', {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ endpoint: sub.endpoint, p256dh: keys.p256dh, auth: keys.auth }),
         })
-        if (pushRes.ok) {
-          console.log('[TRAIT Push] ✅ Subscription saved to server. Push notifications are ready!')
-        } else {
-          const errText = await pushRes.text()
-          console.warn('[TRAIT Push] ❌ Failed to save subscription to server:', errText)
-        }
-      } catch (err) {
-        console.warn('[TRAIT Push] ❌ Error during push setup:', err)
-      }
+      } catch { /* silent */ }
     }
 
-    // Delay slightly to prioritize core rendering
-    const timer = setTimeout(subscribeToPush, 2000)
+    const timer = setTimeout(syncPushSubscription, 2000)
     return () => clearTimeout(timer)
   }, [user])
 
@@ -376,6 +327,7 @@ export default function TraitApp() {
 
   return (
     <div className="relative min-h-screen bg-background flex flex-col">
+      {user && <PushPermissionBanner />}
       <div className={`flex-1 ${showNav ? 'pb-16' : ''}`}>
         <Suspense fallback={<ScreenLoader />}>
           <Screen />

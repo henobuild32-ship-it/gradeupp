@@ -118,6 +118,21 @@ export async function POST(request: NextRequest) {
     })
     updateBalanceAndNotify(receiver.id, updatedReceiver?.realBalance, updatedReceiver?.realBalanceFC).catch(() => {})
 
+    // Push notifications to both parties
+    const { sendPushToUser } = await import('@/lib/push').catch(() => ({ sendPushToUser: null }))
+    if (sendPushToUser) {
+      sendPushToUser(receiver.id, {
+        title: 'Transfert reçu',
+        body: `Vous avez reçu ${amount.toFixed(2)} ${cur} de ${sender.name || sender.phone || 'un utilisateur'}.`,
+        url: '/history',
+      }).catch(() => {})
+      sendPushToUser(senderId, {
+        title: 'Transfert envoyé',
+        body: `Votre transfert de ${amount.toFixed(2)} ${cur} à ${receiver.name || receiver.phone || 'un utilisateur'} a été envoyé.`,
+        url: '/history',
+      }).catch(() => {})
+    }
+
     return NextResponse.json({
       success: true,
       transaction: {
