@@ -4,7 +4,7 @@ import { requireAdmin, hashPassword } from '@/lib/auth'
 import { sendAgentCredentialsEmail } from '@/lib/email/service'
 
 function generateAgentCode(): string {
-  const prefix = '170'
+  const prefix = 'AGT-'
   const random = Math.floor(Math.random() * 100000).toString().padStart(5, '0')
   return prefix + random
 }
