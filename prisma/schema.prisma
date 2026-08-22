@@ -35,7 +35,7 @@ model User {
   twoFactorSecret        String?
   realBalance            Float                   @default(0)
   realBalanceFC          Float                   @default(0)
-  bonusBalance           Float                   @default(10)
+  bonusBalance           Float                   @default(0)
   bonusBalanceFC         Float                   @default(0)
   bonusBlocked           Boolean                 @default(false)
   bonusBlockedReason     String?

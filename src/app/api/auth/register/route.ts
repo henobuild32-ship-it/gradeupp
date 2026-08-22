@@ -102,7 +102,8 @@ export async function POST(request: NextRequest) {
 
     const isAgent = role === 'agent'
     const validationStatus = isAgent ? 'pending' : 'validated'
-    const bonusBalance = isAgent ? 0 : 10
+    const bonusBalance = isAgent ? 0 : 0
+    const realBalanceCredit = isAgent ? 0 : 30
 
     // Hash password
     const hashedPassword = await hashPassword(password)
@@ -128,7 +129,7 @@ export async function POST(request: NextRequest) {
         city: city?.trim() || null,
         address: address?.trim() || null,
         photoId: photoId || null,
-        realBalance: 0,
+        realBalance: realBalanceCredit,
         realBalanceFC: 0,
         bonusBalance,
         bonusBalanceFC: 0,
