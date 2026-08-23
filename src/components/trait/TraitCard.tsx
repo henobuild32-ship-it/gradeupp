@@ -13,7 +13,7 @@ interface TraitCardProps {
   expiryDate: string;
   cvv: string;
   qrCode: string;
-  balance?: number; // kept for backward compat, no longer displayed
+  balance?: number;
   status?: string;
 }
 
@@ -31,10 +31,8 @@ export default function TraitCard({
   const isUSD = cardType === 'USD';
   const isSuspended = status === 'suspended' || status === 'blocked';
 
-  // Format card number: 4927 8613 5478 2190
   const formattedNumber = cardNumber.replace(/(.{4})/g, '$1 ').trim();
 
-  // Color scheme
   const accentColor = isUSD ? '#00C9A7' : '#FF6B6B';
   const accentColorLight = isUSD ? '#00C9A730' : '#FF6B6B30';
   const accentColorBorder = isUSD ? '#00C9A740' : '#FF6B6B40';
@@ -46,7 +44,6 @@ export default function TraitCard({
     ? 'linear-gradient(135deg, #081020 0%, #0D1528 30%, #121A3A 60%, #0B0E1A 100%)'
     : 'linear-gradient(135deg, #180510 0%, #200810 30%, #2D1020 60%, #1A0A10 100%)';
 
-  // QR code value: encode card ID, type, number for scanning
   const qrValue = JSON.stringify({
     card: cardNumber,
     type: currencyLabel,
@@ -54,29 +51,33 @@ export default function TraitCard({
     id: qrCode,
   });
 
+  const displayCvv = cvv || '***';
+
   return (
     <div
       className="w-full cursor-pointer select-none"
       style={{ perspective: '1200px' }}
       onClick={() => setIsFlipped(!isFlipped)}
     >
-      <motion.div
-        animate={{ rotateY: isFlipped ? 180 : 0 }}
-        transition={{ duration: 0.7, ease: [0.23, 1, 0.32, 1] }}
-        style={{ transformStyle: 'preserve-3d' }}
+      <div
         className="relative w-full"
+        style={{
+          transformStyle: 'preserve-3d',
+          transition: 'transform 0.7s cubic-bezier(0.23, 1, 0.32, 1)',
+          transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+        }}
       >
         {/* ═══════ FRONT ═══════ */}
         <div
-          className="w-full rounded-2xl overflow-hidden shadow-2xl relative"
+          className="w-full rounded-2xl overflow-hidden shadow-2xl"
           style={{
             backfaceVisibility: 'hidden',
+            WebkitBackfaceVisibility: 'hidden',
             background: gradientBg,
             minHeight: '240px',
             border: `1px solid ${accentColorBorder}`,
           }}
         >
-          {/* Subtle grid pattern */}
           <div
             className="absolute inset-0 opacity-[0.03]"
             style={{
@@ -87,46 +88,33 @@ export default function TraitCard({
               backgroundSize: '40px 40px',
             }}
           />
-
-          {/* Top-right light bloom */}
           <div
             className="absolute -top-20 -right-20 w-60 h-60 rounded-full opacity-[0.15]"
-            style={{
-              background: `radial-gradient(circle, ${accentColor}, transparent 70%)`,
-            }}
+            style={{ background: `radial-gradient(circle, ${accentColor}, transparent 70%)` }}
           />
-          {/* Bottom-left light bloom */}
           <div
             className="absolute -bottom-16 -left-16 w-48 h-48 rounded-full opacity-[0.08]"
-            style={{
-              background: `radial-gradient(circle, ${accentColor}, transparent 70%)`,
-            }}
+            style={{ background: `radial-gradient(circle, ${accentColor}, transparent 70%)` }}
           />
-          {/* Middle holographic streak */}
           <div
             className="absolute top-1/2 left-0 right-0 -translate-y-1/2 h-32 opacity-[0.04]"
-            style={{
-              background: `linear-gradient(90deg, transparent, ${accentColor}, transparent)`,
-            }}
+            style={{ background: `linear-gradient(90deg, transparent, ${accentColor}, transparent)` }}
           />
 
-          {/* Suspended overlay */}
           {isSuspended && (
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-20 rounded-2xl">
               <div className="text-center">
                 <Shield className="w-10 h-10 text-red-400 mx-auto mb-2" />
                 <p className="text-white text-sm font-bold uppercase tracking-wider">
-                  {status === 'suspended' ? 'Suspendue' : 'Bloquée'}
+                  {status === 'suspended' ? 'Suspendue' : 'Bloquee'}
                 </p>
               </div>
             </div>
           )}
 
           <div className="relative z-10 p-5 pt-4">
-            {/* ── Top row: Logo + card label ── */}
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2.5">
-                {/* Official TRAIT Logo */}
                 <div
                   className="w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden"
                   style={{
@@ -148,7 +136,7 @@ export default function TraitCard({
                     TRAIT
                   </p>
                   <p className="text-white/30 text-[7px] font-medium tracking-[2px] mt-0.5">
-                    CARTE NUMÉRIQUE
+                    CARTE NUMERIQUE
                   </p>
                 </div>
               </div>
@@ -164,24 +152,19 @@ export default function TraitCard({
                 >
                   {currencyLabel}
                 </div>
-                <Wifi
-                  className="w-4 h-4 rotate-90"
-                  style={{ color: accentColor, opacity: 0.5 }}
-                />
+                <Wifi className="w-4 h-4 rotate-90" style={{ color: accentColor, opacity: 0.5 }} />
               </div>
             </div>
 
-            {/* ── Card Number ── */}
             <div className="mb-5">
               <p className="text-white/30 text-[9px] font-semibold tracking-[2px] mb-1.5">
-                NUMÉRO DE CARTE
+                NUMERO DE CARTE
               </p>
               <p className="text-white text-[22px] font-mono font-bold tracking-[4px] leading-none">
                 {formattedNumber}
               </p>
             </div>
 
-            {/* ── Bottom: Name + QR Code ── */}
             <div className="flex items-end justify-between">
               <div className="flex-1 min-w-0">
                 <p className="text-white/30 text-[8px] font-semibold tracking-[1.5px] mb-1">
@@ -192,7 +175,6 @@ export default function TraitCard({
                 </p>
               </div>
 
-              {/* Professional QR Code */}
               <div
                 className="w-[72px] h-[72px] rounded-xl flex items-center justify-center ml-3 shrink-0 p-1"
                 style={{
@@ -216,7 +198,6 @@ export default function TraitCard({
               </div>
             </div>
 
-            {/* ── Bottom bar: expiry + security ── */}
             <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/[0.06]">
               <div>
                 <p className="text-white/30 text-[8px] font-semibold tracking-[1.5px]">
@@ -227,15 +208,12 @@ export default function TraitCard({
                 </p>
               </div>
               <div className="flex items-center gap-1.5">
-                <Lock
-                  className="w-3 h-3"
-                  style={{ color: accentColor, opacity: 0.6 }}
-                />
+                <Lock className="w-3 h-3" style={{ color: accentColor, opacity: 0.6 }} />
                 <p
                   className="text-[8px] font-bold tracking-[1.5px]"
                   style={{ color: accentColor, opacity: 0.6 }}
                 >
-                  SÉCURISÉE PAR TRAIT
+                  SECURISEE PAR TRAIT
                 </p>
               </div>
             </div>
@@ -244,16 +222,16 @@ export default function TraitCard({
 
         {/* ═══════ BACK ═══════ */}
         <div
-          className="absolute inset-0 rounded-2xl overflow-hidden shadow-2xl"
+          className="absolute top-0 left-0 w-full rounded-2xl overflow-hidden shadow-2xl"
           style={{
             backfaceVisibility: 'hidden',
+            WebkitBackfaceVisibility: 'hidden',
             transform: 'rotateY(180deg)',
             background: gradientBgBack,
             minHeight: '240px',
             border: `1px solid ${accentColorBorder}`,
           }}
         >
-          {/* Subtle grid pattern */}
           <div
             className="absolute inset-0 opacity-[0.02]"
             style={{
@@ -264,17 +242,12 @@ export default function TraitCard({
               backgroundSize: '40px 40px',
             }}
           />
-
-          {/* Light bloom */}
           <div
             className="absolute -top-20 -right-20 w-48 h-48 rounded-full opacity-[0.1]"
-            style={{
-              background: `radial-gradient(circle, ${accentColor}, transparent 70%)`,
-            }}
+            style={{ background: `radial-gradient(circle, ${accentColor}, transparent 70%)` }}
           />
 
           <div className="relative z-10 p-5 pt-4">
-            {/* ── Logo ── */}
             <div className="flex items-center gap-2.5 mb-5">
               <div
                 className="w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden"
@@ -295,19 +268,17 @@ export default function TraitCard({
               <p className="text-white text-[15px] font-black tracking-[3px]">TRAIT</p>
             </div>
 
-            {/* ── Ownership text with client name ── */}
             <p className="text-white/40 text-[8px] leading-relaxed italic mb-4 px-1">
-              Cette carte est la propriété de{' '}
+              Cette carte est la propriete de{' '}
               <span className="text-white/70 font-semibold not-italic">
                 {cardHolder}
               </span>
               . Si vous la trouvez, veuillez la retourner.
             </p>
 
-            {/* ── Signature strip ── */}
             <div className="mb-4">
               <p className="text-white/30 text-[8px] font-semibold tracking-[1.5px] mb-1.5">
-                SIGNATURE AUTORISÉE
+                SIGNATURE AUTORISEE
               </p>
               <div
                 className="h-8 rounded-md flex items-center px-3"
@@ -322,27 +293,24 @@ export default function TraitCard({
               </div>
             </div>
 
-            {/* ── CCV ── */}
+            {/* CCV */}
             <div className="mb-5">
               <p className="text-white/30 text-[8px] font-semibold tracking-[1.5px] mb-1.5">
-                CODE DE SÉCURITÉ (CCV)
+                CODE DE SECURITE (CCV)
               </p>
               <div
                 className="inline-flex items-center rounded-lg px-4 py-2"
                 style={{ backgroundColor: accentColorLight }}
               >
-                <p
-                  className="text-white text-xl font-mono font-bold tracking-[5px]"
-                >
-                  {cvv}
+                <p className="text-white text-xl font-mono font-bold tracking-[5px]">
+                  {displayCvv}
                 </p>
               </div>
             </div>
 
-            {/* ── Security features grid ── */}
             <div className="grid grid-cols-2 gap-x-4 gap-y-2">
               {[
-                { icon: Lock, label: 'Sécurité', desc: 'Protection avancée' },
+                { icon: Lock, label: 'Securite', desc: 'Protection avancee' },
                 { icon: Shield, label: 'Confidentiel', desc: 'Ne partagez pas le CCV' },
                 { icon: Globe, label: 'Utilisation', desc: 'En ligne et en magasin' },
                 { icon: Lock, label: 'Support', desc: 'trait137@gmail.com' },
@@ -350,10 +318,7 @@ export default function TraitCard({
                 const Icon = item.icon;
                 return (
                   <div key={item.label} className="flex items-center gap-2">
-                    <Icon
-                      className="w-3.5 h-3.5 shrink-0"
-                      style={{ color: accentColor, opacity: 0.6 }}
-                    />
+                    <Icon className="w-3.5 h-3.5 shrink-0" style={{ color: accentColor, opacity: 0.6 }} />
                     <div className="min-w-0">
                       <p className="text-white/60 text-[8px] font-bold leading-none tracking-wider">
                         {item.label}
@@ -367,7 +332,6 @@ export default function TraitCard({
               })}
             </div>
 
-            {/* ── Footer info ── */}
             <div className="flex items-center justify-between mt-3 pt-2 border-t border-white/[0.06]">
               <p className="text-white/20 text-[7px] tracking-wider">
                 EXPIRE {expiryDate}
@@ -378,9 +342,8 @@ export default function TraitCard({
             </div>
           </div>
         </div>
-      </motion.div>
+      </div>
 
-      {/* Tap hint */}
       <p className="text-center text-[10px] text-muted-foreground mt-2.5">
         Appuyez pour retourner la carte
       </p>

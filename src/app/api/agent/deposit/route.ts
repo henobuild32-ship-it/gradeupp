@@ -36,6 +36,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (agent.validationStatus !== 'validated') {
+      return NextResponse.json(
+        { success: false, message: 'Votre compte agent n\'est pas encore validé' },
+        { status: 403 }
+      )
+    }
+
+    if (agent.suspended) {
+      return NextResponse.json(
+        { success: false, message: 'Votre compte agent est suspendu' },
+        { status: 403 }
+      )
+    }
+
     const client = await db.user.findUnique({
       where: { phone: clientPhone.trim() },
     })

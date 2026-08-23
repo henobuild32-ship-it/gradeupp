@@ -24,13 +24,13 @@ const agentNavItems: NavItem[] = [
   { page: 'agent-dashboard', labelKey: 'nav.home', icon: Home, showBadge: true },
   { page: 'agent-deposit', labelKey: 'nav.deposit', icon: Store },
   { page: 'agent-withdraw-validate', labelKey: 'nav.withdraw', icon: ShieldCheck },
-  { page: 'notifications', labelKey: 'nav.notif', icon: Bell, showBadge: true },
+  { page: 'notifications', labelKey: 'nav.notifications', icon: Bell, showBadge: true },
   { page: 'settings', labelKey: 'nav.more', icon: Settings },
 ];
 
 const sellerNavItems: NavItem[] = [
   { page: 'seller-dashboard', labelKey: 'nav.home', icon: Home, showBadge: true },
-  { page: 'notifications', labelKey: 'nav.notif', icon: Bell, showBadge: true },
+  { page: 'notifications', labelKey: 'nav.notifications', icon: Bell, showBadge: true },
   { page: 'settings', labelKey: 'nav.more', icon: Settings },
 ];
 
