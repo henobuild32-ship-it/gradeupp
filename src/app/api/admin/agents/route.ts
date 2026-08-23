@@ -3,10 +3,9 @@ import { db } from '@/lib/db';
 import { requireAdmin } from '@/lib/auth';
 import { hashPassword } from '@/lib/auth';
 
-function generateAgentCode(): string {
-  const prefix = 'AGT-';
-  const random = Math.floor(Math.random() * 100000).toString().padStart(5, '0');
-  return prefix + random;
+function generateAgentCode(phone: string): string {
+  const cleaned = phone.replace(/\D/g, '');
+  return `AGT-${cleaned}`;
 }
 
 export async function GET(request: NextRequest) {
@@ -110,10 +109,10 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      let agentCode = generateAgentCode();
+      let agentCode = generateAgentCode(phone);
       let codeExists = await db.user.findUnique({ where: { agentCode } });
       while (codeExists) {
-        agentCode = generateAgentCode();
+        agentCode = generateAgentCode(phone) + '-' + Math.floor(Math.random() * 100);
         codeExists = await db.user.findUnique({ where: { agentCode } });
       }
 

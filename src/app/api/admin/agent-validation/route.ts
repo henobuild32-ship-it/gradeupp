@@ -3,10 +3,9 @@ import { db } from '@/lib/db'
 import { requireAdmin, hashPassword } from '@/lib/auth'
 import { sendAgentCredentialsEmail } from '@/lib/email/service'
 
-function generateAgentCode(): string {
-  const prefix = 'AGT-'
-  const random = Math.floor(Math.random() * 100000).toString().padStart(5, '0')
-  return prefix + random
+function generateAgentCode(phone: string): string {
+  const cleaned = phone.replace(/\D/g, '')
+  return `AGT-${cleaned}`
 }
 
 function generateSystemPassword(): string {
@@ -120,10 +119,10 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      let agentCode = generateAgentCode()
+      let agentCode = generateAgentCode(agent.phone)
       let codeExists = await db.user.findUnique({ where: { agentCode } })
       while (codeExists) {
-        agentCode = generateAgentCode()
+        agentCode = generateAgentCode(agent.phone) + '-' + Math.floor(Math.random() * 100)
         codeExists = await db.user.findUnique({ where: { agentCode } })
       }
 
