@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, UserPlus, ShieldCheck, Activity, TrendingUp, DollarSign, Users, Clock, XCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, UserPlus, ShieldCheck, Activity, TrendingUp, DollarSign, Users, Clock, XCircle, Loader2, Bell } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,12 +11,49 @@ import { useTranslation } from '@/lib/i18n';
 import { toast } from 'sonner';
 
 export default function AgentDashboardScreen() {
-  const { goBack, user, setUser, navigateTo } = useAppStore();
+  const { goBack, user, setUser, navigateTo, unreadCount } = useAppStore();
   const { t } = useTranslation();
   const [checkingStatus, setCheckingStatus] = useState(false);
+  const [agentStats, setAgentStats] = useState({ depositsToday: 0, withdrawalsValidated: 0, activeClients: 0, totalVolume: 0 });
 
   const validationStatus = user?.validationStatus;
   const isSuspended = user?.suspended === true;
+
+  // Fetch real agent stats
+  useEffect(() => {
+    if (!user?.id) return;
+    fetch(`/api/agent/activity?agentId=${user.id}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.success && data.activity) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const todayStr = today.toISOString().split('T')[0];
+
+          const depositsToday = data.activity
+            .filter((a: any) => a.type === 'deposit' && a.status === 'completed' && new Date(a.createdAt).toISOString().startsWith(todayStr))
+            .reduce((sum: number, a: any) => sum + (a.currency === 'FC' ? 0 : a.amount), 0);
+
+          const withdrawalsValidated = data.activity
+            .filter((a: any) => a.type === 'withdrawal' && a.status === 'completed')
+            .length;
+
+          const uniqueClients = new Set(data.activity.map((a: any) => a.clientPhone));
+
+          const totalVolume = data.activity
+            .filter((a: any) => a.status === 'completed')
+            .reduce((sum: number, a: any) => sum + (a.currency === 'FC' ? 0 : a.amount), 0);
+
+          setAgentStats({
+            depositsToday,
+            withdrawalsValidated,
+            activeClients: uniqueClients.size,
+            totalVolume,
+          });
+        }
+      })
+      .catch(() => {});
+  }, [user?.id]);
 
   const handleCheckStatus = async () => {
     setCheckingStatus(true);
@@ -177,28 +214,28 @@ export default function AgentDashboardScreen() {
   const stats = [
     {
       label: t('agent.deposits_today'),
-      value: '$0.00',
+      value: `$${agentStats.depositsToday.toFixed(2)}`,
       icon: DollarSign,
       color: 'text-[#0D5C63]',
       bg: 'bg-blue-50',
     },
     {
       label: t('agent.withdrawals_validated'),
-      value: '0',
+      value: agentStats.withdrawalsValidated.toString(),
       icon: ShieldCheck,
       color: 'text-amber-600',
       bg: 'bg-amber-50',
     },
     {
       label: t('agent.active_clients'),
-      value: '0',
+      value: agentStats.activeClients.toString(),
       icon: Users,
       color: 'text-violet-600',
       bg: 'bg-violet-50',
     },
     {
       label: t('agent.total_volume'),
-      value: `$${(user?.realBalance ?? 0).toFixed(2)}`,
+      value: `$${agentStats.totalVolume.toFixed(2)}`,
       icon: TrendingUp,
       color: 'text-[#DC2626]',
       bg: 'bg-red-50',
@@ -220,6 +257,16 @@ export default function AgentDashboardScreen() {
             <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-xs">
               Agent
             </Badge>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <button onClick={() => navigateTo('notifications')} className="relative p-2 rounded-lg hover:bg-muted transition-colors">
+              <Bell className="h-5 w-5 text-muted-foreground" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#DC2626] text-[9px] font-bold text-white">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
           </div>
         </div>
       </header>

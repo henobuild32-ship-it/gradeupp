@@ -248,6 +248,33 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // ─── Notify buyer ───────────────────────────────────────────────
+    await db.notification.create({
+      data: {
+        userId: buyer.id,
+        title: 'Achat confirmé',
+        message: `Votre achat de "${product.name}" pour ${effectivePrice.toFixed(2)} ${currency} a été confirmé. ${usedBonus > 0 ? `Bonus utilisé: ${usedBonus.toFixed(2)} USD.` : ''}`,
+        type: 'purchase',
+      },
+    })
+
+    // Push notifications to both buyer and seller
+    const { sendPushToUser } = await import('@/lib/push').catch(() => ({ sendPushToUser: null }))
+    if (sendPushToUser) {
+      if (product.sellerId) {
+        sendPushToUser(product.sellerId, {
+          title: 'Nouvel achat',
+          body: `${buyer.name || buyer.pseudo || 'Quelqu\'un'} a acheté "${product.name}" pour ${effectivePrice.toFixed(2)} ${currency}.`,
+          url: '/seller-dashboard',
+        }).catch(() => {})
+      }
+      sendPushToUser(buyer.id, {
+        title: 'Achat confirmé',
+        body: `"${product.name}" acheté pour ${effectivePrice.toFixed(2)} ${currency}. Merci !`,
+        url: '/marketplace',
+      }).catch(() => {})
+    }
+
     return NextResponse.json({
       success: true,
       purchase: {

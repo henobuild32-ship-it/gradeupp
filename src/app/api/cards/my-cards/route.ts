@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
         id: true,
         cardType: true,
         cardNumber: true,
+        cvv: true,
         qrCode: true,
         expiryDate: true,
         status: true,

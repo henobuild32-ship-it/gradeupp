@@ -2,12 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
+import { requireUser } from '@/lib/auth';
 
 const UPLOAD_DIR = join(process.cwd(), 'public', 'uploads', 'kyc');
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireUser(request);
+    if (auth instanceof NextResponse) return auth;
+
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
     const type = formData.get('type') as string | null; // 'document' or 'selfie'
@@ -52,7 +56,7 @@ export async function POST(request: NextRequest) {
     const timestamp = Date.now();
     const randomSuffix = Math.random().toString(36).substring(2, 6);
     const ext = file.name.split('.').pop() || 'jpg';
-    const filename = `${type}_${timestamp}_${randomSuffix}.${ext}`;
+    const filename = `${auth.userId}_${type}_${timestamp}_${randomSuffix}.${ext}`;
     const filepath = join(UPLOAD_DIR, filename);
 
     await writeFile(filepath, buffer);

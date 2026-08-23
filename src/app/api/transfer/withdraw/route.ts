@@ -175,6 +175,27 @@ export async function POST(request: NextRequest) {
       }),
     ]);
 
+    // Notify the agent about the pending withdrawal
+    const agentCodeDisplay = agent.agentCode || agent.agentNumber || 'N/A'
+    db.notification.create({
+      data: {
+        userId: agent.id,
+        title: 'Nouveau retrait à valider',
+        message: `Le client ${user.name || user.pseudo || user.phone} demande un retrait de ${amount.toFixed(2)} ${cur}. Code: ${agentCodeDisplay}`,
+        type: 'general',
+      },
+    }).catch(() => {})
+
+    // Push notification to agent
+    const { sendPushToUser } = await import('@/lib/push').catch(() => ({ sendPushToUser: null }))
+    if (sendPushToUser) {
+      sendPushToUser(agent.id, {
+        title: 'Nouveau retrait à valider',
+        body: `${user.name || user.pseudo || user.phone} demande ${amount.toFixed(2)} ${cur}. Validez dans l'app.`,
+        url: '/agent-withdraw-validate',
+      }).catch(() => {})
+    }
+
     const updatedUser = await db.user.findUnique({
       where: { id: userId },
       select: { realBalance: true, realBalanceFC: true, bonusBalance: true, bonusBalanceFC: true },

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Plus, QrCode, CreditCard, LogOut, Package, History, RefreshCw, Loader2, Sparkles } from 'lucide-react'
+import { Plus, QrCode, CreditCard, LogOut, Package, History, RefreshCw, Loader2, Sparkles, Bell } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAppStore } from '@/lib/store'
 import {
@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dialog'
 
 export default function SellerDashboard() {
-  const { user, setUser, navigateTo, logout } = useAppStore()
+  const { user, setUser, navigateTo, logout, unreadCount } = useAppStore()
   const [requestingCard, setRequestingCard] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [showWelcome, setShowWelcome] = useState(!!(user && user.validationStatus === 'validated' && user.validationRejectReason))
@@ -111,6 +111,14 @@ export default function SellerDashboard() {
           <p className="text-sm text-gray-500">{user.name} • {user.location}</p>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => navigateTo('notifications')} className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors">
+            <Bell className="h-5 w-5 text-gray-500" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#DC2626] text-[9px] font-bold text-white">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
           <Button
             variant="ghost"
             size="icon"
