@@ -200,7 +200,9 @@ interface LanguageState {
 
 interface VersionState {
   lastSeenVersion: string | null;
+  lastSeenDeployId: string | null;
   setLastSeenVersion: (version: string) => void;
+  setLastSeenDeployId: (deployId: string) => void;
 }
 
 export interface AppStore extends NavigationState, AuthState, AuthFormState, PinState, NotificationState, ThemeState, LanguageState, VersionState {}
@@ -317,7 +319,9 @@ export const useAppStore = create<AppStore>()(
       setLanguage: (lang) => set({ language: lang }),
 
       lastSeenVersion: null,
+      lastSeenDeployId: null,
       setLastSeenVersion: (version) => set({ lastSeenVersion: version }),
+      setLastSeenDeployId: (deployId) => set({ lastSeenDeployId: deployId }),
     }),
     {
       name: 'trait-app-storage',
@@ -333,6 +337,7 @@ export const useAppStore = create<AppStore>()(
             state.user = cleanUser;
           }
           state.lastSeenVersion = null;
+          state.lastSeenDeployId = null;
         }
 
         return state as AppStore;
@@ -344,6 +349,7 @@ export const useAppStore = create<AppStore>()(
         selectedRole: state.selectedRole,
         language: state.language,
         lastSeenVersion: state.lastSeenVersion,
+        lastSeenDeployId: state.lastSeenDeployId,
       }),
     },
   ),

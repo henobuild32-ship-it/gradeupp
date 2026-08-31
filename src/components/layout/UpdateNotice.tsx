@@ -15,44 +15,97 @@ import { Badge } from '@/components/ui/badge';
 const API_VERSION = '/api/app/version';
 
 export function UpdateNotice() {
-  const { user, lastSeenVersion, setLastSeenVersion } = useAppStore();
+  const { user, lastSeenDeployId, setLastSeenDeployId, setLastSeenVersion } = useAppStore();
   const [appVersion, setAppVersion] = useState<string | null>(null);
+  const [deployId, setDeployId] = useState<string | null>(null);
   const [changelog, setChangelog] = useState<string[]>([]);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [showUpdate, setShowUpdate] = useState(false);
   const [installing, setInstalling] = useState(false);
+  const [isPWA, setIsPWA] = useState(false);
+
+  useEffect(() => {
+    const standalone = window.matchMedia('(display-mode: standalone)').matches;
+    const iosStandalone = (window.navigator as any).standalone === true;
+    setIsPWA(standalone || iosStandalone);
+  }, []);
 
   const checkVersion = useCallback(async () => {
     try {
-      const res = await fetch(API_VERSION, { cache: 'no-store' });
+      const res = await fetch(API_VERSION + '?t=' + Date.now(), { cache: 'no-store' });
       const data = await res.json();
       if (data.success) {
         setAppVersion(data.version);
+        setDeployId(data.deployId);
         setChangelog(data.changelog || []);
         setDownloadUrl(data.downloadUrl || null);
-        if (lastSeenVersion !== data.version) {
+
+        // Show update if deployId changed (new deployment)
+        if (data.deployId && data.deployId !== lastSeenDeployId) {
           setShowUpdate(true);
         }
       }
     } catch {
       // Silently fail
     }
-  }, [lastSeenVersion]);
+  }, [lastSeenDeployId]);
 
   useEffect(() => {
     if (user) {
       checkVersion();
+      // Check every 3 minutes
+      const interval = setInterval(checkVersion, 3 * 60 * 1000);
+      return () => clearInterval(interval);
     }
   }, [user, checkVersion]);
 
+  // Listen for SW update messages
+  useEffect(() => {
+    if (!user) return;
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'SW_UPDATE_AVAILABLE') {
+        // SW detected a new version, re-check
+        checkVersion();
+      }
+    };
+
+    navigator.serviceWorker?.addEventListener('message', handleMessage);
+    return () => {
+      navigator.serviceWorker?.removeEventListener('message', handleMessage);
+    };
+  }, [user, checkVersion]);
+
   const handleDismiss = () => {
+    if (deployId) {
+      setLastSeenDeployId(deployId);
+    }
     if (appVersion) {
       setLastSeenVersion(appVersion);
     }
     setShowUpdate(false);
   };
 
-  const handleInstall = async () => {
+  const handleReload = async () => {
+    setInstalling(true);
+    try {
+      // Tell SW to skip waiting
+      const reg = await navigator.serviceWorker?.getRegistration();
+      if (reg?.waiting) {
+        reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }
+    } catch {
+      // ignore
+    }
+    // Clear caches and reload
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+    window.location.reload();
+  };
+
+  const handleInstallAPK = async () => {
     setInstalling(true);
     try {
       const { AppUpdate } = await import('@/plugins/app-update');
@@ -100,9 +153,15 @@ export function UpdateNotice() {
           <Button onClick={handleDismiss} variant="outline" className="flex-1">
             Plus tard
           </Button>
-          <Button onClick={handleInstall} className="flex-1 bg-[#0D5C63] hover:bg-[#0A4A50] text-white" disabled={installing}>
-            {installing ? 'Téléchargement...' : 'Mettre à jour'}
-          </Button>
+          {isPWA ? (
+            <Button onClick={handleReload} className="flex-1 bg-[#0D5C63] hover:bg-[#0A4A50] text-white" disabled={installing}>
+              {installing ? 'Chargement...' : 'Recharger maintenant'}
+            </Button>
+          ) : (
+            <Button onClick={handleInstallAPK} className="flex-1 bg-[#0D5C63] hover:bg-[#0A4A50] text-white" disabled={installing}>
+              {installing ? 'Téléchargement...' : 'Mettre à jour'}
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

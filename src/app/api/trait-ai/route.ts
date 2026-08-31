@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
         'Authorization': `Bearer ${GLM_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'glm-4-flash',
+        model: 'glm-4.7-flash',
         messages,
         temperature: 0.7,
         max_tokens: 1024,
