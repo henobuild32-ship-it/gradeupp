@@ -70,6 +70,27 @@ export async function GET(request: NextRequest) {
       } catch {}
     }
 
+    // Auto-migrate old agent codes to AGT-{phone} format
+    if (user.role === 'agent' && user.phone) {
+      const phone = user.phone.replace(/\D/g, '')
+      const expectedCode = `AGT-${phone}`
+      if (user.agentCode !== expectedCode || user.agentNumber !== expectedCode) {
+        try {
+          const existing = await db.user.findFirst({
+            where: { agentCode: expectedCode, id: { not: user.id } },
+          })
+          if (!existing) {
+            await db.user.update({
+              where: { id: user.id },
+              data: { agentCode: expectedCode, agentNumber: expectedCode },
+            })
+            user.agentCode = expectedCode
+            user.agentNumber = expectedCode
+          }
+        } catch {}
+      }
+    }
+
     return NextResponse.json({ success: true, user })
   } catch (error) {
     console.error('Profile error:', error)

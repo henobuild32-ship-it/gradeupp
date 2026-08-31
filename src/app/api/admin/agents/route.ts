@@ -125,6 +125,7 @@ export async function POST(request: NextRequest) {
           country: country || 'TG',
           role: 'agent',
           agentCode,
+          agentNumber: agentCode,
           password: hashedPassword,
           realBalance: 0,
           bonusBalance: 0,
