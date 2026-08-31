@@ -90,6 +90,15 @@ export async function POST(request: NextRequest) {
         },
       })
 
+      try {
+        const { sendPushToUser } = await import('@/lib/push')
+        await sendPushToUser(userId, {
+          title: 'KYC approuvé',
+          body: 'Votre vérification d\'identité a été approuvée. Vous pouvez maintenant effectuer des transactions.',
+          url: '/kyc-verification',
+        })
+      } catch {}
+
       return NextResponse.json({ success: true, message: 'KYC approuvé' })
     }
 
@@ -111,6 +120,15 @@ export async function POST(request: NextRequest) {
           type: 'security',
         },
       })
+
+      try {
+        const { sendPushToUser } = await import('@/lib/push')
+        await sendPushToUser(userId, {
+          title: 'KYC refusé',
+          body: `Votre vérification d'identité a été refusée. ${rejectReason || 'Documents non conformes'}.`,
+          url: '/kyc-verification',
+        })
+      } catch {}
 
       return NextResponse.json({ success: true, message: 'KYC refusé' })
     }

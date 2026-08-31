@@ -35,11 +35,20 @@ export default function AgentWithdrawValidateScreen() {
     setLoading(true);
     try {
       const query = user?.id ? `?agentId=${encodeURIComponent(user.id)}` : '';
-      const res = await fetch(`/api/agent/pending-withdrawals${query}`);
+      const token = useAppStore.getState().token;
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch(`/api/agent/pending-withdrawals${query}`, { headers });
       const data = await res.json();
       if (data.success) {
         setPendingWithdrawals(data.withdrawals || []);
       } else {
+        if (res.status === 401) {
+          toast.error('Session expirée. Veuillez vous reconnecter.');
+          useAppStore.getState().setToken(null);
+          useAppStore.getState().setUser(null as any);
+          return;
+        }
         toast.error(data.message || 'Erreur lors du chargement');
       }
     } catch {
@@ -56,9 +65,12 @@ export default function AgentWithdrawValidateScreen() {
   async function handleAction(withdrawalId: string, action: 'validate' | 'refuse') {
     setProcessingId(withdrawalId);
     try {
+      const token = useAppStore.getState().token;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
       const res = await fetch('/api/agent/validate-withdrawal', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ withdrawalId, action }),
       });
       const data = await res.json();
@@ -66,6 +78,12 @@ export default function AgentWithdrawValidateScreen() {
         toast.success(data.message || 'Retrait traité');
         setPendingWithdrawals((items) => items.filter((item) => item.id !== withdrawalId));
       } else {
+        if (res.status === 401) {
+          toast.error('Session expirée. Veuillez vous reconnecter.');
+          useAppStore.getState().setToken(null);
+          useAppStore.getState().setUser(null as any);
+          return;
+        }
         toast.error(data.message || 'Erreur lors du traitement');
       }
     } catch {

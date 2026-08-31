@@ -223,6 +223,16 @@ export async function POST(request: NextRequest) {
       }),
     ]);
 
+    // Send push notification
+    try {
+      const { sendPushToUser } = await import('@/lib/push');
+      await sendPushToUser(userId, {
+        title: 'Transfert international initié',
+        body: `Votre transfert de ${transferAmount.toFixed(2)} ${currency} vers ${recipientName} est en cours.`,
+        url: '/history',
+      });
+    } catch {}
+
     const updatedUser = await db.user.findUnique({
       where: { id: userId },
       select: { realBalance: true, realBalanceFC: true, bonusBalance: true, bonusBalanceFC: true },

@@ -90,7 +90,10 @@ export default function KYCVerificationScreen() {
     if (!user?.id) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/kyc?userId=${user.id}`);
+      const token = useAppStore.getState().token;
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch(`/api/kyc?userId=${user.id}`, { headers });
       const data = await res.json();
       if (data.success) {
         setKyc(data.kyc);
@@ -119,8 +122,13 @@ export default function KYCVerificationScreen() {
       formData.append('file', file);
       formData.append('type', type);
 
+      const token = useAppStore.getState().token;
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const res = await fetch('/api/auth/upload-kyc', {
         method: 'POST',
+        headers,
         body: formData,
       });
       const data = await res.json();
@@ -128,6 +136,12 @@ export default function KYCVerificationScreen() {
         setUrl(data.url);
         toast.success(`${type === 'document' ? 'Document' : 'Selfie'} uploadé avec succès`);
       } else {
+        if (res.status === 401) {
+          toast.error('Session expirée. Veuillez vous reconnecter.');
+          useAppStore.getState().setToken(null);
+          useAppStore.getState().setUser(null as any);
+          return;
+        }
         toast.error(data.message || "Erreur lors de l'upload");
       }
     } catch {
@@ -152,9 +166,13 @@ export default function KYCVerificationScreen() {
     setConfirmDialogOpen(false);
     setSubmitting(true);
     try {
+      const token = useAppStore.getState().token;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const res = await fetch('/api/kyc', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           userId: user.id,
           documentType,
@@ -169,6 +187,12 @@ export default function KYCVerificationScreen() {
         setSelfieUrl('');
         fetchKYCStatus();
       } else {
+        if (res.status === 401) {
+          toast.error('Session expirée. Veuillez vous reconnecter.');
+          useAppStore.getState().setToken(null);
+          useAppStore.getState().setUser(null as any);
+          return;
+        }
         toast.error(data.message || 'Erreur lors de la soumission');
       }
     } catch {

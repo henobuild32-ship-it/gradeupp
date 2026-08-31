@@ -367,7 +367,10 @@ export default function InternationalTransferScreen() {
 
     async function check() {
       try {
-        const res = await fetch(`/api/kyc?userId=${currentUserId}`);
+        const token = useAppStore.getState().token;
+        const headers: Record<string, string> = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        const res = await fetch(`/api/kyc?userId=${currentUserId}`, { headers });
         const data = await res.json();
         if (data.success) {
           setKycStatus(data.kyc.status);
@@ -537,9 +540,13 @@ export default function InternationalTransferScreen() {
         description: form.motif || `${selectedTypeInfo?.label || 'Transfert'} vers ${countryLabel}`,
       };
 
+      const token = useAppStore.getState().token;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const res = await fetch('/api/transfers/international', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(payload),
       });
 

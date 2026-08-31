@@ -13,9 +13,18 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
 const API_VERSION = '/api/app/version';
+const DEPLOY_KEY = 'trait_last_deploy_id';
+
+function getStoredDeployId(): string | null {
+  try { return localStorage.getItem(DEPLOY_KEY); } catch { return null; }
+}
+
+function setStoredDeployId(id: string) {
+  try { localStorage.setItem(DEPLOY_KEY, id); } catch {}
+}
 
 export function UpdateNotice() {
-  const { user, lastSeenDeployId, setLastSeenDeployId, setLastSeenVersion } = useAppStore();
+  const { user, setLastSeenVersion } = useAppStore();
   const [appVersion, setAppVersion] = useState<string | null>(null);
   const [deployId, setDeployId] = useState<string | null>(null);
   const [changelog, setChangelog] = useState<string[]>([]);
@@ -40,36 +49,31 @@ export function UpdateNotice() {
         setChangelog(data.changelog || []);
         setDownloadUrl(data.downloadUrl || null);
 
-        // Show update if deployId changed (new deployment)
-        if (data.deployId && data.deployId !== lastSeenDeployId) {
+        const storedId = getStoredDeployId();
+        if (data.deployId && data.deployId !== storedId) {
           setShowUpdate(true);
         }
       }
     } catch {
       // Silently fail
     }
-  }, [lastSeenDeployId]);
+  }, []);
 
   useEffect(() => {
     if (user) {
       checkVersion();
-      // Check every 3 minutes
       const interval = setInterval(checkVersion, 3 * 60 * 1000);
       return () => clearInterval(interval);
     }
   }, [user, checkVersion]);
 
-  // Listen for SW update messages
   useEffect(() => {
     if (!user) return;
-
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'SW_UPDATE_AVAILABLE') {
-        // SW detected a new version, re-check
         checkVersion();
       }
     };
-
     navigator.serviceWorker?.addEventListener('message', handleMessage);
     return () => {
       navigator.serviceWorker?.removeEventListener('message', handleMessage);
@@ -78,26 +82,24 @@ export function UpdateNotice() {
 
   const handleDismiss = () => {
     if (deployId) {
-      setLastSeenDeployId(deployId);
-    }
-    if (appVersion) {
-      setLastSeenVersion(appVersion);
+      setStoredDeployId(deployId);
+      setLastSeenVersion(appVersion || '');
     }
     setShowUpdate(false);
   };
 
   const handleReload = async () => {
     setInstalling(true);
+    // Save deployId BEFORE reload so it persists
+    if (deployId) {
+      setStoredDeployId(deployId);
+    }
     try {
-      // Tell SW to skip waiting
       const reg = await navigator.serviceWorker?.getRegistration();
       if (reg?.waiting) {
         reg.waiting.postMessage({ type: 'SKIP_WAITING' });
       }
-    } catch {
-      // ignore
-    }
-    // Clear caches and reload
+    } catch {}
     if ('caches' in window) {
       const keys = await caches.keys();
       await Promise.all(keys.map((k) => caches.delete(k)));
@@ -107,6 +109,9 @@ export function UpdateNotice() {
 
   const handleInstallAPK = async () => {
     setInstalling(true);
+    if (deployId) {
+      setStoredDeployId(deployId);
+    }
     try {
       const { AppUpdate } = await import('@/plugins/app-update');
       const url = downloadUrl?.startsWith('http')

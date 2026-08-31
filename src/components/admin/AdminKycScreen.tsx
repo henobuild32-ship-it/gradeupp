@@ -22,7 +22,8 @@ interface KycUser {
 }
 
 export default function AdminKycScreen() {
-  const { goBack } = useAppStore()
+  const { goBack, admin } = useAppStore()
+  const adminHeaders: Record<string, string> = admin?.token ? { 'Authorization': `Bearer ${admin.token}` } : {};
   const [users, setUsers] = useState<KycUser[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'pending' | 'verified' | 'rejected'>('pending')
@@ -37,7 +38,7 @@ export default function AdminKycScreen() {
   const fetchKycUsers = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/kyc?status=${filter}`)
+      const res = await fetch(`/api/admin/kyc?status=${filter}`, { headers: adminHeaders })
       const data = await res.json()
       if (data.success) setUsers(data.users)
     } catch {
@@ -52,7 +53,7 @@ export default function AdminKycScreen() {
     try {
       const res = await fetch('/api/admin/kyc', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...adminHeaders },
         body: JSON.stringify({
           userId: selectedUser.id,
           action,
