@@ -1,0 +1,572 @@
+# INTÉGRATION DE L’INTERFACE « TRAIT IA » — REPRODUIRE LA MAQUETTE EXACTEMENT
+
+Tu dois intégrer dans l’application **TRAIT** un module entièrement dédié à **TRAIT IA**.
+
+La priorité absolue est de **reproduire fidèlement la maquette fournie**. Ne transforme pas le design en une simple page de chat classique. Je veux une interface premium, moderne, fintech, futuriste et très propre, avec exactement l’esprit visuel de la maquette.
+
+## 1. IDENTITÉ DE TRAIT IA
+
+Nom affiché partout :
+
+**TRAIT IA**
+
+Sous-titre :
+
+**Votre assistant intelligent**
+
+TRAIT IA est l’assistant intelligent intégré à l’application TRAIT.
+
+Il doit connaître le contexte de l’utilisateur connecté et adapter ses réponses à son rôle :
+
+* Client
+* Fournisseur de service
+* Agent
+* Administrateur
+
+Il doit également mémoriser le nom de l’utilisateur afin de personnaliser les conversations.
+
+Exemple :
+
+« Bonjour, Henock Omokoko 👋 »
+
+Puis :
+
+« Je suis TRAIT IA, votre assistant personnel. Je connais votre rôle et je peux vous guider dans l’application selon vos besoins. »
+
+## 2. RÈGLE FONDAMENTALE
+
+TRAIT IA **n’effectue aucune opération financière**.
+
+Il ne doit jamais :
+
+* faire un dépôt ;
+* effectuer un retrait ;
+* envoyer de l’argent ;
+* recevoir de l’argent ;
+* modifier un solde ;
+* valider une transaction ;
+* confirmer une transaction ;
+* accéder ou manipuler directement les fonds.
+
+Son rôle est uniquement :
+
+**EXPLIQUER → CONSEILLER → GUIDER → REDIRIGER**
+
+Lorsqu’un utilisateur demande comment faire quelque chose, TRAIT IA explique la procédure puis peut afficher un bouton permettant d’ouvrir directement l’interface correspondante.
+
+Exemple :
+
+Utilisateur :
+« Comment faire un transfert ? »
+
+TRAIT IA :
+« Voici les étapes pour effectuer un transfert sur TRAIT :
+
+1. Ouvrez l’onglet Transfert.
+2. Choisissez le bénéficiaire.
+3. Entrez le montant.
+4. Vérifiez les informations.
+5. Confirmez depuis l’interface Transfert.
+
+Voulez-vous que je vous y conduise ? »
+
+Bouton :
+
+**Aller à Transfert →**
+
+Le bouton ouvre réellement la page/interface Transfert de l’application.
+
+## 3. DESIGN À REPRODUIRE
+
+Le design doit reprendre la maquette fournie.
+
+### Style général
+
+* Dark mode premium
+* Fond presque noir avec nuances bleu nuit
+* Dégradés violet/indigo
+* Effets lumineux violets autour de l’assistant
+* Cartes avec coins fortement arrondis
+* Ombres douces
+* Effet glassmorphism léger
+* Contrastes très propres
+* Typographie moderne
+* Espacements généreux
+* Icônes minimalistes
+* Animations discrètes
+* Aspect fintech haut de gamme
+
+Ne surcharge pas l'écran.
+
+Le résultat doit paraître comme une vraie application financière professionnelle.
+
+## 4. AVATAR DE TRAIT IA
+
+Créer un avatar visuel propre pour TRAIT IA :
+
+* tête/robot futuriste ;
+* forme circulaire ;
+* yeux lumineux ;
+* halo violet ;
+* glow autour de l’avatar ;
+* animation très légère lorsqu’il réfléchit ou répond.
+
+Utiliser le même avatar dans :
+
+* écran d’accueil TRAIT IA ;
+* messages de l’assistant ;
+* écran « À propos de TRAIT IA » ;
+* accès rapide ;
+* bouton flottant.
+
+Le même personnage doit être visuellement cohérent partout.
+
+## 5. ÉCRAN PRINCIPAL TRAIT IA
+
+Reproduire la structure de la maquette.
+
+En haut :
+
+← Retour
+
+**TRAIT IA**
+
+Icône de sécurité/protection à droite.
+
+Au centre :
+
+Avatar TRAIT IA
+
+**TRAIT IA**
+
+**Votre assistant intelligent**
+
+Puis une carte de bienvenue :
+
+« Bonjour, [NOM UTILISATEUR] 👋
+
+Je suis TRAIT IA, votre assistant personnel.
+Je connais votre rôle et peux vous guider dans l’application selon vos besoins. »
+
+## 6. QUESTIONS RAPIDES
+
+Créer des cartes d'accès rapide comme dans la maquette :
+
+**Comprendre TRAIT**
+
+**Utiliser l’application**
+
+**Aide & Support**
+
+**Frais & Limites**
+
+**Sécurité**
+
+**Autres questions**
+
+Chaque bouton doit envoyer une demande prédéfinie à TRAIT IA.
+
+Exemples :
+
+« Qu’est-ce que TRAIT ? »
+
+« Comment utiliser TRAIT ? »
+
+« Quels sont les frais ? »
+
+« Quelles sont les limites ? »
+
+« Comment fonctionne la sécurité ? »
+
+## 7. BOUTON PRINCIPAL
+
+En bas de l’écran :
+
+**Discuter avec TRAIT IA →**
+
+Bouton large, arrondi, violet avec glow léger.
+
+Il ouvre l’interface conversationnelle.
+
+## 8. INTERFACE DE CHAT
+
+Créer une vraie interface conversationnelle moderne.
+
+Header :
+
+←
+
+**TRAIT IA**
+
+● En ligne
+
+⋮
+
+Les messages utilisateur apparaissent à droite avec bulles violettes.
+
+Les réponses de TRAIT IA apparaissent à gauche avec :
+
+* petit avatar TRAIT IA ;
+* bulle sombre ;
+* texte clair ;
+* excellente lisibilité.
+
+Exemple :
+
+Utilisateur :
+
+« Comment faire un transfert ? »
+
+TRAIT IA :
+
+« Voici les étapes pour effectuer un transfert sur TRAIT :
+
+1. Allez dans l’onglet Transfert.
+2. Choisissez le bénéficiaire.
+3. Entrez le montant.
+4. Vérifiez les informations.
+5. Effectuez la confirmation depuis l’interface prévue à cet effet.
+
+Voulez-vous que je vous y conduise ? »
+
+Puis une carte d'action :
+
+**Ouvrir Transfert →**
+
+Cette carte doit être cliquable et naviguer directement vers la bonne interface.
+
+## 9. ACTIONS INTELLIGENTES
+
+TRAIT IA doit pouvoir générer des boutons contextuels.
+
+Exemples :
+
+**Ouvrir Transfert →**
+
+**Voir mon portefeuille →**
+
+**Ouvrir Paiements →**
+
+**Voir mes bénéficiaires →**
+
+**Ouvrir Historique →**
+
+**Voir les frais →**
+
+**Ouvrir Support →**
+
+Ces boutons ne doivent jamais exécuter eux-mêmes l'opération financière.
+
+Ils doivent uniquement **naviguer vers la bonne page**.
+
+## 10. ADAPTATION SELON LE RÔLE
+
+TRAIT IA doit récupérer automatiquement le rôle de l'utilisateur connecté.
+
+### Client
+
+Il doit principalement expliquer :
+
+* transfert ;
+* réception d’argent ;
+* portefeuille ;
+* historique ;
+* paiements ;
+* bénéficiaires ;
+* frais ;
+* limites ;
+* sécurité ;
+* utilisation de TRAIT.
+
+### Fournisseur de service
+
+Il doit principalement expliquer :
+
+* réception de paiements ;
+* services ;
+* abonnements ;
+* transactions ;
+* historique ;
+* commissions ;
+* gestion du compte fournisseur ;
+* fonctionnement de la plateforme.
+
+### Agent
+
+Il doit principalement expliquer :
+
+* dépôt ;
+* retrait ;
+* caisse ;
+* commissions ;
+* transactions ;
+* limites ;
+* historique agent ;
+* gestion opérationnelle.
+
+### Administrateur
+
+Il doit principalement expliquer :
+
+* gestion utilisateurs ;
+* supervision ;
+* transactions ;
+* rapports ;
+* paramètres ;
+* sécurité ;
+* gestion des agents et fournisseurs.
+
+Les réponses doivent changer automatiquement selon ce rôle.
+
+## 11. ÉCRAN « À PROPOS DE TRAIT IA »
+
+Reprendre la troisième partie de la maquette.
+
+Titre :
+
+**À propos de TRAIT IA**
+
+Grand avatar TRAIT IA.
+
+Texte :
+
+**TRAIT IA**
+
+« Votre assistant intelligent intégré à l’application TRAIT. »
+
+Puis quatre cartes :
+
+### Expliquer le projet TRAIT
+
+« Je vous explique le fonctionnement de l’application et ses services. »
+
+### Vous guider selon votre rôle
+
+« Client, Fournisseur, Agent ou Administrateur : je m’adapte à votre interface. »
+
+### Répondre à vos questions
+
+« Frais, limites, sécurité, transactions, utilisation de l’application... »
+
+### Vous conduire dans l’application
+
+« Je vous amène directement vers les interfaces utiles. »
+
+Puis une carte importante :
+
+🔒 **Important**
+
+« Je n’effectue aucune opération financière.
+Je suis là pour vous informer et vous guider en toute sécurité. »
+
+## 12. ACCÈS RAPIDE
+
+Créer également le panneau d'accès rapide montré dans la maquette.
+
+Titre :
+
+**Accès rapide à TRAIT IA**
+
+Avatar central TRAIT IA.
+
+Texte :
+
+**Toujours là pour vous aider.**
+
+Trois grandes actions :
+
+**Poser une question**
+« Obtenez instantanément des réponses. »
+
+**Être guidé**
+« Je vous accompagne étape par étape. »
+
+**Découvrir TRAIT**
+« Apprenez tout sur l’application. »
+
+Bouton :
+
+**Commencer à discuter →**
+
+## 13. BOUTON FLOTTANT
+
+Ajouter un bouton flottant TRAIT IA accessible depuis les interfaces principales de l'application.
+
+Le bouton doit :
+
+* être circulaire ;
+* contenir l’avatar TRAIT IA ;
+* avoir un glow violet ;
+* être discret mais facilement visible ;
+* rester accessible sans gêner les actions principales.
+
+Au clic :
+
+ouvrir TRAIT IA.
+
+Ne pas afficher ce bouton partout de manière intrusive.
+
+## 14. ARCHITECTURE TECHNIQUE
+
+Créer TRAIT IA comme un module isolé et réutilisable.
+
+Prévoir au minimum :
+
+* `TraitAI`
+* `TraitAIChat`
+* `TraitAIWelcome`
+* `TraitAIQuickActions`
+* `TraitAIAbout`
+* `TraitAIFloatingButton`
+* `TraitAIActionButton`
+* `TraitAIMessage`
+
+Créer un système central permettant à TRAIT IA de connaître :
+
+* `userId`
+* `userName`
+* `userRole`
+* contexte de la page actuelle
+* fonctionnalités disponibles pour ce rôle.
+
+Par exemple :
+
+```ts
+type TraitAIRole =
+  | "CLIENT"
+  | "SERVICE_PROVIDER"
+  | "AGENT"
+  | "ADMIN";
+```
+
+Et transmettre le contexte au moteur IA.
+
+## 15. CONNAISSANCE DU NOM
+
+Lorsque l'utilisateur ouvre TRAIT IA, récupérer son nom depuis la session/authentification existante.
+
+Ne jamais demander inutilement son nom s'il est déjà disponible.
+
+Afficher son nom naturellement dans la conversation.
+
+Exemple :
+
+« Bonjour Henock 👋 »
+
+Lors des conversations suivantes, conserver le contexte utilisateur selon l'architecture existante du projet.
+
+## 16. NAVIGATION
+
+TRAIT IA doit pouvoir déclencher une navigation interne sûre.
+
+Exemple :
+
+```ts
+{
+  label: "Ouvrir Transfert",
+  route: "/transfer"
+}
+```
+
+Mais TRAIT IA ne doit avoir accès qu'à une liste de routes autorisées.
+
+Créer un système de navigation contrôlé.
+
+L'IA ne doit jamais pouvoir inventer une URL arbitraire.
+
+## 17. RESPONSIVE
+
+L'interface doit être parfaite sur :
+
+* téléphone ;
+* tablette ;
+* ordinateur.
+
+Sur mobile, privilégier une expérience plein écran.
+
+Sur desktop, utiliser une largeur maximale confortable pour le chat.
+
+Toutes les cartes, boutons et messages doivent rester parfaitement alignés.
+
+## 18. ANIMATIONS
+
+Ajouter uniquement des animations premium et discrètes :
+
+* apparition progressive des messages ;
+* glow léger de l’avatar ;
+* animation lors de la génération d’une réponse ;
+* effet de chargement « TRAIT IA réfléchit… » ;
+* transition douce lors de l'ouverture du module ;
+* animation du bouton flottant.
+
+Pas d'animations inutiles ou agressives.
+
+## 19. IMPORTANT : NE PAS MODIFIER LE RESTE DE L'APPLICATION
+
+Je veux **uniquement l'intégration de TRAIT IA**.
+
+Ne refais pas le dashboard TRAIT.
+Ne refais pas les interfaces Transfert.
+Ne refais pas les interfaces Dépôt.
+Ne refais pas les interfaces Retrait.
+Ne change pas le design général de l'application en dehors du module TRAIT IA.
+
+Le module doit s'intégrer naturellement au design actuel de TRAIT.
+
+## 20. OBJECTIF FINAL
+
+Le résultat final doit donner l'impression que TRAIT IA est un véritable assistant intelligent natif de TRAIT.
+
+L'utilisateur doit pouvoir :
+
+1. ouvrir TRAIT IA ;
+2. voir son prénom/nom ;
+3. poser une question ;
+4. recevoir une réponse adaptée à son rôle ;
+5. comprendre exactement quoi faire ;
+6. cliquer sur un bouton proposé par l'IA ;
+7. être envoyé directement vers la bonne interface de TRAIT.
+
+Encore une fois :
+
+**TRAIT IA explique.**
+**TRAIT IA conseille.**
+**TRAIT IA guide.**
+**TRAIT IA navigue vers les interfaces.**
+**TRAIT IA n'exécute aucune opération financière.**
+
+### CONTRAINTE DESIGN ABSOLUE
+
+La maquette fournie doit servir de référence visuelle principale.
+
+Ne simplifie pas son design.
+Ne remplace pas les cartes par des blocs basiques.
+Ne transforme pas l'interface en ChatGPT générique.
+Ne supprime pas l'avatar.
+Ne supprime pas les effets lumineux.
+Ne supprime pas les raccourcis.
+Ne supprime pas les boutons d'action contextuels.
+
+Je veux une reproduction **très proche de la maquette**, avec le même niveau de finition visuelle, la même hiérarchie, les mêmes proportions et le même esprit premium.
+
+Avant de considérer le travail terminé, vérifie :
+
+* responsive mobile ;
+* responsive tablette ;
+* responsive desktop ;
+* navigation des boutons ;
+* affichage du nom utilisateur ;
+* détection du rôle ;
+* adaptation des réponses ;
+* accès rapide ;
+* bouton flottant ;
+* interface de chat ;
+* écran d'information ;
+* messages ;
+* états de chargement ;
+* erreurs ;
+* état hors ligne ;
+* sécurité des routes ;
+* absence totale d'exécution directe de transactions par TRAIT IA.
+
+Le résultat doit être **production-ready**, propre, cohérent et directement intégrable dans l'application TRAIT existante.

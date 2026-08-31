@@ -94,6 +94,9 @@ const AuthScreen = lazy(() => import('@/components/screens/AuthScreen'));
 const ForgotPasswordScreen = lazy(() => import('@/components/screens/ForgotPasswordScreen'));
 const AdminSupportScreen = lazy(() => import('@/components/admin/AdminSupportScreen'));
 
+// TRAIT IA
+const TraitAIScreen = lazy(() => import('@/components/trait-ai/TraitAIScreen'));
+
 // New fintech screens
 const PaymentLinksScreen = lazy(() => import('@/components/screens/PaymentLinksScreen'));
 const PaymentRequestScreen = lazy(() => import('@/components/screens/PaymentRequestScreen'));
@@ -110,6 +113,7 @@ const ContactPayScreen = lazy(() => import('@/components/screens/ContactPayScree
 const BottomNavigation = lazy(() => import('@/components/layout/BottomNavigation'));
 const PWAInstallBanner = lazy(() => import('@/components/layout/PWAInstallBanner').then(m => ({ default: m.PWAInstallBanner })));
 const UpdateNotice = lazy(() => import('@/components/layout/UpdateNotice').then(m => ({ default: m.UpdateNotice })));
+const TraitAIFloatingButton = lazy(() => import('@/components/trait-ai/TraitAIFloatingButton'));
 
 function ScreenLoader() {
   return (
@@ -211,6 +215,8 @@ const screenMap: Record<PageName, React.LazyExoticComponent<React.ComponentType>
   'auth': AuthScreen,
   'forgot-password': ForgotPasswordScreen,
   'reset-password': ForgotPasswordScreen,
+  'trait-ai': TraitAIScreen,
+  'trait-ai-welcome': TraitAIScreen,
 };
 
 const pagesWithNav: PageName[] = ['home', 'send', 'withdraw', 'deposit', 'history', 'ussd', 'marketplace', 'marketplace-detail', 'barter', 'barter-detail', 'barter-create', 'notifications', 'settings', 'profile', 'agent-dashboard', 'agent-deposit', 'agent-withdraw-validate', 'agent-activity', 'agent-messages', 'card-request', 'card-payment', 'card', 'kyc-verification', 'seller-dashboard', 'child-sponsorship'];
@@ -346,6 +352,11 @@ export default function TraitApp() {
       <Suspense fallback={null}>
         <UpdateNotice />
       </Suspense>
+      {user && !adminPages.includes(currentPage) && currentPage !== 'trait-ai' && currentPage !== 'trait-ai-welcome' && (
+        <Suspense fallback={null}>
+          <TraitAIFloatingButton />
+        </Suspense>
+      )}
       <OfflineBanner />
     </div>
   );

@@ -355,6 +355,37 @@ export default function AgentDashboardScreen() {
             </CardContent>
           </Card>
         </motion.div>
+
+        {/* TRAIT IA Help Prompt */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="px-4 mb-6"
+        >
+          <button
+            onClick={() => navigateTo('trait-ai-welcome')}
+            className="w-full bg-gradient-to-r from-violet-600/10 to-indigo-600/10 border border-violet-500/20 rounded-2xl p-4 flex items-center gap-3 hover:from-violet-600/20 hover:to-indigo-600/20 hover:border-violet-500/30 transition-all"
+          >
+            <div className="relative w-10 h-10 flex-shrink-0">
+              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 blur-sm opacity-60" />
+              <div className="relative w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5">
+                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="10" r="3" fill="white" />
+                  <path d="M7 18.5c0-2.5 2.2-4.5 5-4.5s5 2 5 4.5" />
+                  <circle cx="9" cy="8" r="1" fill="white" />
+                  <circle cx="15" cy="8" r="1" fill="white" />
+                </svg>
+              </div>
+            </div>
+            <div className="text-left flex-1">
+              <p className="text-sm font-semibold text-violet-400">Besoin d&apos;aide ?</p>
+              <p className="text-xs text-gray-400">Parler à TRAIT IA</p>
+            </div>
+            <span className="text-violet-400 text-lg">→</span>
+          </button>
+        </motion.div>
       </div>
     </div>
   );

@@ -88,7 +88,9 @@ export type PageName =
   | 'contact-pay'
   | 'forgot-password'
   | 'auth'
-  | 'reset-password';
+  | 'reset-password'
+  | 'trait-ai'
+  | 'trait-ai-welcome';
 
 export type UserRole = 'client' | 'agent' | 'seller';
 
