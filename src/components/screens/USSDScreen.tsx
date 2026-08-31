@@ -694,15 +694,20 @@ export default function USSDScreen() {
     return (
       <InputStep
         title="Retrait via agent"
-        subtitle="Entrez le code de l'agent"
-        placeholder="AGT-XXXXXX"
+        subtitle="Entrez le numéro de l'agent"
+        placeholder="Numéro agent (ex: 202601)"
         type="text"
         nextStep="withdraw-agent-name"
         backStep="main-menu"
         onValueChange={async (val) => {
-          if (val.length >= 8) {
-            updateTx({ agentCode: val });
-            const name = await handleAgentLookup(val);
+          // Auto-add AGT- prefix if just digits
+          let code = val
+          if (/^\d+$/.test(code.trim())) {
+            code = `AGT-${code.trim()}`
+          }
+          if (code.length >= 8) {
+            updateTx({ agentCode: code });
+            const name = await handleAgentLookup(code);
             if (name) {
               updateTx({ agentName: name });
               toast.success(`Agent: ${name}`);
@@ -802,15 +807,20 @@ export default function USSDScreen() {
     return (
       <InputStep
         title="Dépôt via agent"
-        subtitle="Entrez le code de l'agent"
-        placeholder="AGT-XXXXXX"
+        subtitle="Entrez le numéro de l'agent"
+        placeholder="Numéro agent (ex: 202601)"
         type="text"
         nextStep="deposit-agent-name"
         backStep="main-menu"
         onValueChange={async (val) => {
-          if (val.length >= 8) {
-            updateTx({ agentCode: val });
-            const name = await handleAgentLookup(val);
+          // Auto-add AGT- prefix if just digits
+          let code = val
+          if (/^\d+$/.test(code.trim())) {
+            code = `AGT-${code.trim()}`
+          }
+          if (code.length >= 8) {
+            updateTx({ agentCode: code });
+            const name = await handleAgentLookup(code);
             if (name) {
               updateTx({ agentName: name });
               toast.success(`Agent: ${name}`);

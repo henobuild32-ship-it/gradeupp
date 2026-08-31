@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
-import { existsSync } from 'fs';
 import { requireUser } from '@/lib/auth';
 
-const UPLOAD_DIR = join(process.cwd(), 'public', 'uploads', 'kyc');
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export async function POST(request: NextRequest) {
@@ -14,7 +10,7 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
-    const type = formData.get('type') as string | null; // 'document' or 'selfie'
+    const type = formData.get('type') as string | null;
 
     if (!file || !type) {
       return NextResponse.json(
@@ -25,7 +21,7 @@ export async function POST(request: NextRequest) {
 
     if (!['document', 'selfie'].includes(type)) {
       return NextResponse.json(
-        { success: false, message: 'Type invalide. Utilisez "document" ou "selfie"' },
+        { success: false, message: 'Type invalide' },
         { status: 400 }
       );
     }
@@ -45,28 +41,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Ensure upload directory exists
-    if (!existsSync(UPLOAD_DIR)) {
-      await mkdir(UPLOAD_DIR, { recursive: true });
-    }
-
+    // Convert to base64 data URL (works on Vercel serverless)
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-
-    const timestamp = Date.now();
-    const randomSuffix = Math.random().toString(36).substring(2, 6);
-    const ext = file.name.split('.').pop() || 'jpg';
-    const filename = `${auth.userId}_${type}_${timestamp}_${randomSuffix}.${ext}`;
-    const filepath = join(UPLOAD_DIR, filename);
-
-    await writeFile(filepath, buffer);
-
-    const url = `/uploads/kyc/${filename}`;
+    const base64 = buffer.toString('base64');
+    const mimeType = file.type || 'image/jpeg';
+    const dataUrl = `data:${mimeType};base64,${base64}`;
 
     return NextResponse.json({
       success: true,
-      url,
-      filename,
+      url: dataUrl,
+      filename: file.name,
     });
   } catch (error) {
     console.error('KYC upload error:', error);

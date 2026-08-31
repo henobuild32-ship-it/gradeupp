@@ -108,10 +108,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Auto-migrate old agent codes to AGT-{phone} format
+    // Auto-migrate old agent codes to AGT-{6digits} format
     if (user.role === 'agent' && user.phone) {
       const phone = user.phone.replace(/\D/g, '')
-      const expectedCode = `AGT-${phone}`
+      const last6 = phone.slice(-6)
+      const expectedCode = `AGT-${last6}`
       if (user.agentCode !== expectedCode || user.agentNumber !== expectedCode) {
         try {
           const existing = await db.user.findFirst({

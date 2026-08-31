@@ -191,12 +191,19 @@ export default function WithdrawScreen() {
               <Input
                 id="agentCode"
                 type="text"
-                placeholder="AGT-000001"
+                placeholder="Numéro de l'agent (ex: 202601)"
                 value={agentCode}
-                onChange={(e) => setAgentCode(e.target.value.toUpperCase())}
-                className="h-11"
+                onChange={(e) => {
+                  let val = e.target.value.toUpperCase()
+                  // If user types just digits, auto-add AGT- prefix
+                  if (/^\d+$/.test(val)) {
+                    val = `AGT-${val}`
+                  }
+                  setAgentCode(val)
+                }}
+                className="h-11 font-mono"
               />
-              <p className="text-xs text-muted-foreground">Entrez le code ou le numéro agent complet (ex: AGT-2026-00001)</p>
+              <p className="text-xs text-muted-foreground">Entrez le numéro de l&apos;agent — le préfixe AGT- s&apos;ajoute automatiquement</p>
             </div>
 
             {/* Withdrawal Method - Enforced Agent-Only */}

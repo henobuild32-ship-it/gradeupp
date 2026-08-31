@@ -5,7 +5,8 @@ import { hashPassword } from '@/lib/auth';
 
 function generateAgentCode(phone: string): string {
   const cleaned = phone.replace(/\D/g, '');
-  return `AGT-${cleaned}`;
+  const last6 = cleaned.slice(-6);
+  return `AGT-${last6}`;
 }
 
 export async function GET(request: NextRequest) {
