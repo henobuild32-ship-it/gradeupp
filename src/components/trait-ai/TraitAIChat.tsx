@@ -35,12 +35,13 @@ export default function TraitAIChat() {
     if (!text.trim() || isLoading) return
 
     const userMsg: ChatMessage = { role: 'user', content: text.trim() }
-    setMessages((prev) => [...prev, userMsg])
+    const updatedMessages = [...messages, userMsg]
+    setMessages(updatedMessages)
     setInput('')
     setIsLoading(true)
 
     try {
-      const history = messages.map((m) => ({ role: m.role, content: m.content }))
+      const history = updatedMessages.map((m) => ({ role: m.role, content: m.content }))
       const res = await fetch('/api/trait-ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -75,10 +76,10 @@ export default function TraitAIChat() {
   }
 
   const quickQuestions = [
-    'Qu\'est-ce que TRAIT ?',
-    'Comment effectuer un transfert ?',
-    'Comment voir mon solde ?',
+    'Comment envoyer de l\'argent ?',
     'Quels sont les frais ?',
+    'Comment retirer du cash ?',
+    'Payer une facture',
   ]
 
   return (
