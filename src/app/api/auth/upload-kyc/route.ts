@@ -1,16 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUser } from '@/lib/auth';
 
-// Increase body size limit for base64 images
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb',
-    },
-  },
-};
-
-const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB (becomes ~5.3MB in base64)
+const MAX_FILE_SIZE = 3 * 1024 * 1024; // 3MB raw (client compresses first)
 
 export async function POST(request: NextRequest) {
   try {
@@ -63,17 +54,17 @@ export async function POST(request: NextRequest) {
       filename: file.name,
     });
   } catch (error: any) {
-    // Handle body too large error
-    if (error?.message?.includes('too large') || error?.statusCode === 413) {
+    const msg = error?.message || ''
+    if (msg.includes('too large') || msg.includes('Payload') || error?.statusCode === 413) {
       return NextResponse.json(
-        { success: false, message: 'Fichier trop volumineux. Réduisez la taille et réessayez.' },
+        { success: false, message: 'Image trop volumineuse. Réduisez la qualité ou la taille.' },
         { status: 413 }
-      );
+      )
     }
-    console.error('KYC upload error:', error);
+    console.error('KYC upload error:', error)
     return NextResponse.json(
       { success: false, message: 'Erreur lors de l\'upload' },
       { status: 500 }
-    );
+    )
   }
 }

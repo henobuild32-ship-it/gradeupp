@@ -112,8 +112,8 @@ export default function KYCVerificationScreen() {
 
   // ─── Image compression ────────────────────────────────────────────
 
-  function compressImage(file: File, maxWidth = 1200, quality = 0.8): Promise<File> {
-    return new Promise((resolve) => {
+  function compressImage(file: File, maxWidth = 800, quality = 0.6): Promise<File> {
+    return new Promise((resolve, reject) => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       const img = new window.Image();
@@ -130,7 +130,8 @@ export default function KYCVerificationScreen() {
         ctx?.drawImage(img, 0, 0, w, h);
         canvas.toBlob(
           (blob) => {
-            const compressed = new File([blob!], file.name, {
+            if (!blob) { reject(new Error('Compression failed')); return; }
+            const compressed = new File([blob], file.name, {
               type: 'image/jpeg',
               lastModified: Date.now(),
             });
@@ -140,6 +141,7 @@ export default function KYCVerificationScreen() {
           quality
         );
       };
+      img.onerror = () => reject(new Error('Image load failed'));
       img.src = URL.createObjectURL(file);
     });
   }
