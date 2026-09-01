@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Shield, Sparkles, ArrowRight, RefreshCw, Download } from 'lucide-react';
 
 const API_VERSION = '/api/app/version';
 const DEPLOY_KEY = 'trait_last_deploy_id';
@@ -90,7 +91,6 @@ export function UpdateNotice() {
 
   const handleReload = async () => {
     setInstalling(true);
-    // Save deployId BEFORE reload so it persists
     if (deployId) {
       setStoredDeployId(deployId);
     }
@@ -132,42 +132,99 @@ export function UpdateNotice() {
 
   return (
     <Dialog open={showUpdate} onOpenChange={() => handleDismiss()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl">
-            Mise à jour disponible
-            <Badge variant="default" className="text-xs">{appVersion}</Badge>
-          </DialogTitle>
-          <DialogDescription>
-            Une nouvelle version est disponible. Mettez à jour pour bénéficier des dernières améliorations.
-          </DialogDescription>
-        </DialogHeader>
-
-        {changelog.length > 0 && (
-          <div className="space-y-2 my-2 max-h-48 overflow-y-auto">
-            {changelog.map((item, i) => (
-              <div key={i} className="flex items-start gap-2 text-sm">
-                <span className="mt-0.5 text-[#0D5C63]">•</span>
-                <span className="text-foreground">{item}</span>
-              </div>
-            ))}
+      <DialogContent className="max-w-sm rounded-2xl border-0 p-0 overflow-hidden">
+        {/* Header gradient */}
+        <div className="relative bg-gradient-to-br from-[#0D5C63] via-[#0A7B82] to-[#0D5C63] px-6 pt-8 pb-10 text-center">
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-4 left-6 w-16 h-16 rounded-full bg-white/20 blur-xl" />
+            <div className="absolute bottom-2 right-8 w-20 h-20 rounded-full bg-white/15 blur-2xl" />
           </div>
-        )}
-
-        <div className="flex gap-2 mt-2">
-          <Button onClick={handleDismiss} variant="outline" className="flex-1">
-            Plus tard
-          </Button>
-          {isPWA ? (
-            <Button onClick={handleReload} className="flex-1 bg-[#0D5C63] hover:bg-[#0A4A50] text-white" disabled={installing}>
-              {installing ? 'Chargement...' : 'Recharger maintenant'}
-            </Button>
-          ) : (
-            <Button onClick={handleInstallAPK} className="flex-1 bg-[#0D5C63] hover:bg-[#0A4A50] text-white" disabled={installing}>
-              {installing ? 'Téléchargement...' : 'Mettre à jour'}
-            </Button>
-          )}
+          <div className="relative z-10">
+            <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center mx-auto mb-4 border border-white/20">
+              <Shield className="w-7 h-7 text-white" />
+            </div>
+            <h2 className="text-white text-lg font-bold tracking-wide">Administration TRAIT</h2>
+            <p className="text-white/70 text-xs mt-1 tracking-wider uppercase">Nouvelle version disponible</p>
+          </div>
         </div>
+
+        {/* Content */}
+        <div className="px-6 -mt-4 relative z-10">
+          <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-lg border border-zinc-100 dark:border-zinc-800 p-5">
+            {/* Version badge */}
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <Badge className="bg-[#0D5C63]/10 text-[#0D5C63] dark:bg-[#0D5C63]/20 dark:text-[#00D4AA] font-mono text-sm px-3 py-1">
+                v{appVersion}
+              </Badge>
+              <Sparkles className="w-4 h-4 text-amber-400" />
+            </div>
+
+            <p className="text-center text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed mb-4">
+              L&apos;administration TRAIT a déployé une nouvelle version avec des améliorations et corrections importantes.
+            </p>
+
+            {changelog.length > 0 && (
+              <div className="space-y-2 mb-4 max-h-36 overflow-y-auto">
+                {changelog.map((item, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs">
+                    <ArrowRight className="w-3 h-3 mt-0.5 text-[#0D5C63] dark:text-[#00D4AA] shrink-0" />
+                    <span className="text-zinc-600 dark:text-zinc-400">{item}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="space-y-2.5">
+              {isPWA ? (
+                <Button
+                  onClick={handleReload}
+                  className="w-full bg-[#0D5C63] hover:bg-[#0A4A50] text-white font-semibold h-11 rounded-xl shadow-md shadow-[#0D5C63]/25"
+                  disabled={installing}
+                >
+                  {installing ? (
+                    <span className="flex items-center gap-2">
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Mise à jour en cours...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <RefreshCw className="w-4 h-4" />
+                      Recharger et mettre à jour
+                    </span>
+                  )}
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleInstallAPK}
+                  className="w-full bg-[#0D5C63] hover:bg-[#0A4A50] text-white font-semibold h-11 rounded-xl shadow-md shadow-[#0D5C63]/25"
+                  disabled={installing}
+                >
+                  {installing ? (
+                    <span className="flex items-center gap-2">
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Téléchargement...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <Download className="w-4 h-4" />
+                      Télécharger la mise à jour
+                    </span>
+                  )}
+                </Button>
+              )}
+              <Button
+                onClick={handleDismiss}
+                variant="ghost"
+                className="w-full text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 h-9 text-xs"
+              >
+                Appliquer plus tard
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom spacer */}
+        <div className="h-4" />
       </DialogContent>
     </Dialog>
   );

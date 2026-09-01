@@ -3,25 +3,40 @@ import { NextRequest, NextResponse } from 'next/server'
 const GLM_API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions'
 const GLM_API_KEY = process.env.GLM_API_KEY || ''
 
-const SYSTEM_PROMPT = `Tu es TRAIT IA, l'assistant de l'app TRAIT fintech.
+const SYSTEM_PROMPT = `Tu es TRAIT IA, l'assistant intelligent de l'application TRAIT — une plateforme fintech innovante.
 
-RÈGLES:
-- Tu n'effectues JAMAIS d'opérations financières. Tu guides uniquement.
-- Réponds en français, sois concis (2-3 phrases max).
-- Connais le rôle de l'utilisateur et adapte-toi.
-- Propose des boutons d'action quand pertinent.
+IDENTITÉ:
+- Tu es TRAIT IA, assistant virtuel intégré à l'application TRAIT
+- Tu es amical, professionnel et efficace
+- Tu parles en français avec un ton chaleureux
 
-FRAIS: Retrait 0.7%, Transfert 0.7%, Dépôt gratuit.
+RÈGLES ABSOLUES:
+- Tu n'effectues JAMAIS d'opérations financières réelles. Tu guides et informes uniquement.
+- Sois concis: 2-3 phrases maximum par réponse
+- Propose des boutons d'action quand pertinent
+- Adapte-toi au rôle de l'utilisateur
 
-RÔLES:
-- Client: transfert, portefeuille, historique, paiements, factures, carte, épargne
-- Agent: dépôt, retrait, commission, caisse
-- Vendeur: produits, paiements reçus
-- Admin: gestion users, validation, transactions
+FRAIS DE L'APPLICATION:
+- Retrait: 0.7%
+- Transfert: 0.7%
+- Dépôt: Gratuit
 
-NAVIGATION (routes valides): home, send, withdraw, deposit, history, marketplace, bills, card, savings-goals, referral, settings, profile, notifications, support, agent-dashboard, agent-deposit, agent-withdraw-validate, seller-dashboard, seller-products, ussd
+NAVIGATION: home, send, withdraw, deposit, history, marketplace, bills, card, savings-goals, referral, settings, profile, notifications, support, agent-dashboard, agent-deposit, agent-withdraw-validate, seller-dashboard, seller-products, ussd
 
 RÉPONSE JSON: {"message":"texte","actions":[{"label":"bouton","page":"route"}]}`
+
+const FALLBACK_RESPONSES: Record<string, string> = {
+  default: "Je suis TRAIT IA, votre assistant. Comment puis-je vous aider avec vos transactions ou la navigation dans l'application ?",
+  greeting: "Bonjour ! Je suis TRAIT IA, votre assistant personnel. Je peux vous aider avec vos transferts, dépôts, retraits et bien plus. Que souhaitez-vous faire ?",
+  help: "Je peux vous guider pour : envoyer de l'argent, effectuer un dépôt ou retrait, consulter votre historique, gérer votre carte, ou naviguer dans l'application. Que voulez-vous faire ?",
+}
+
+function getFallbackResponse(message: string): string {
+  const lower = message.toLowerCase()
+  if (lower.match(/^(bonjour|salut|hello|hey|coucou|bonsoir)/)) return FALLBACK_RESPONSES.greeting
+  if (lower.match(/(aide|help|comment|comment)/)) return FALLBACK_RESPONSES.help
+  return FALLBACK_RESPONSES.default
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,10 +48,16 @@ export async function POST(request: NextRequest) {
     }
 
     if (!GLM_API_KEY) {
-      return NextResponse.json({ success: false, message: 'Clé API non configurée' }, { status: 500 })
+      return NextResponse.json({
+        success: true,
+        message: getFallbackResponse(message),
+        actions: [],
+      })
     }
 
-    const roleCtx = userRole ? `Utilisateur: "${userName || 'Utilisateur'}", Rôle: "${userRole}".` : ''
+    const roleCtx = userRole
+      ? `L'utilisateur s'appelle "${userName || 'Utilisateur'}" et a le rôle "${userRole}".`
+      : ''
 
     const messages = [
       { role: 'system', content: `${SYSTEM_PROMPT}\n\n${roleCtx}` },
@@ -56,21 +77,32 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         model: 'glm-4.7-flash',
         messages,
-        temperature: 0.5,
-        max_tokens: 512,
+        temperature: 0.6,
+        max_tokens: 2048,
       }),
+      signal: AbortSignal.timeout(20000),
     })
 
     if (!response.ok) {
-      console.error('GLM API error:', response.status)
-      return NextResponse.json(
-        { success: false, message: 'Service IA temporairement indisponible.' },
-        { status: 502 }
-      )
+      const errText = await response.text().catch(() => '')
+      console.error('GLM API error:', response.status, errText.slice(0, 200))
+      return NextResponse.json({
+        success: true,
+        message: getFallbackResponse(message),
+        actions: [],
+      })
     }
 
     const data = await response.json()
     const content = data.choices?.[0]?.message?.content || ''
+
+    if (!content || content.trim().length === 0) {
+      return NextResponse.json({
+        success: true,
+        message: getFallbackResponse(message),
+        actions: [],
+      })
+    }
 
     let actions: Array<{ label: string; page: string }> = []
     let cleanMessage = content
@@ -90,11 +122,11 @@ export async function POST(request: NextRequest) {
     actions = actions.filter((a) => allowed.includes(a.page))
 
     return NextResponse.json({ success: true, message: cleanMessage, actions })
-  } catch (error) {
-    console.error('Trait AI error:', error)
-    return NextResponse.json(
-      { success: false, message: 'Erreur interne.' },
-      { status: 500 }
-    )
+  } catch (error: any) {
+    console.error('Trait AI error:', error?.message || error)
+    const msg = error?.name === 'AbortError'
+      ? 'La requête a pris trop de temps. Réessayez.'
+      : getFallbackResponse('default')
+    return NextResponse.json({ success: true, message: msg, actions: [] })
   }
 }
