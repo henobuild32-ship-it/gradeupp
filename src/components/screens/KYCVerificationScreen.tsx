@@ -110,6 +110,40 @@ export default function KYCVerificationScreen() {
     fetchKYCStatus();
   }, [fetchKYCStatus]);
 
+  // ─── Image compression ────────────────────────────────────────────
+
+  function compressImage(file: File, maxWidth = 1200, quality = 0.8): Promise<File> {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new window.Image();
+
+      img.onload = () => {
+        let w = img.width;
+        let h = img.height;
+        if (w > maxWidth) {
+          h = (h * maxWidth) / w;
+          w = maxWidth;
+        }
+        canvas.width = w;
+        canvas.height = h;
+        ctx?.drawImage(img, 0, 0, w, h);
+        canvas.toBlob(
+          (blob) => {
+            const compressed = new File([blob!], file.name, {
+              type: 'image/jpeg',
+              lastModified: Date.now(),
+            });
+            resolve(compressed);
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
   // ─── Upload handlers ──────────────────────────────────────────────
 
   async function handleFileUpload(file: File, type: 'document' | 'selfie') {
@@ -118,8 +152,11 @@ export default function KYCVerificationScreen() {
 
     setUploading(true);
     try {
+      // Compress image before upload
+      const compressed = await compressImage(file);
+
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', compressed);
       formData.append('type', type);
 
       const token = useAppStore.getState().token;
@@ -140,6 +177,10 @@ export default function KYCVerificationScreen() {
           toast.error('Session expirée. Veuillez vous reconnecter.');
           useAppStore.getState().setToken(null);
           useAppStore.getState().setUser(null as any);
+          return;
+        }
+        if (res.status === 413) {
+          toast.error('Image trop volumineuse. Essayez avec une autre photo.');
           return;
         }
         toast.error(data.message || "Erreur lors de l'upload");

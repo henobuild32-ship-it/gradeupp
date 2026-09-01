@@ -6,6 +6,11 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
+  },
   allowedDevOrigins: [
     'preview-chat-0869a9a4-fb6d-4efa-9fff-a2bf58bf67a0.space-z.ai',
     '*.space-z.ai',

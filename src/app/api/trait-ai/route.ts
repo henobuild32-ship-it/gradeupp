@@ -3,84 +3,25 @@ import { NextRequest, NextResponse } from 'next/server'
 const GLM_API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions'
 const GLM_API_KEY = process.env.GLM_API_KEY || ''
 
-const TRAIT_SYSTEM_PROMPT = `Tu es TRAIT IA, l'assistant intelligent intégré à l'application TRAIT fintech.
+const SYSTEM_PROMPT = `Tu es TRAIT IA, l'assistant de l'app TRAIT fintech.
 
-RÈGLES FONDAMENTALES:
-1. Tu NE JAMAIS effectuer d'opérations financières (dépôt, retrait, transfert, paiement). Tu expliques et guides uniquement.
-2. Tu connais le contexte de l'utilisateur: son nom, son rôle (client, agent, fournisseur de service, administrateur).
-3. Tu adresses l'utilisateur par son prénom quand tu le connais.
-4. Tu respondes en français.
-5. Tu es professionnel, concis, utile et chaleureux.
-6. Tu peux proposer des boutons d'action contextuels pour naviguer vers les bonnes interfaces.
+RÈGLES:
+- Tu n'effectues JAMAIS d'opérations financières. Tu guides uniquement.
+- Réponds en français, sois concis (2-3 phrases max).
+- Connais le rôle de l'utilisateur et adapte-toi.
+- Propose des boutons d'action quand pertinent.
 
-ROLES ET FONCTIONNALITÉS:
+FRAIS: Retrait 0.7%, Transfert 0.7%, Dépôt gratuit.
 
-CLIENT:
-- Transfert d'argent (envoi/reception)
-- Portefeuille (solde USD/FC)
-- Historique des transactions
-- Paiements (QR, liens, boutiques)
-- Bénéficiaires
-- Factures et services
-- Épargne et objectifs
-- Cartes (demande, activation)
-- Parrainage
-- Profil et sécurité
-- KYC
+RÔLES:
+- Client: transfert, portefeuille, historique, paiements, factures, carte, épargne
+- Agent: dépôt, retrait, commission, caisse
+- Vendeur: produits, paiements reçus
+- Admin: gestion users, validation, transactions
 
-AGENT:
-- Dépôt d'argent pour clients
-- Validation de retraits
-- Commission et historique
-- Gestion de la caisse
-- Messages clients
-- Code agent
+NAVIGATION (routes valides): home, send, withdraw, deposit, history, marketplace, bills, card, savings-goals, referral, settings, profile, notifications, support, agent-dashboard, agent-deposit, agent-withdraw-validate, seller-dashboard, seller-products, ussd
 
-FOURNISSEUR (SELLER):
-- Produits et services
-- QR Scanner
-- Paiements reçus
-- Dashboard vendeur
-- Gestion produits
-
-ADMINISTRATEUR:
-- Gestion des utilisateurs
-- Validation agents/vendeurs
-- Transactions
-- Rapports et analytics
-- Bonus et campagnes
-- Paramètres système
-- Support
-
-NAVIGATION (routes autorisées):
-- home: Accueil client
-- send: Transfert/Envoi
-- withdraw: Retrait
-- deposit: Dépôt
-- history: Historique
-- marketplace: Marché
-- bills: Factures
-- card: Cartes
-- savings-goals: Épargne
-- referral: Parrainage
-- settings: Paramètres
-- profile: Profil
-- notifications: Notifications
-- support: Support
-- agent-dashboard: Dashboard agent
-- agent-deposit: Dépôt agent
-- agent-withdraw-validate: Validation retrait
-- agent-activity: Activité agent
-- seller-dashboard: Dashboard vendeur
-- seller-products: Produits vendeur
-
-FORMAT DE RÉPONSE:
-- Sois concis (2-4 phrases max par réponse sauf explications détaillées)
-- Utilise des étapes numérotées pour les procédures
-- Propose toujours un bouton d'action pertinent quand applicable
-- Réponds en JSON: { "message": "texte", "actions": [{ "label": "Nom du bouton", "page": "page-name" }] }
-
-Les actions sont optionnelles. Ne propose un bouton que si l'utilisateur demande comment faire quelque chose de spécifique.`
+RÉPONSE JSON: {"message":"texte","actions":[{"label":"bouton","page":"route"}]}`
 
 export async function POST(request: NextRequest) {
   try {
@@ -95,13 +36,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Clé API non configurée' }, { status: 500 })
     }
 
-    const roleContext = userRole
-      ? `L'utilisateur s'appelle "${userName || 'Utilisateur'}" et est "${userRole}".`
-      : ''
+    const roleCtx = userRole ? `Utilisateur: "${userName || 'Utilisateur'}", Rôle: "${userRole}".` : ''
 
     const messages = [
-      { role: 'system', content: `${TRAIT_SYSTEM_PROMPT}\n\n${roleContext}` },
-      ...(history || []).map((h: { role: string; content: string }) => ({
+      { role: 'system', content: `${SYSTEM_PROMPT}\n\n${roleCtx}` },
+      ...(history || []).slice(-6).map((h: { role: string; content: string }) => ({
         role: h.role === 'user' ? 'user' : 'assistant',
         content: h.content,
       })),
@@ -117,16 +56,15 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         model: 'glm-4.7-flash',
         messages,
-        temperature: 0.7,
-        max_tokens: 1024,
+        temperature: 0.5,
+        max_tokens: 512,
       }),
     })
 
     if (!response.ok) {
-      const error = await response.text()
-      console.error('GLM API error:', error)
+      console.error('GLM API error:', response.status)
       return NextResponse.json(
-        { success: false, message: 'Erreur du service IA. Veuillez réessayer.' },
+        { success: false, message: 'Service IA temporairement indisponible.' },
         { status: 502 }
       )
     }
@@ -134,11 +72,9 @@ export async function POST(request: NextRequest) {
     const data = await response.json()
     const content = data.choices?.[0]?.message?.content || ''
 
-    // Try to parse actions from the response
     let actions: Array<{ label: string; page: string }> = []
     let cleanMessage = content
 
-    // Try JSON extraction
     try {
       const jsonMatch = content.match(/\{[\s\S]*"message"[\s\S]*\}/)
       if (jsonMatch) {
@@ -150,28 +86,14 @@ export async function POST(request: NextRequest) {
       cleanMessage = content
     }
 
-    // Validate actions - only allow known pages
-    const allowedPages = [
-      'home', 'send', 'withdraw', 'deposit', 'history', 'marketplace',
-      'bills', 'card', 'savings-goals', 'referral', 'settings', 'profile',
-      'notifications', 'support', 'agent-dashboard', 'agent-deposit',
-      'agent-withdraw-validate', 'agent-activity', 'seller-dashboard',
-      'seller-products', 'ussd', 'barter', 'payment-links', 'payment-requests',
-      'recurring-payments', 'bundle-catalog', 'micro-credit', 'kyc-verification',
-      'my-qr-code', 'two-factor-setup', 'change-pin',
-    ]
+    const allowed = ['home','send','withdraw','deposit','history','marketplace','bills','card','savings-goals','referral','settings','profile','notifications','support','agent-dashboard','agent-deposit','agent-withdraw-validate','seller-dashboard','seller-products','ussd']
+    actions = actions.filter((a) => allowed.includes(a.page))
 
-    actions = actions.filter((a) => allowedPages.includes(a.page))
-
-    return NextResponse.json({
-      success: true,
-      message: cleanMessage,
-      actions,
-    })
+    return NextResponse.json({ success: true, message: cleanMessage, actions })
   } catch (error) {
     console.error('Trait AI error:', error)
     return NextResponse.json(
-      { success: false, message: 'Erreur interne. Veuillez réessayer.' },
+      { success: false, message: 'Erreur interne.' },
       { status: 500 }
     )
   }

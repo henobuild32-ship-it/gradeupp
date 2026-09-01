@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUser } from '@/lib/auth';
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+// Increase body size limit for base64 images
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
+  },
+};
+
+const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB (becomes ~5.3MB in base64)
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,7 +37,7 @@ export async function POST(request: NextRequest) {
 
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
-        { success: false, message: 'Fichier trop volumineux. Maximum 5 MB.' },
+        { success: false, message: 'Fichier trop volumineux. Maximum 4 MB.' },
         { status: 400 }
       );
     }
@@ -41,7 +50,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Convert to base64 data URL (works on Vercel serverless)
+    // Convert to base64 data URL
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     const base64 = buffer.toString('base64');
@@ -53,7 +62,14 @@ export async function POST(request: NextRequest) {
       url: dataUrl,
       filename: file.name,
     });
-  } catch (error) {
+  } catch (error: any) {
+    // Handle body too large error
+    if (error?.message?.includes('too large') || error?.statusCode === 413) {
+      return NextResponse.json(
+        { success: false, message: 'Fichier trop volumineux. Réduisez la taille et réessayez.' },
+        { status: 413 }
+      );
+    }
     console.error('KYC upload error:', error);
     return NextResponse.json(
       { success: false, message: 'Erreur lors de l\'upload' },
