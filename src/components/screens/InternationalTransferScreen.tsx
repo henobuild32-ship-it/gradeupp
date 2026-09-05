@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
@@ -9,9 +9,6 @@ import {
   Building,
   CreditCard,
   Store,
-  Camera,
-  CameraOff,
-  QrCode,
   Globe,
   DollarSign,
   Clock,
@@ -51,7 +48,6 @@ import {
 } from '@/components/ui/dialog';
 import { useAppStore } from '@/lib/store';
 import { toast } from 'sonner';
-import jsQR from 'jsqr';
 
 // ─── Constants ─────────────────────────────────────────────────────
 
@@ -106,8 +102,7 @@ type TransferType =
   | 'mobile-money'
   | 'bank'
   | 'card'
-  | 'merchant'
-  | 'qrcode';
+  | 'merchant';
 
 interface TransferTypeOption {
   id: TransferType;
@@ -144,7 +139,6 @@ interface FormData {
   merchantId: string;
   merchantReference: string;
   transactionReference: string;
-  // QR Code (no extra fields)
 }
 
 // ─── Transfer Type Definitions ─────────────────────────────────────
@@ -179,12 +173,6 @@ const TRANSFER_TYPES: TransferTypeOption[] = [
     label: 'Paiement Marchand',
     description: 'Payer un marchand',
     icon: Store,
-  },
-  {
-    id: 'qrcode',
-    label: 'QR Code',
-    description: 'Transfert par QR Code',
-    icon: QrCode,
   },
 ];
 
@@ -225,7 +213,6 @@ function getEstimatedTime(type: TransferType): string {
   switch (type) {
     case 'wallet':
     case 'mobile-money':
-    case 'qrcode':
     case 'merchant':
       return 'Instantané';
     case 'card':
@@ -264,103 +251,6 @@ export default function InternationalTransferScreen() {
   const [dailyRemaining, setDailyRemaining] = useState<number | null>(null);
   const [kycLoading, setKycLoading] = useState(true);
 
-  // QR Scanner state (for 'qrcode' type)
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const pendingStreamRef = useRef<MediaStream | null>(null);
-  const scanningRef = useRef(false);
-  const animationRef = useRef(0);
-  const [qrCameraActive, setQrCameraActive] = useState(false);
-  const [qrCameraError, setQrCameraError] = useState('');
-  const [qrScannedData, setQrScannedData] = useState('');
-
-  function stopQrScanner() {
-    scanningRef.current = false;
-    cancelAnimationFrame(animationRef.current);
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-    setQrCameraActive(false);
-  }
-
-  // Attach pending stream once video element is rendered
-  useEffect(() => {
-    if (qrCameraActive && videoRef.current && pendingStreamRef.current) {
-      const video = videoRef.current;
-      video.srcObject = pendingStreamRef.current;
-      streamRef.current = pendingStreamRef.current;
-      pendingStreamRef.current = null;
-      video.play().then(() => {
-        scanningRef.current = true;
-        qrScanLoop();
-      }).catch(() => {});
-    }
-  }, [qrCameraActive]);
-
-  async function startQrScanner() {
-    setQrCameraError('');
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
-        audio: false,
-      });
-      pendingStreamRef.current = stream;
-      setQrCameraActive(true);
-    } catch (err: any) {
-      setQrCameraError("Impossible d'accéder à la caméra. Vérifiez l'autorisation dans les paramètres.");
-    }
-  }
-
-  function qrScanLoop() {
-    if (!scanningRef.current) return;
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (video && canvas && video.readyState >= 2) {
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const code = jsQR(imageData.data, imageData.width, imageData.height);
-      if (code) {
-        const raw = code.data;
-        setQrScannedData(raw);
-        stopQrScanner();
-        // Try to parse as TraitCard JSON
-        try {
-          const parsed = JSON.parse(raw);
-          if (parsed.holder) {
-            updateForm('beneficiaryName', parsed.holder);
-          }
-          if (parsed.type === 'USD' || parsed.type === 'FC') {
-            updateForm('currency', parsed.type);
-          }
-          if (parsed.card) {
-            updateForm('traitNumber', parsed.card);
-          }
-          toast.success('QR Code détecté', { description: `Bénéficiaire: ${parsed.holder || 'Inconnu'}` });
-        } catch {
-          // Plain text QR — use as beneficiary name or reference
-          updateForm('beneficiaryName', raw);
-          toast.success('QR Code détecté', { description: raw.length > 30 ? raw.slice(0, 30) + '...' : raw });
-        }
-        return;
-      }
-    }
-    animationRef.current = requestAnimationFrame(qrScanLoop);
-  }
-
-  // Cleanup scanner on unmount
-  useEffect(() => {
-    return () => {
-      scanningRef.current = false;
-      cancelAnimationFrame(animationRef.current);
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-    };
-  }, []);
-
-  // ─── Fetch KYC + Security on mount ────────────────────────────────
   useEffect(() => {
     const currentUserId = user?.id;
     if (!currentUserId) return;
@@ -521,9 +411,7 @@ export default function InternationalTransferScreen() {
     try {
       const apiType = selectedType === 'mobile-money'
         ? 'mobile_money'
-        : selectedType === 'qrcode'
-          ? 'qr_code'
-          : selectedType;
+        : selectedType;
 
       const payload = {
         userId: user.id,
@@ -823,79 +711,6 @@ export default function InternationalTransferScreen() {
           </>
         );
 
-      case 'qrcode':
-        return (
-          <div className="flex flex-col items-center space-y-4">
-            {/* Camera preview - full width, real-time */}
-            <div className="relative w-full aspect-square max-w-sm mx-auto bg-black rounded-2xl overflow-hidden shadow-lg border-2 border-emerald-300">
-              {qrCameraActive ? (
-                <>
-                  <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" muted playsInline autoPlay />
-                  <canvas ref={canvasRef} className="hidden" />
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="w-3/4 h-3/4 border-2 border-emerald-400/60 rounded-xl" />
-                  </div>
-                  <div className="absolute top-3 left-3 right-3 flex justify-center">
-                    <span className="bg-emerald-600/80 text-white text-xs px-3 py-1 rounded-full backdrop-blur-sm">
-                      Placez le QR code dans le cadre
-                    </span>
-                  </div>
-                </>
-              ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-muted">
-                  <QrCode className="size-16 text-emerald-400" />
-                  <Button type="button" onClick={startQrScanner} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-lg">
-                    <Camera className="size-4 mr-2" />
-                    Ouvrir la caméra
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            {qrCameraActive && (
-              <Button type="button" variant="outline" onClick={stopQrScanner} className="text-xs rounded-xl">
-                <CameraOff className="size-3 mr-1" />
-                Arrêter la caméra
-              </Button>
-            )}
-
-            {qrCameraError && (
-              <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg p-2 w-full">{qrCameraError}</p>
-            )}
-
-            {qrScannedData && (
-              <div className="w-full bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center">
-                <p className="text-xs font-semibold text-emerald-600 mb-1">QR Code détecté</p>
-                <p className="text-sm text-foreground break-all">{qrScannedData}</p>
-              </div>
-            )}
-
-            <div className="text-center space-y-1">
-              <p className="text-sm font-medium text-foreground">Scannez le QR Code du destinataire</p>
-              <p className="text-xs text-muted-foreground">
-                Les informations du bénéficiaire seront automatiquement remplies
-              </p>
-            </div>
-
-            <Input
-              placeholder="Ou collez le contenu du QR Code ici"
-              value={qrScannedData}
-              onChange={(e) => {
-                setQrScannedData(e.target.value);
-                const raw = e.target.value;
-                try {
-                  const parsed = JSON.parse(raw);
-                  if (parsed.holder) updateForm('beneficiaryName', parsed.holder);
-                  if (parsed.type === 'USD' || parsed.type === 'FC') updateForm('currency', parsed.type);
-                } catch {
-                  if (raw) updateForm('beneficiaryName', raw);
-                }
-              }}
-              className="text-center text-sm h-10"
-            />
-          </div>
-        );
-
       default:
         return null;
     }
@@ -1152,7 +967,7 @@ export default function InternationalTransferScreen() {
 
                   {/* Type-specific fields */}
                   <div className="space-y-4">
-                    {selectedType !== 'qrcode' && selectedTypeInfo && (
+                    {selectedTypeInfo && (
                       <div className="flex items-center gap-2">
                         <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 text-xs">
                           <selectedTypeInfo.icon className="size-3 mr-1" />
@@ -1374,12 +1189,6 @@ export default function InternationalTransferScreen() {
                     <span className="font-medium">{form.merchantReference}</span>
                   </div>
                 </>
-              )}
-              {selectedType === 'qrcode' && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Mode</span>
-                  <span className="font-medium">QR Code</span>
-                </div>
               )}
 
               {form.motif && (

@@ -9,8 +9,9 @@ import {
   Copy, Check, ArrowUpRight, ArrowDownLeft, CreditCard, Clock, ChevronRight,
   QrCode, MessageCircle, Link, Handshake, Repeat, Radio, FileText, PiggyBank,
   Target, BarChart3, Contact, Gift, Search, User, Zap, TrendingUp, Eye, EyeOff,
-  ChevronDown, Sparkles, ArrowRight, Wifi, Lock, Star, BookOpen
+  ChevronDown, Sparkles, ArrowRight, Wifi, Lock, Star, BookOpen, ScanLine
 } from 'lucide-react';
+import QRPayScanModal from '@/components/trait/QRPayScanModal';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -53,7 +54,7 @@ const primaryActions = [
   { label: 'Envoyer', icon: Send, page: 'send' as const, gradient: 'from-[#0D5C63] to-[#14888F]' },
   { label: 'Retirer', icon: ArrowDownToLine, page: 'withdraw' as const, gradient: 'from-[#DC2626] to-[#EF4444]' },
   { label: 'Déposer', icon: ArrowUpFromLine, page: 'deposit' as const, gradient: 'from-[#059669] to-[#10B981]' },
-  { label: 'QR Code', icon: QrCode, page: 'my-qr-code' as const, gradient: 'from-[#7C3AED] to-[#A78BFA]' },
+  { label: 'Scanner', icon: ScanLine, page: '__scan__' as const, gradient: 'from-[#7C3AED] to-[#A78BFA]' },
 ];
 
 const serviceCategories = [
@@ -133,6 +134,7 @@ export default function HomeScreen() {
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
   const [showBalance, setShowBalance] = useState(true);
   const [activeCategory, setActiveCategory] = useState(0);
+  const [showQRScan, setShowQRScan] = useState(false);
 
   const isAgent = user?.role === 'agent';
   const realBalanceUSD = user?.realBalance ?? 0;
@@ -280,7 +282,13 @@ export default function HomeScreen() {
                   const Icon = action.icon;
                   return (
                     <motion.button key={action.page} whileTap={{ scale: 0.95 }}
-                      onClick={() => navigateTo(action.page)}
+                      onClick={() => {
+                        if (action.page === '__scan__') {
+                          setShowQRScan(true);
+                        } else {
+                          navigateTo(action.page);
+                        }
+                      }}
                       className="flex-1 flex flex-col items-center gap-2 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all">
                       <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${action.gradient} flex items-center justify-center shadow-lg`}>
                         <Icon className="w-4 h-4 text-white" />
@@ -310,6 +318,29 @@ export default function HomeScreen() {
                 {codeCopied ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4 text-gray-400" />}
               </button>
             </div>
+          </motion.div>
+        )}
+
+        {/* ════════════ QR PAY SCAN BANNER ════════════ */}
+        {!isAgent && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
+            <button
+              onClick={() => setShowQRScan(true)}
+              className="w-full rounded-2xl p-4 bg-gradient-to-r from-[#7C3AED]/15 to-[#A78BFA]/10 border border-[#7C3AED]/20 hover:border-[#7C3AED]/40 hover:from-[#7C3AED]/25 hover:to-[#A78BFA]/15 transition-all group"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#7C3AED] to-[#A78BFA] flex items-center justify-center shrink-0 shadow-lg shadow-purple-500/20 group-hover:scale-110 transition-transform">
+                  <ScanLine className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-sm font-bold text-white">Payer par scan</p>
+                  <p className="text-[11px] text-gray-400">Scannez un QR Code pour envoyer de l&apos;argent</p>
+                </div>
+                <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
+                  <QrCode className="w-4 h-4 text-[#A78BFA]" />
+                </div>
+              </div>
+            </button>
           </motion.div>
         )}
 
@@ -536,6 +567,9 @@ export default function HomeScreen() {
           </button>
         </motion.div>
       </main>
+
+      {/* ════════════ QR PAY SCAN MODAL ════════════ */}
+      <QRPayScanModal open={showQRScan} onOpenChange={setShowQRScan} />
     </div>
   );
 }
