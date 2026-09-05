@@ -83,24 +83,51 @@ export default function RootLayout({
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', async function() {
                   try {
-                    const reg = await navigator.serviceWorker.register('/sw.js');
+                    const reg = await navigator.serviceWorker.register('/sw.js?v=' + Date.now());
                     console.log('SW registered:', reg.scope);
 
-                    // Auto-update: check for new SW every hour
-                    setInterval(() => { reg.update(); }, 60 * 60 * 1000);
+                    // Check for update on every page load
+                    reg.update();
 
-                    // Listen for new SW
+                    // Listen for new SW installing
                     reg.addEventListener('updatefound', () => {
                       const newSW = reg.installing;
+                      if (!newSW) return;
                       newSW.addEventListener('statechange', () => {
                         if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-                          // New version available — reload to activate
-                          if (confirm('Nouvelle version disponible. Recharger ?')) {
-                            window.location.reload();
+                          // Force activate new SW immediately
+                          newSW.postMessage({ type: 'SKIP_WAITING' });
+                          // Clear all caches
+                          if ('caches' in window) {
+                            caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))));
                           }
+                          // Hard reload
+                          window.location.href = window.location.pathname + '?v=' + Date.now();
                         }
                       });
                     });
+
+                    // Check if SW changed (deploy detection)
+                    let lastSWHash = '';
+                    setInterval(async () => {
+                      try {
+                        const r = await navigator.serviceWorker.getRegistration();
+                        if (r?.active) {
+                          const resp = await fetch('/api/app/version?t=' + Date.now(), { cache: 'no-store' });
+                          const data = await resp.json();
+                          const currentDeploy = localStorage.getItem('trait_deploy_id') || '';
+                          if (data.deployId && data.deployId !== currentDeploy) {
+                            localStorage.setItem('trait_deploy_id', data.deployId);
+                            // Clear caches and reload
+                            if ('caches' in window) {
+                              await Promise.all((await caches.keys()).map(k => caches.delete(k)));
+                            }
+                            r.active.postMessage({ type: 'SKIP_WAITING' });
+                            window.location.href = window.location.pathname + '?v=' + Date.now();
+                          }
+                        }
+                      } catch(e) {}
+                    }, 10000);
 
                     // Auto-sync pending transactions every 30s
                     setInterval(() => {
@@ -109,7 +136,6 @@ export default function RootLayout({
                       }
                     }, 30000);
 
-                    // Sync immediately when coming online
                     window.addEventListener('online', () => {
                       if (reg.active) reg.active.postMessage({ type: 'SYNC_NOW' });
                     });
