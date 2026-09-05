@@ -1,160 +1,153 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import { motion, useInView, AnimatePresence } from 'framer-motion'
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Send, Phone, Store, Code, ArrowLeftRight, ShoppingBag,
-  Smartphone, Apple, Check, Bell, Globe, Headphones,
-  Loader2, Shield, Zap, Users, ChevronRight, Gift,
-  Wallet, MessageCircle, ArrowRight, Lock, CreditCard,
-  BarChart3, Star, TrendingUp, Sparkles, Landmark, Banknote,
-  QrCode, Repeat, X, Download,
+  Smartphone, Apple, Check, Globe, Headphones,
+  Shield, Zap, Gift, Wallet, ChevronRight,
+  ArrowRight, Lock, Star, Download, ChevronDown, X,
+  CreditCard, TrendingUp, Landmark, MessageCircle, Languages,
 } from 'lucide-react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { useAppStore } from '@/lib/store'
 import { usePWAInstall } from '@/hooks/usePWAInstall'
-import { useTranslation, languageNames, languages, type Language } from '@/lib/i18n'
+import { useTranslation, languages, type Language } from '@/lib/i18n'
 import { toast } from 'sonner'
 
-function AnimatedSection({ children, className = '', delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const inView = useInView(ref, { once: true, margin: '-60px' })
-  return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 30 }}
-      animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.6, delay, ease: [0.22, 1, 0.36, 1] }}
-      className={className}
-    >
-      {children}
-    </motion.div>
-  )
-}
-
-function StepItem({ number, children }: { number: number; children: React.ReactNode }) {
-  return (
-    <div className="flex gap-3 items-start">
-      <div className="w-8 h-8 rounded-full bg-[#0D5C63]/10 dark:bg-[#0D5C63]/30 flex items-center justify-center shrink-0 mt-0.5">
-        <span className="text-sm font-bold text-[#0D5C63] dark:text-emerald-400">{number}</span>
-      </div>
-      <div className="flex-1">{children}</div>
-    </div>
-  )
-}
-
 const services = [
-  { icon: Send, titleKey: 'welcome.services.transfers', descKey: 'welcome.services.transfers_desc' },
-  { icon: Phone, titleKey: 'welcome.services.mobile_money', descKey: 'welcome.services.mobile_money_desc' },
-  { icon: Store, titleKey: 'welcome.services.merchant', descKey: 'welcome.services.merchant_desc' },
-  { icon: Code, titleKey: 'welcome.services.api', descKey: 'welcome.services.api_desc' },
-  { icon: ArrowLeftRight, titleKey: 'welcome.services.barter', descKey: 'welcome.services.barter_desc' },
-  { icon: ShoppingBag, titleKey: 'welcome.services.marketplace', descKey: 'welcome.services.marketplace_desc' },
+  { icon: Send, label: 'Transferts', desc: 'Argent instantané' },
+  { icon: Phone, label: 'Mobile Money', desc: 'Payez partout' },
+  { icon: CreditCard, label: 'Cartes', desc: 'USD & FC' },
+  { icon: ArrowLeftRight, label: 'Troc', desc: 'Échangez facilement' },
+  { icon: ShoppingBag, label: 'Marketplace', desc: 'Achetez & vendez' },
+  { icon: Code, label: 'API', desc: 'Intégrez TRAIT' },
 ]
 
-const features = [
-  { icon: Shield, titleKey: 'welcome.feature_secure', descKey: 'welcome.feature_secure_desc' },
-  { icon: Zap, titleKey: 'welcome.feature_fast', descKey: 'welcome.feature_fast_desc' },
-  { icon: Gift, titleKey: 'welcome.feature_bonus', descKey: 'welcome.feature_bonus_desc' },
-  { icon: Wallet, titleKey: 'welcome.feature_multi', descKey: 'welcome.feature_multi_desc' },
+const steps = [
+  { num: '01', title: 'Créez votre compte', desc: 'Inscription en 30 secondes, sans papier.' },
+  { num: '02', title: 'Vérifiez votre identité', desc: 'Photo de votre pièce d\'identité, c\'est tout.' },
+  { num: '03', title: 'Envoyez & recevez', desc: 'Transférez en RDC et dans le monde entier.' },
 ]
 
-const stats = [
-  { value: '50+', labelKey: 'welcome.stats_countries', icon: Globe },
-  { value: '0,7%', labelKey: 'welcome.stats_fees', icon: Zap },
-  { value: '10$', labelKey: 'welcome.stats_bonus', icon: Gift },
-  { value: '99,9%', labelKey: 'Taux de disponibilité', icon: TrendingUp },
+const faq = [
+  { q: 'Quels sont les frais ?', a: 'Seulement 0,7% par transaction. Aucun frais caché.' },
+  { q: 'Est-ce sécurisé ?', a: 'Chiffrement SSL/TLS, JWT, et authentification à deux facteurs.' },
+  { q: 'Quelles devises ?', a: 'USD et Franc Congolais (FC), avec conversion automatique.' },
+  { q: 'Comment contacter le support ?', a: 'Disponible 24/7 via chat, email ou téléphone.' },
 ]
+
+const langLabels: Record<string, string> = { fr: 'Français', en: 'English', es: 'Español', ar: 'العربية', pt: 'Português', ln: 'Lingála', sw: 'Kiswahili', tl: 'Tshiluba', kg: 'Kikongo' }
 
 export default function WelcomeScreen() {
   const navigateTo = useAppStore((s) => s.navigateTo)
-  const setSelectedRole = useAppStore((s) => s.setSelectedRole)
-  const { canInstall, isInstalled, isStandalone, installApp } = usePWAInstall()
   const { t, language, setLanguage } = useTranslation()
+  const { canInstall, isInstalled, isStandalone, installApp } = usePWAInstall()
   const [installing, setInstalling] = useState(false)
+  const [showLangMenu, setShowLangMenu] = useState(false)
   const [showInstallModal, setShowInstallModal] = useState(false)
   const [installPlatform, setInstallPlatform] = useState<'android' | 'ios'>('android')
+  const [openFaq, setOpenFaq] = useState<number | null>(null)
 
-  const handleAndroidInstall = async () => {
-    if (canInstall) {
+  const handleInstall = async (platform: 'android' | 'ios') => {
+    setInstallPlatform(platform)
+    if (platform === 'android' && canInstall) {
       setInstalling(true)
-      const success = await installApp()
+      const ok = await installApp()
       setInstalling(false)
-      if (success) {
-        toast.success(t('welcome.install_success'))
-      } else {
-        setInstallPlatform('android')
-        setShowInstallModal(true)
-      }
-    } else {
-      setInstallPlatform('android')
-      setShowInstallModal(true)
+      if (ok) return toast.success(t('welcome.install_success'))
     }
-  }
-
-  const handleIOSInstall = () => {
-    setInstallPlatform('ios')
     setShowInstallModal(true)
   }
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
-      {/* Background gradients */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute -top-48 -right-48 w-[600px] h-[600px] bg-[#0D5C63]/5 rounded-full blur-[120px]" />
-        <div className="absolute top-1/3 -left-32 w-80 h-80 bg-blue-500/5 rounded-full blur-[100px]" />
-        <div className="absolute -bottom-32 right-1/4 w-72 h-72 bg-emerald-500/5 rounded-full blur-[80px]" />
-      </div>
-
-      <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* ── Header ── */}
-        <header className="flex items-center justify-between py-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#0D5C63] flex items-center justify-center">
-              <span className="text-white text-xs font-black">T</span>
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#09090b] relative">
+      {/* ── Header ── */}
+      <header className="sticky top-0 z-50 bg-white/80 dark:bg-[#09090b]/80 backdrop-blur-xl border-b border-black/5 dark:border-white/5">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#0D5C63] to-[#14888F] flex items-center justify-center shadow-lg shadow-[#0D5C63]/20">
+              <span className="text-white text-sm font-black">T</span>
             </div>
-            <span className="text-sm font-bold text-foreground">TRAIT</span>
+            <span className="text-base font-bold tracking-tight text-foreground">TRAIT</span>
           </div>
-          <div className="flex items-center gap-1">
-            {languages.map((lang) => (
-              <button
-                key={lang}
-                onClick={() => setLanguage(lang)}
-                className={`px-2 py-0.5 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
-                  language === lang
-                    ? 'bg-[#0D5C63] text-white'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                }`}
-              >
-                {lang.toUpperCase()}
-              </button>
-            ))}
-          </div>
-        </header>
 
-        <main className="pb-16">
-          {/* ── Hero ── */}
-          <section className="pt-12 sm:pt-20 pb-8 text-center">
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <button
+                onClick={() => setShowLangMenu(!showLangMenu)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer"
+              >
+                <Languages className="w-3.5 h-3.5" />
+                {language.toUpperCase()}
+                <ChevronDown className="w-3 h-3" />
+              </button>
+              <AnimatePresence>
+                {showLangMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 top-full mt-1.5 w-44 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-border/60 py-1.5 z-50"
+                  >
+                    {languages.map((lang) => (
+                      <button
+                        key={lang}
+                        onClick={() => { setLanguage(lang); setShowLangMenu(false) }}
+                        className={`w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs font-medium transition-colors cursor-pointer ${
+                          language === lang ? 'text-[#0D5C63] bg-[#0D5C63]/5' : 'text-foreground hover:bg-muted/50'
+                        }`}
+                      >
+                        <span className="w-5 h-5 rounded-md bg-muted/60 flex items-center justify-center text-[9px] font-bold">{lang.toUpperCase()}</span>
+                        {langLabels[lang] || lang}
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+            <Button onClick={() => navigateTo('auth', { mode: 'login' })} variant="ghost" className="text-xs font-semibold h-8 px-3">
+              {t('welcome.login')}
+            </Button>
+            <Button onClick={() => navigateTo('auth', { mode: 'register' })} className="text-xs font-semibold h-8 px-4 bg-[#0D5C63] hover:bg-[#0A4A50] text-white rounded-lg shadow-md shadow-[#0D5C63]/20">
+              {t('welcome.signup')}
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-6xl mx-auto px-4 sm:px-6">
+        {/* ── Hero ── */}
+        <section className="pt-16 sm:pt-24 pb-16 text-center relative">
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[#0D5C63]/5 rounded-full blur-[120px]" />
+            <div className="absolute top-20 right-0 w-[400px] h-[400px] bg-blue-500/5 rounded-full blur-[100px]" />
+          </div>
+
+          <div className="relative z-10">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#0D5C63]/10 border border-[#0D5C63]/15 text-[#0D5C63] text-xs font-semibold mb-6"
+            >
+              <Zap className="w-3.5 h-3.5" />
+              Nouveau : Transferts internationaux disponibles
+            </motion.div>
+
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="flex justify-center mb-6"
+              transition={{ duration: 0.6, delay: 0.1 }}
+              className="mb-6"
             >
-              <div className="relative">
-                <div className="absolute -inset-4 rounded-2xl bg-[#0D5C63]/10 blur-xl" />
-                <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br from-[#0D5C63] to-[#14888F] p-1 shadow-2xl">
-                  <div className="w-full h-full rounded-xl bg-white flex items-center justify-center">
-                    <Image
-                      src="/trait-logo.png"
-                      alt="TRAIT"
-                      width={80}
-                      height={80}
-                      className="object-contain"
-                      priority
-                    />
+              <div className="relative inline-block">
+                <div className="absolute -inset-6 rounded-3xl bg-gradient-to-br from-[#0D5C63]/15 to-[#14888F]/10 blur-2xl" />
+                <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-gradient-to-br from-[#0D5C63] via-[#0A7B82] to-[#14888F] p-[2px] shadow-2xl shadow-[#0D5C63]/30">
+                  <div className="w-full h-full rounded-[22px] bg-white dark:bg-zinc-950 flex items-center justify-center">
+                    <Image src="/trait-logo.png" alt="TRAIT" width={72} height={72} className="object-contain" priority />
                   </div>
                 </div>
               </div>
@@ -163,13 +156,13 @@ export default function WelcomeScreen() {
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.15 }}
-              className="text-3xl sm:text-4xl lg:text-5xl font-black text-foreground leading-tight mb-4"
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="text-4xl sm:text-5xl lg:text-6xl font-black text-foreground leading-[1.1] mb-5 tracking-tight"
             >
-              {t('welcome.hero_headline')}
+              Votre argent,
               <br />
               <span className="bg-gradient-to-r from-[#0D5C63] via-[#14888F] to-blue-500 bg-clip-text text-transparent">
-                {t('welcome.hero_headline2')}
+                sans frontières.
               </span>
             </motion.h1>
 
@@ -177,338 +170,413 @@ export default function WelcomeScreen() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
-              className="text-sm sm:text-base text-muted-foreground max-w-lg mx-auto mb-6"
+              className="text-base sm:text-lg text-muted-foreground max-w-md mx-auto mb-8 leading-relaxed"
             >
-              {t('welcome.hero_desc')}
+              Transférez, payez et échangez en toute simplicité avec TRAIT. La fintech de nouvelle génération pour l&apos;Afrique.
             </motion.p>
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.45 }}
-              className="flex flex-wrap items-center justify-center gap-2 mb-8"
-            >
-              <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300">
-                <Zap className="w-3 h-3 mr-1" />0,7% frais
-              </Badge>
-              <Badge variant="secondary" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300">
-                <Gift className="w-3 h-3 mr-1" />10$ bonus
-              </Badge>
-              <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300">
-                <Shield className="w-3 h-3 mr-1" />Sécurisé
-              </Badge>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.55 }}
-              className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-4"
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="flex flex-col sm:flex-row items-center justify-center gap-3"
             >
               <Button
                 onClick={() => navigateTo('auth', { mode: 'register' })}
-                className="w-full sm:w-auto px-8 h-12 text-sm font-bold bg-[#0D5C63] hover:bg-[#083A3E] text-white rounded-xl shadow-lg shadow-[#0D5C63]/25 transition-all active:scale-[0.98] group"
+                className="w-full sm:w-auto h-12 px-8 text-sm font-bold bg-[#0D5C63] hover:bg-[#0A4A50] text-white rounded-xl shadow-lg shadow-[#0D5C63]/25 transition-all active:scale-[0.98] group"
               >
-                <Users className="w-4 h-4 mr-2" />
                 {t('welcome.signup')}
                 <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-0.5 transition-transform" />
               </Button>
               <Button
                 onClick={() => navigateTo('auth', { mode: 'login' })}
                 variant="outline"
-                className="w-full sm:w-auto px-8 h-12 text-sm font-bold border-2 border-[#0D5C63]/20 text-[#0D5C63] rounded-xl hover:bg-[#0D5C63]/5 active:scale-[0.98]"
+                className="w-full sm:w-auto h-12 px-8 text-sm font-bold border-2 border-[#0D5C63]/15 text-[#0D5C63] rounded-xl hover:bg-[#0D5C63]/5 active:scale-[0.98]"
               >
                 {t('welcome.login')}
               </Button>
             </motion.div>
+          </div>
+        </section>
+
+        {/* ── Stats ── */}
+        <section className="pb-16">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { value: '50+', label: 'Pays', icon: Globe },
+              { value: '0,7%', label: 'Frais', icon: Zap },
+              { value: '10$', label: 'Bonus', icon: Gift },
+              { value: '99,9%', label: 'Disponibilité', icon: TrendingUp },
+            ].map((s, i) => (
+              <motion.div
+                key={s.label}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: i * 0.08 }}
+                className="bg-white dark:bg-zinc-900 rounded-2xl border border-black/5 dark:border-white/5 p-5 text-center hover:shadow-lg hover:shadow-[#0D5C63]/5 hover:border-[#0D5C63]/15 transition-all duration-300"
+              >
+                <div className="w-10 h-10 rounded-xl bg-[#0D5C63]/10 flex items-center justify-center mx-auto mb-3">
+                  <s.icon className="w-5 h-5 text-[#0D5C63]" />
+                </div>
+                <p className="text-2xl font-black text-foreground tracking-tight">{s.value}</p>
+                <p className="text-xs text-muted-foreground mt-0.5 font-medium">{s.label}</p>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── Services ── */}
+        <section className="pb-16">
+          <div className="text-center mb-10">
+            <h2 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight mb-2">Nos services</h2>
+            <p className="text-sm text-muted-foreground max-w-md mx-auto">Tout ce dont vous avez besoin pour gérer votre argent.</p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            {services.map((s, i) => (
+              <motion.div
+                key={s.label}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: i * 0.06 }}
+                className="bg-white dark:bg-zinc-900 rounded-2xl border border-black/5 dark:border-white/5 p-5 text-center hover:shadow-lg hover:shadow-[#0D5C63]/5 hover:border-[#0D5C63]/15 hover:-translate-y-1 transition-all duration-300 group cursor-pointer"
+              >
+                <div className="w-12 h-12 rounded-xl bg-[#0D5C63]/10 flex items-center justify-center mx-auto mb-3 group-hover:bg-[#0D5C63] group-hover:scale-110 transition-all duration-300">
+                  <s.icon className="w-5 h-5 text-[#0D5C63] group-hover:text-white transition-colors" />
+                </div>
+                <p className="text-sm font-bold text-foreground mb-0.5">{s.label}</p>
+                <p className="text-[11px] text-muted-foreground">{s.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── How it works ── */}
+        <section className="pb-16">
+          <div className="text-center mb-10">
+            <h2 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight mb-2">Comment ça marche</h2>
+            <p className="text-sm text-muted-foreground">Commencez en 3 étapes simples.</p>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-4">
+            {steps.map((s, i) => (
+              <motion.div
+                key={s.num}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: i * 0.1 }}
+                className="bg-white dark:bg-zinc-900 rounded-2xl border border-black/5 dark:border-white/5 p-6 relative overflow-hidden group hover:shadow-lg hover:shadow-[#0D5C63]/5 transition-all duration-300"
+              >
+                <span className="absolute top-3 right-4 text-6xl font-black text-[#0D5C63]/5 group-hover:text-[#0D5C63]/10 transition-colors">{s.num}</span>
+                <div className="w-10 h-10 rounded-xl bg-[#0D5C63] flex items-center justify-center mb-4 shadow-md shadow-[#0D5C63]/20">
+                  <span className="text-white text-sm font-bold">{s.num}</span>
+                </div>
+                <h3 className="text-base font-bold text-foreground mb-1.5">{s.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{s.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── Security ── */}
+        <section className="pb-16">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="relative rounded-3xl bg-gradient-to-br from-[#0F172A] via-[#1A2744] to-[#0F172A] p-8 sm:p-12 overflow-hidden"
+          >
+            <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
+            <div className="absolute top-0 right-0 w-72 h-72 bg-[#0D5C63]/10 rounded-full blur-[100px]" />
+            <div className="absolute bottom-0 left-0 w-56 h-56 bg-blue-500/10 rounded-full blur-[80px]" />
+
+            <div className="relative z-10 text-center max-w-lg mx-auto">
+              <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 flex items-center justify-center mx-auto mb-5">
+                <Shield className="w-7 h-7 text-[#00D4AA]" />
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight mb-3">Sécurité maximale</h2>
+              <p className="text-sm text-blue-200/60 leading-relaxed mb-6">
+                Vos transactions sont protégées par les technologies les plus avancées. Vos données sont sécurisées de bout en bout.
+              </p>
+              <div className="flex items-center justify-center gap-6">
+                {[
+                  { icon: Lock, label: 'SSL/TLS' },
+                  { icon: Shield, label: 'JWT' },
+                  { icon: Star, label: 'E2E' },
+                ].map((t) => (
+                  <div key={t.label} className="flex items-center gap-2 text-sm text-blue-200/50">
+                    <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
+                      <t.icon className="w-4 h-4 text-[#00D4AA]" />
+                    </div>
+                    <span className="font-medium">{t.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        </section>
+
+        {/* ── Quick Links ── */}
+        <section className="pb-16">
+          <div className="space-y-3">
+            <motion.button
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              onClick={() => navigateTo('agent-register')}
+              className="w-full flex items-center justify-between p-5 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/10 border border-amber-200/60 dark:border-amber-800/30 text-amber-800 dark:text-amber-300 font-semibold text-sm hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300 cursor-pointer group"
+            >
+              <span className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Landmark className="w-5 h-5" />
+                </div>
+                <div className="text-left">
+                  <p className="font-bold">Agent TRAIT</p>
+                  <p className="text-xs font-normal opacity-70">Devenez agent de transfert</p>
+                </div>
+              </span>
+              <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </motion.button>
 
             <motion.button
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.65 }}
-              onClick={() => navigateTo('seller-register')}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-pink-50 to-purple-50 dark:from-pink-950/30 dark:to-purple-950/20 border border-pink-200/60 dark:border-pink-800/30 text-pink-700 dark:text-pink-300 text-sm font-semibold hover:border-pink-300 dark:hover:border-pink-700 transition-all cursor-pointer group"
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.05 }}
+              onClick={() => navigateTo('developer-register')}
+              className="w-full flex items-center justify-between p-5 rounded-2xl bg-gradient-to-r from-slate-50 to-zinc-50 dark:from-zinc-800/50 dark:to-zinc-900/50 border border-slate-200/60 dark:border-zinc-700/40 text-foreground font-semibold text-sm hover:shadow-lg hover:shadow-slate-500/10 transition-all duration-300 cursor-pointer group"
             >
-              <Store className="w-4 h-4" />
-              Devenir un fournisseur de services
-              <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+              <span className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-zinc-800 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Code className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+                </div>
+                <div className="text-left">
+                  <p className="font-bold">Espace Développeur</p>
+                  <p className="text-xs font-normal text-muted-foreground">Intégrez TRAIT dans vos applications</p>
+                </div>
+              </span>
+              <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </motion.button>
-          </section>
 
-          {/* ── Stats ── */}
-          <AnimatedSection>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-12">
-              {stats.map((stat) => (
-                <div key={stat.labelKey} className="rounded-xl bg-card border border-border/50 p-4 text-center hover:border-[#0D5C63]/20 transition-colors">
-                  <div className="w-10 h-10 rounded-lg bg-[#0D5C63]/10 dark:bg-[#0D5C63]/20 flex items-center justify-center mx-auto mb-2">
-                    <stat.icon className="w-5 h-5 text-[#0D5C63]" />
-                  </div>
-                  <p className="text-xl font-black text-foreground">{stat.value}</p>
-                  <p className="text-xs text-muted-foreground">{stat.labelKey}</p>
-                </div>
-              ))}
-            </div>
-          </AnimatedSection>
-
-          {/* ── Services ── */}
-          <AnimatedSection>
-            <div className="mb-12">
-              <h2 className="text-lg font-bold text-foreground mb-4">
-                {t('welcome.feature_cards_title')}
-              </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                {services.map((service) => {
-                  const Icon = service.icon
-                  return (
-                    <div key={service.titleKey} className="rounded-xl bg-card border border-border/50 p-4 text-center hover:border-[#0D5C63]/20 hover:shadow-sm transition-all group">
-                      <div className="w-10 h-10 rounded-lg bg-[#0D5C63]/10 dark:bg-[#0D5C63]/20 flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition-transform">
-                        <Icon className="w-5 h-5 text-[#0D5C63]" />
-                      </div>
-                      <p className="text-xs font-semibold text-foreground mb-0.5">{t(service.titleKey)}</p>
-                      <p className="text-[10px] text-muted-foreground">{t(service.descKey)}</p>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </AnimatedSection>
-
-          {/* ── Features ── */}
-          <AnimatedSection>
-            <div className="mb-12">
-              <h2 className="text-lg font-bold text-foreground mb-4">{t('welcome.features')}</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {features.map((feature) => {
-                  const Icon = feature.icon
-                  return (
-                    <div key={feature.titleKey} className="rounded-xl bg-card border border-border/50 p-5 hover:border-[#0D5C63]/20 hover:shadow-sm transition-all group">
-                      <div className="w-10 h-10 rounded-lg bg-[#0D5C63]/10 dark:bg-[#0D5C63]/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                        <Icon className="w-5 h-5 text-[#0D5C63]" />
-                      </div>
-                      <h3 className="text-sm font-semibold text-foreground mb-1">{t(feature.titleKey)}</h3>
-                      <p className="text-xs text-muted-foreground">{t(feature.descKey)}</p>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </AnimatedSection>
-
-          {/* ── Security Banner ── */}
-          <AnimatedSection>
-            <div className="relative rounded-2xl bg-gradient-to-br from-[#0F172A] to-[#1E293B] p-6 sm:p-8 mb-12 overflow-hidden">
-              <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
-              <div className="relative text-center">
-                <div className="w-12 h-12 rounded-xl bg-blue-500/20 border border-blue-400/20 flex items-center justify-center mx-auto mb-3">
-                  <Shield className="w-6 h-6 text-blue-300" />
-                </div>
-                <h2 className="text-lg font-bold text-white mb-2">{t('welcome.trust_title')}</h2>
-                <p className="text-sm text-blue-200/70 max-w-md mx-auto">{t('welcome.trust_desc')}</p>
-                <div className="flex items-center justify-center gap-4 mt-4 text-xs text-blue-300/60">
-                  <span className="flex items-center gap-1"><Lock className="w-3 h-3" />SSL/TLS</span>
-                  <span className="w-px h-3 bg-blue-400/20" />
-                  <span className="flex items-center gap-1"><Shield className="w-3 h-3" />JWT</span>
-                  <span className="w-px h-3 bg-blue-400/20" />
-                  <span className="flex items-center gap-1"><Star className="w-3 h-3" />E2E</span>
-                </div>
-              </div>
-            </div>
-          </AnimatedSection>
-
-          {/* ── Navigation Cards ── */}
-          <AnimatedSection>
-            <div className="space-y-2 mb-12">
-              <button onClick={() => navigateTo('agent-register')}
-                className="w-full flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-amber-50 to-amber-50/50 dark:from-amber-950/30 dark:to-transparent border border-amber-200 dark:border-amber-800/30 text-amber-800 dark:text-amber-300 font-semibold text-sm hover:shadow-md transition-all cursor-pointer group">
-                <span className="flex items-center gap-3"><Shield className="w-5 h-5" />{t('welcome.agent')}</span>
-                <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-              </button>
-              <button onClick={() => navigateTo('developer-register')}
-                className="w-full flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-slate-100 to-slate-100/50 dark:from-slate-800/50 dark:to-transparent border border-slate-200 dark:border-slate-700/30 text-foreground font-semibold text-sm hover:shadow-md transition-all cursor-pointer group">
-                <span className="flex items-center gap-3"><Code className="w-5 h-5" />{t('welcome.developer')}</span>
-                <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-              </button>
-              <button onClick={() => navigateTo('support')}
-                className="w-full flex items-center justify-between p-4 rounded-xl bg-card border border-border/50 text-muted-foreground font-medium text-sm hover:text-foreground hover:border-border transition-all cursor-pointer group">
-                <span className="flex items-center gap-3"><Headphones className="w-5 h-5" />{t('welcome.support')}</span>
-                <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-              </button>
-            </div>
-          </AnimatedSection>
-
-          {/* ── News ── */}
-          <AnimatedSection>
-            <div className="mb-12">
-              <h2 className="text-lg font-bold text-foreground mb-4">{t('welcome.news_title')}</h2>
-              {[
-                { icon: Globe, textKey: 'welcome.news_1' },
-                { icon: Code, textKey: 'welcome.news_2' },
-                { icon: Users, textKey: 'welcome.news_3' },
-              ].map((item) => {
-                const Icon = item.icon
-                return (
-                  <div key={item.textKey} className="flex items-center gap-3 rounded-xl bg-card border border-border/50 p-3.5 mb-2 hover:border-[#0D5C63]/20 transition-all">
-                    <div className="w-9 h-9 rounded-lg bg-[#0D5C63]/10 dark:bg-[#0D5C63]/20 flex items-center justify-center shrink-0">
-                      <Icon className="w-4 h-4 text-[#0D5C63]" />
-                    </div>
-                    <p className="text-xs text-foreground flex-1">{t(item.textKey)}</p>
-                  </div>
-                )
-              })}
-            </div>
-          </AnimatedSection>
-
-          {/* ── PWA Install ── */}
-          {!isStandalone && !isInstalled && (
-            <AnimatedSection>
-              <div className="mb-12">
-                <h2 className="text-lg font-bold text-foreground mb-4">{t('welcome.download_title')}</h2>
-                <div className="grid grid-cols-2 gap-3">
-                  <button onClick={handleAndroidInstall} disabled={installing}
-                    className="rounded-xl bg-card border border-border/50 p-5 text-center hover:border-[#0D5C63]/30 transition-all hover:shadow-sm cursor-pointer disabled:opacity-50 group">
-                    <div className="w-12 h-12 rounded-xl bg-[#0D5C63] flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-                      {installing ? <Loader2 className="w-6 h-6 text-white animate-spin" /> : <Smartphone className="w-6 h-6 text-white" />}
-                    </div>
-                    <p className="text-xs text-muted-foreground">{t('welcome.download_android')}</p>
-                    <p className="text-sm font-bold text-foreground">{installing ? t('welcome.installing') : t('welcome.android')}</p>
-                  </button>
-                  <button onClick={handleIOSInstall}
-                    className="rounded-xl bg-card border border-border/50 p-5 text-center hover:border-slate-300 dark:hover:border-slate-600 transition-all hover:shadow-sm cursor-pointer group">
-                    <div className="w-12 h-12 rounded-xl bg-slate-700 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-                      <Apple className="w-6 h-6 text-white" />
-                    </div>
-                    <p className="text-xs text-muted-foreground">{t('welcome.download_ios')}</p>
-                    <p className="text-sm font-bold text-foreground">{t('welcome.ios')}</p>
-                  </button>
-                </div>
-                {canInstall && (
-                  <p className="mt-3 text-xs text-[#0D5C63] font-medium text-center flex items-center justify-center gap-1">
-                    <Check className="w-3 h-3" />{t('welcome.install_ready')}
-                  </p>
-                )}
-                <a href="/downloads/trait.apk" download="TRAIT-v2.0.0.apk"
-                  className="mt-3 flex items-center justify-center gap-1.5 text-xs text-[#0D5C63] hover:underline font-medium">
-                  <Download className="w-3 h-3" />Télécharger l'APK directement
-                </a>
-              </div>
-            </AnimatedSection>
-          )}
-
-          {/* ── Info Banner ── */}
-          <AnimatedSection>
-            <div className="flex items-start gap-3 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/15 border border-blue-100 dark:border-blue-900/40 p-4 mb-8">
-              <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
-                <Bell className="w-4 h-4 text-[#0D5C63]" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-[#0D5C63] mb-1">{t('welcome.good_to_know')}</p>
-                <p className="text-xs text-blue-700/80 dark:text-blue-400/70">{t('welcome.good_to_know_text')}</p>
-              </div>
-            </div>
-          </AnimatedSection>
-
-          {/* ── CTA ── */}
-          <AnimatedSection>
-            <div className="relative rounded-2xl bg-gradient-to-br from-[#0D5C63] via-[#14888F] to-[#0D5C63] p-6 sm:p-8 text-center overflow-hidden">
-              <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-white/5" />
-              <div className="absolute -bottom-12 -left-12 w-36 h-36 rounded-full bg-white/5" />
-              <div className="relative">
-                <h2 className="text-xl sm:text-2xl font-black text-white mb-2">{t('welcome.cta_title')}</h2>
-                <p className="text-sm text-white/80 max-w-sm mx-auto mb-6">{t('welcome.cta_desc')}</p>
-                <Button
-                  onClick={() => navigateTo('auth', { mode: 'register' })}
-                  className="bg-white hover:bg-white/90 text-[#0D5C63] font-bold rounded-xl shadow-xl h-12 px-8 transition-all active:scale-[0.98] group"
-                >
-                  {t('welcome.cta_button')}
-                  <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-0.5 transition-transform" />
-                </Button>
-              </div>
-            </div>
-          </AnimatedSection>
-
-        </main>
-
-        {/* ── Install Modal ── */}
-        <AnimatePresence>
-          {showInstallModal && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm"
-              onClick={() => setShowInstallModal(false)}
+            <motion.button
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              onClick={() => navigateTo('support')}
+              className="w-full flex items-center justify-between p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/5 text-muted-foreground font-medium text-sm hover:text-foreground hover:shadow-lg transition-all duration-300 cursor-pointer group"
             >
+              <span className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-muted/50 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Headphones className="w-5 h-5" />
+                </div>
+                <div className="text-left">
+                  <p className="font-bold text-foreground">Support</p>
+                  <p className="text-xs font-normal">Aide disponible 24/7</p>
+                </div>
+              </span>
+              <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </motion.button>
+          </div>
+        </section>
+
+        {/* ── FAQ ── */}
+        <section className="pb-16">
+          <div className="text-center mb-10">
+            <h2 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight mb-2">Questions fréquentes</h2>
+          </div>
+          <div className="max-w-xl mx-auto space-y-2">
+            {faq.map((f, i) => (
               <motion.div
-                initial={{ opacity: 0, y: 100 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 100 }}
-                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                className="w-full max-w-md bg-card rounded-t-3xl sm:rounded-3xl p-6"
-                onClick={(e) => e.stopPropagation()}
+                key={i}
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.05 }}
+                className="bg-white dark:bg-zinc-900 rounded-xl border border-black/5 dark:border-white/5 overflow-hidden"
               >
-                <div className="flex items-center justify-between mb-5">
-                  <div className="flex items-center gap-2.5">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${installPlatform === 'android' ? 'bg-[#0D5C63]' : 'bg-slate-700'}`}>
-                      {installPlatform === 'android' ? <Smartphone className="w-5 h-5 text-white" /> : <Apple className="w-5 h-5 text-white" />}
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-foreground">
-                        {installPlatform === 'android' ? t('welcome.android_install_title') : t('welcome.ios_install_title')}
-                      </h3>
-                    </div>
-                  </div>
-                  <button onClick={() => setShowInstallModal(false)} className="text-muted-foreground hover:text-foreground p-1 rounded-full hover:bg-muted/50 transition-colors cursor-pointer">
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <div className="flex flex-col gap-4">
-                  {installPlatform === 'android' ? (
-                    <>
-                      <StepItem number={1}>
-                        <p className="text-sm font-semibold text-foreground">{t('welcome.android_step_1_title')}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{t('welcome.android_step_1_desc')}</p>
-                      </StepItem>
-                      <StepItem number={2}>
-                        <p className="text-sm font-semibold text-foreground">{t('welcome.android_step_2_title')}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{t('welcome.android_step_2_desc')}</p>
-                      </StepItem>
-                      <StepItem number={3}>
-                        <p className="text-sm font-semibold text-foreground">{t('welcome.android_step_3_title')}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{t('welcome.android_step_3_desc')}</p>
-                      </StepItem>
-                      <StepItem number={4}>
-                        <p className="text-sm font-semibold text-foreground">{t('welcome.android_step_4_title')}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{t('welcome.android_step_4_desc')}</p>
-                      </StepItem>
-                    </>
-                  ) : (
-                    <>
-                      <StepItem number={1}>
-                        <p className="text-sm font-semibold text-foreground">{t('welcome.ios_step_1_title')}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{t('welcome.ios_step_1_desc')}</p>
-                      </StepItem>
-                      <StepItem number={2}>
-                        <p className="text-sm font-semibold text-foreground">{t('welcome.ios_step_2_title')}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{t('welcome.ios_step_2_desc')}</p>
-                      </StepItem>
-                      <StepItem number={3}>
-                        <p className="text-sm font-semibold text-foreground">{t('welcome.ios_step_3_title')}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{t('welcome.ios_step_3_desc')}</p>
-                      </StepItem>
-                    </>
+                <button
+                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                  className="w-full flex items-center justify-between p-4 text-left text-sm font-semibold text-foreground hover:bg-muted/30 transition-colors cursor-pointer"
+                >
+                  {f.q}
+                  <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${openFaq === i ? 'rotate-180' : ''}`} />
+                </button>
+                <AnimatePresence>
+                  {openFaq === i && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <p className="px-4 pb-4 text-sm text-muted-foreground leading-relaxed">{f.a}</p>
+                    </motion.div>
                   )}
-                </div>
-
-                <a href="/downloads/trait.apk" download="TRAIT-v2.0.0.apk"
-                  className="mt-5 flex items-center justify-center gap-2 w-full h-10 rounded-xl bg-[#0D5C63] text-white text-sm font-semibold hover:bg-[#083A3E] transition-colors">
-                  <Download className="w-4 h-4" />Télécharger l'APK
-                </a>
+                </AnimatePresence>
               </motion.div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── Download ── */}
+        {!isStandalone && !isInstalled && (
+          <section className="pb-16">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="bg-white dark:bg-zinc-900 rounded-3xl border border-black/5 dark:border-white/5 p-8 text-center"
+            >
+              <h2 className="text-2xl font-black text-foreground tracking-tight mb-2">Téléchargez l&apos;application</h2>
+              <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">Disponible sur Android et iOS. Emportez TRAIT partout avec vous.</p>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <button
+                  onClick={() => handleInstall('android')}
+                  disabled={installing}
+                  className="w-full sm:w-auto flex items-center justify-center gap-3 px-6 py-3.5 rounded-xl bg-[#0D5C63] hover:bg-[#0A4A50] text-white font-semibold text-sm shadow-lg shadow-[#0D5C63]/25 transition-all cursor-pointer disabled:opacity-50 group"
+                >
+                  <Smartphone className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                  <div className="text-left">
+                    <p className="text-[10px] font-normal opacity-70">Télécharger sur</p>
+                    <p className="text-sm font-bold">Android</p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => handleInstall('ios')}
+                  className="w-full sm:w-auto flex items-center justify-center gap-3 px-6 py-3.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-semibold text-sm shadow-lg transition-all cursor-pointer group"
+                >
+                  <Apple className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                  <div className="text-left">
+                    <p className="text-[10px] font-normal opacity-70">Télécharger sur</p>
+                    <p className="text-sm font-bold">iOS</p>
+                  </div>
+                </button>
+              </div>
+              <a href="/downloads/trait.apk" download="TRAIT.apk" className="inline-flex items-center gap-1.5 mt-4 text-xs text-[#0D5C63] hover:underline font-medium">
+                <Download className="w-3 h-3" />
+                Télécharger l&apos;APK directement
+              </a>
             </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+          </section>
+        )}
+
+        {/* ── CTA ── */}
+        <section className="pb-16">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="relative rounded-3xl bg-gradient-to-br from-[#0D5C63] via-[#0A7B82] to-[#14888F] p-8 sm:p-12 text-center overflow-hidden"
+          >
+            <div className="absolute inset-0">
+              <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full bg-white/5" />
+              <div className="absolute -bottom-16 -left-16 w-48 h-48 rounded-full bg-white/5" />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-white/5 rounded-full blur-[80px]" />
+            </div>
+            <div className="relative z-10">
+              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight mb-3">Prêt à commencer ?</h2>
+              <p className="text-sm text-white/70 max-w-sm mx-auto mb-6 leading-relaxed">
+                Rejoignez des milliers d&apos;utilisateurs qui font confiance à TRAIT pour leurs transactions financières.
+              </p>
+              <Button
+                onClick={() => navigateTo('auth', { mode: 'register' })}
+                className="h-12 px-8 bg-white hover:bg-white/90 text-[#0D5C63] font-bold rounded-xl shadow-xl transition-all active:scale-[0.98] group text-sm"
+              >
+                {t('welcome.cta_button')}
+                <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-0.5 transition-transform" />
+              </Button>
+            </div>
+          </motion.div>
+        </section>
+      </main>
+
+      {/* ── Footer ── */}
+      <footer className="border-t border-black/5 dark:border-white/5 bg-white dark:bg-[#09090b]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#0D5C63] to-[#14888F] flex items-center justify-center">
+                <span className="text-white text-[10px] font-black">T</span>
+              </div>
+              <span className="text-sm font-bold text-foreground">TRAIT</span>
+              <span className="text-xs text-muted-foreground">&copy; 2026</span>
+            </div>
+            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              <a href="/terms" className="hover:text-foreground transition-colors">Conditions</a>
+              <span className="w-px h-3 bg-border" />
+              <span>Fait avec ❤️ en RDC</span>
+            </div>
+          </div>
+        </div>
+      </footer>
+
+      {/* ── Install Modal ── */}
+      <AnimatePresence>
+        {showInstallModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowInstallModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 100 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 100 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-t-3xl sm:rounded-3xl p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${installPlatform === 'android' ? 'bg-[#0D5C63]' : 'bg-zinc-800'}`}>
+                    {installPlatform === 'android' ? <Smartphone className="w-5 h-5 text-white" /> : <Apple className="w-5 h-5 text-white" />}
+                  </div>
+                  <h3 className="text-lg font-bold text-foreground">
+                    {installPlatform === 'android' ? 'Installer sur Android' : 'Installer sur iOS'}
+                  </h3>
+                </div>
+                <button onClick={() => setShowInstallModal(false)} className="p-1.5 rounded-full hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-3 mb-5">
+                {installPlatform === 'android' ? (
+                  <>
+                    {['Ouvrez Chrome et allez sur trait-rho.vercel.app', 'Appuyez sur le menu ⋮ puis "Ajouter à l\'écran d\'accueil"', 'Confirmez en appuyant sur "Ajouter"', 'TRAIT est maintenant installé !'].map((step, i) => (
+                      <div key={i} className="flex gap-3 items-start">
+                        <div className="w-7 h-7 rounded-full bg-[#0D5C63]/10 flex items-center justify-center shrink-0 mt-0.5">
+                          <span className="text-xs font-bold text-[#0D5C63]">{i + 1}</span>
+                        </div>
+                        <p className="text-sm text-foreground">{step}</p>
+                      </div>
+                    ))}
+                  </>
+                ) : (
+                  <>
+                    {['Ouvrez Safari sur votre iPhone', 'Allez sur trait-rho.vercel.app', 'Appuyez sur le bouton Partager puis "Sur l\'écran d\'accueil"', 'TRAIT est maintenant installé !'].map((step, i) => (
+                      <div key={i} className="flex gap-3 items-start">
+                        <div className="w-7 h-7 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 mt-0.5">
+                          <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400">{i + 1}</span>
+                        </div>
+                        <p className="text-sm text-foreground">{step}</p>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+
+              <a href="/downloads/trait.apk" download="TRAIT.apk" className="flex items-center justify-center gap-2 w-full h-11 rounded-xl bg-[#0D5C63] hover:bg-[#0A4A50] text-white text-sm font-semibold transition-colors">
+                <Download className="w-4 h-4" />Télécharger l&apos;APK
+              </a>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
