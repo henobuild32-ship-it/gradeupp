@@ -3,16 +3,12 @@ import { NextRequest, NextResponse } from 'next/server'
 const GLM_API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions'
 const GLM_API_KEY = process.env.GLM_API_KEY || ''
 
-/* ═══════════════════════════════════════════════════════════════
-   LOCAL AI — Always works, zero latency, multilingual
-   ═══════════════════════════════════════════════════════════════ */
-
 interface MatchResult {
   response: string
   actions?: Array<{ label: string; page: string }>
 }
 
-const PAGES = {
+const PAGES: Record<string, string> = {
   home: '🏠 Accueil',
   send: '📤 Envoyer',
   withdraw: '💵 Retirer',
@@ -29,13 +25,17 @@ const PAGES = {
   support: '💬 Support',
 }
 
+function pick<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)]
+}
+
 function detectLang(text: string): 'fr' | 'en' | 'es' | 'ar' | 'pt' | 'other' {
   const lower = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-  if (lower.match(/\b(salut|bonjour|bonsoir|comment|quest|merci|aussi|mais|donc|pourquoi|cette|peut|importe|fait|dit|vraiment|beaucoup|toujours|jamais|aujourd|demain|hier|maintenant|encore|juste|assez|trop|rien|toute|tout|chaque|autre|entre|apres|avant|pendant|depuis|vers|chez|pour|par|avec|sans|dans|sur|sous|cote)\b/)) return 'fr'
-  if (lower.match(/\b(hello|hi|hey|how|what|when|where|why|who|which|thank|please|sorry|help|money|send|withdraw|deposit|balance|card|transfer|pay|bill|price|work|app|feature)\b/)) return 'en'
-  if (lower.match(/\b(hola|gracias|por favor|como|cuanto|donde|cuando|que|quiero|necesito|puedo|dinero|enviar|retirar|depositar|tarjeta|factura|pago)\b/)) return 'es'
-  if (lower.match(/[\u0600-\u06FF]/) || lower.match(/\b(marhaba|shukran|afwan|kayfa|kam|ayna|mata|maa|man|alladhi|yurid|yummkin|fulus|irsal|sadh|imaan|bitaqa|fatura)\b/)) return 'ar'
-  if (lower.match(/\b(ola|obrigado|por favor|como|quanto|onde|quando|o que|quem|quero|preciso|posso|dinheiro|enviar|retirar|depositar|cartao|fatura|pagamento)\b/)) return 'pt'
+  if (lower.match(/[\u0600-\u06FF]/) || lower.match(/\b(marhaba|shukran|afwan|kayfa|kam|ayna|mata|maa|fulus|irsal|bitaqa|fatura)\b/)) return 'ar'
+  if (lower.match(/\b(hola|gracias|por favor|como|cuanto|donde|cuando|quiero|necesito|puedo|dinero|enviar|retirar|depositar|tarjeta|factura|pago|tambien|puedes|ayudame|necesitar|quisiera)\b/)) return 'es'
+  if (lower.match(/\b(ola|obrigado|obrigada|por favor|como|quanto|onde|quando|o que|quem|quero|preciso|posso|dinheiro|enviar|retirar|depositar|cartao|fatura|pagamento|tambem|pode|ajudar|precisar)\b/)) return 'pt'
+  if (lower.match(/\b(salut|bonjour|bonsoir|bonne nuit|merci|aussi|mais|donc|pourquoi|comment|quest|cette|peut|importe|fait|dit|vraiment|beaucoup|toujours|jamais|aujourd|demain|hier|maintenant|encore|juste|assez|trop|rien|toute|tout|chaque|autre|entre|apres|avant|pendant|depuis|vers|chez|pour|par|avec|sans|dans|sur|sous|voila|daccord|super|ok|genial|bien|mal|peux|veux|voulez|pouvez|besoin|aide|question|reponse|explique|comment|combien|coute|cout|tarif|frais|transfert|envoyer|retrait|retirer|depot|deposer|solde|carte|facture|marche|epargne|parrainage|agent|securite|parametre|profil|notification|support)\b/)) return 'fr'
+  if (lower.match(/\b(hello|hi|hey|how|what|when|where|why|who|which|thank|please|sorry|help|money|send|withdraw|deposit|balance|card|transfer|pay|bill|price|work|app|feature|can|could|would|tell|show|need|want|give|make|do|is|are|was|were|have|has|does|doing|about|think|know|right|good|bad|great|nice|yes|no|sure|okay|cool|awesome|love|like|really|very|much|more|most|best|better|also|too|well|just|now|here|there|then|than|about|into|over|after|before|during|while|since|until|because|so|but|and|or|not|all|some|any|every|each|other|another|next|last|new|old|big|small|first|last|long|short|high|low|fast|slow|easy|hard|free|busy|ready|safe|secure|private|public|personal|official|local|global|digital|virtual|real|actual|true|false|possible|impossible|important|necessary|useful|helpful|available|popular|common|rare|special|unique|different|similar|same|equal|opposite|simple|complex|clear|vague|open|close|start|stop|begin|end|enter|exit|join|leave|add|remove|create|delete|update|change|keep|save|send|receive|buy|sell|pay|get|take|give|put|set|run|move|turn|go|come|see|look|watch|listen|hear|feel|touch|smell|taste|read|write|speak|talk|ask|answer|say|tell|call|ring|speak|meet|visit|travel|walk|run|drive|fly|swim|eat|drink|sleep|wake|work|play|rest|relax|enjoy|have|be|do|get|make|go|come|see|know|think|take|want|give|use|find|tell|ask|try|keep|let|begin|seem|help|show|hear|play|run|move|live|believe|hold|bring|happen|write|sit|stand|lose|pay|meet|include|continue|learn|change|lead|understand|watch|follow|stop|create|speak|read|allow|add|spend|grow|open|walk|win|offer|remember|love|consider|appear|buy|wait|serve|die|send|expect|build|stay|fall|cut|reach|kill|remain|suggest|raise|pass|sell|require|report|decide|pull|develop)\b/)) return 'en'
   return 'other'
 }
 
@@ -52,211 +52,265 @@ function matchMessage(message: string): MatchResult | null {
   const lower = message.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
   const lang = detectLang(message)
 
-  // ── GREETINGS ──────────────────────────────────────────────
-  if (lower.match(/^(salut|bonjour|bonsoir|bonne nuit|hey|hello|hi|yo|hola|ola|marhaba|shukran|coucou|allô|alllo|ca va|comment ca va|how are you|que tal|como estas)/)) {
-    const responses = [
-      reply(lang,
-        "Salut ! 😊 Je suis TRAIT IA, votre assistant personnel. Je peux vous aider avec vos transferts, retraits, dépôts ou toute autre question sur l'app. Que souhaitez-vous faire ?",
-        "Hey there! 😊 I'm TRAIT IA, your personal assistant. I can help you with transfers, withdrawals, deposits or any question about the app. What would you like to do?",
-        "¡Hola! 😊 Soy TRAIT IA, tu asistente personal. Puedo ayudarte con transferencias, retiros, depósitos o cualquier pregunta sobre la app. ¿Qué deseas hacer?",
-      )
-    ]
-    return { response: responses[0], actions: [{ label: PAGES.send, page: 'send' }, { label: PAGES.withdraw, page: 'withdraw' }] }
-  }
-
-  // ── THANKS ─────────────────────────────────────────────────
-  if (lower.match(/^(merci|thanks|thank you|gracias|shukran|obrigado|ok|d'accord|c'est bon|super|parfait|genial|cool|excellent)/)) {
-    return { response: reply(lang,
-      "Avec plaisir ! 😊 N'hésitez pas si vous avez d'autres questions, je suis toujours là pour vous aider.",
-      "You're welcome! 😊 Feel free to ask if you have more questions, I'm always here to help.",
-      "¡De nada! 😊 No dudes en preguntar si tienes más preguntas, siempre estoy aquí para ayudarte.",
-    )}
-  }
-
-  // ── GOODBYE ────────────────────────────────────────────────
-  if (lower.match(/^(au revoir|bye|a plus|ciao|tchao|goodbye|see you|adios|hasta|ma3a salama)/)) {
-    return { response: reply(lang,
-      "Au revoir ! 👋 Passez une excellente journée et revenez quand vous voulez. Je suis toujours là !",
-      "Goodbye! 👋 Have a wonderful day and come back anytime. I'm always here!",
-      "¡Adiós! 👋 Que tengas un excelente día y vuelve cuando quieras. ¡Siempre estoy aquí!",
-    )}
-  }
-
-  // ── FEES ───────────────────────────────────────────────────
-  if (lower.match(/(frais|commiss|coute|cout|tarif|price|fee|cost|how much|combien|cuanto|precio|menuhir|ثمن|preco)/)) {
+  // ── GREETINGS (5 variants) ─────────────────────────────────
+  if (lower.match(/^(salut|bonjour|bonsoir|bonne nuit|hey|hello|hi|yo|hola|ola|marhaba|coucou|allô|ca va|comment ca va|how are you|que tal|como estas|buenos|buenas)/)) {
+    const responses = {
+      fr: pick([
+        `Salut ${pick(['', '!'])} ${pick(['😊', '👋', '✨'])} Je suis TRAIT IA, votre assistant personnel. ${pick(['Comment puis-je vous aider?', 'Que puis-je faire pour vous?', 'Dites-moi ce dont vous avez besoin.', 'Je suis là pour vous aider!'])}`,
+        `Hey ${pick(['!', ''])} ${pick(['🎉', '💫', '🌟'])} ${pick(['Content de vous voir!', 'Ravi de vous parler!', 'Bienvenue!'])} Je suis TRAIT IA. ${pick(['Comment puis-je vous aider?', 'Que souhaitez-vous faire?'])}`,
+        `Bonjour! ${pick(['👋', '😊', '✨'])} ${pick(['Je suis TRAIT IA, votre assistant fintech.', 'Votre assistant personnel TRAIT IA est là.', 'TRAIT IA à votre service!'])} ${pick(['Posez-moi vos questions!', 'Demandez-moi de l\'aide!', 'Je suis prêt à vous aider.'])}`,
+        `${pick(['Salut', 'Bonjour'])} ${pick(['!', ''])} ${pick(['🤖', '💙', '🚀'])} ${pick(['Comment puis-je vous assister?', 'Besoin d\'aide avec quelque chose?', 'Que voulez-vous savoir?'])}`,
+        `${pick(['Hey', 'Salut', 'Bonjour'])}! ${pick(['Je suis TRAIT IA.', 'C\'est TRAIT IA.', 'Votre assistant TRAIT IA ici.'])} ${pick(['Je peux tout vous expliquer sur l\'app!', 'Posez vos questions!', 'Comment puis-je vous aider?'])}`,
+      ]),
+      en: pick([
+        `Hey ${pick(['!', ''])} ${pick(['😊', '👋', '✨'])} I'm TRAIT IA, your personal assistant. ${pick(['How can I help you?', 'What can I do for you?', 'Tell me what you need.', 'I\'m here to help!'])}`,
+        `Hello ${pick(['!', ''])} ${pick(['🎉', '💫', '🌟'])} ${pick(['Great to see you!', 'Happy to help!', 'Welcome!'])} I'm TRAIT IA. ${pick(['How can I assist you?', 'What would you like to do?'])}`,
+        `Hi there! ${pick(['👋', '😊', '✨'])} ${pick(['I\'m your TRAIT IA assistant.', 'Your personal fintech assistant.', 'TRAIT IA at your service!'])} ${pick(['Ask me anything!', 'How can I help you today?'])}`,
+      ]),
+      es: pick([
+        `¡Hola! ${pick(['😊', '👋', '✨'])} Soy TRAIT IA, tu asistente personal. ${pick(['¿Cómo puedo ayudarte?', '¿Qué puedo hacer por ti?', 'Dime lo que necesitas.', '¡Estoy aquí para ayudarte!'])}`,
+        `¡Hey! ${pick(['🎉', '💫', '🌟'])} ${pick(['¡Qué bueno verte!', '¡Encantado de hablar contigo!', '¡Bienvenido!'])} Soy TRAIT IA. ${pick(['¿Cómo puedo asistirte?', '¿Qué deseas hacer?'])}`,
+      ]),
+    }
     return {
-      response: reply(lang,
-        "Les frais sur TRAIT sont très avantageux 💰\n\n• Dépôt : **Gratuit** ✅\n• Retrait : **0.7%**\n• Transfert : **0.7%**\n\nC'est l'un des meilleurs tarifs du marché ! Voulez-vous effectuer une opération ?",
-        "TRAIT fees are very competitive 💰\n\n• Deposit: **Free** ✅\n• Withdrawal: **0.7%**\n• Transfer: **0.7%**\n\nOne of the best rates available! Would you like to make a transaction?",
-        "Las tarifas en TRAIT son muy competitivas 💰\n\n• Depósito: **Gratis** ✅\n• Retiro: **0.7%**\n• Transferencia: **0.7%**\n\n¡Es una de las mejores tarifas del mercado! ¿Deseas hacer una transacción?",
-      ),
+      response: responses[lang as keyof typeof responses] || responses.en,
       actions: [{ label: PAGES.send, page: 'send' }, { label: PAGES.withdraw, page: 'withdraw' }],
     }
   }
 
-  // ── TRANSFER / SEND ────────────────────────────────────────
+  // ── THANKS (3 variants) ────────────────────────────────────
+  if (lower.match(/^(merci|thanks|thank you|gracias|shukran|obrigado|ok|d'accord|c'est bon|super|parfait|genial|cool|excellent|muito bem|muito obrigado|muy bien)/)) {
+    return {
+      response: pick([
+        reply(lang,
+          `${pick(['Avec plaisir', 'De rien', 'Pas de problème', 'Toujours là'])}! ${pick(['😊', '💫', '✨'])} ${pick(['N\'hésitez pas si vous avez d\'autres questions!', 'Je suis toujours disponible!', 'Revenez quand vous voulez!', 'Dites-moi si vous avez besoin d\'autre chose!'])}`,
+          `${pick(['You\'re welcome', 'My pleasure', 'No problem', 'Always happy to help'])}! ${pick(['😊', '💫', '✨'])} ${pick(['Feel free to ask more questions!', 'I\'m always available!', 'Come back anytime!', 'Let me know if you need anything else!'])}`,
+          `${pick(['¡De nada', 'Con mucho gusto', 'No hay problema', 'Siempre aquí para ayudar'])}! ${pick(['😊', '💫', '✨'])} ${pick(['¡No dudes en preguntar más!', '¡Estoy siempre disponible!', '¡Vuelve cuando quieras!'])}`,
+        ),
+      ]),
+    }
+  }
+
+  // ── GOODBYE (3 variants) ───────────────────────────────────
+  if (lower.match(/^(au revoir|bye|a plus|ciao|tchao|goodbye|see you|adios|hasta|ma3a salama|auf wiedersehen)/)) {
+    return {
+      response: pick([
+        reply(lang,
+          `${pick(['Au revoir', 'À bientôt', 'Salut', 'Bonne journée'])}! ${pick(['👋', '🌟', '💫'])} ${pick(['Passez une excellente journée!', 'Revenez quand vous voulez!', 'Je serai toujours là!', 'À très bientôt!'])}`,
+          `${pick(['Goodbye', 'See you', 'Bye', 'Have a great day'])}! ${pick(['👋', '🌟', '💫'])} ${pick(['Have a wonderful day!', 'Come back anytime!', 'I\'ll be here!', 'See you soon!'])}`,
+          `${pick(['Adiós', 'Hasta luego', 'Nos vemos', 'Que tengas un buen día'])}! ${pick(['👋', '🌟', '💫'])} ${pick(['¡Que tengas un excelente día!', '¡Vuelve cuando quieras!', '¡Siempre estoy aquí!'])}`,
+        ),
+      ]),
+    }
+  }
+
+  // ── FEES (5 variants) ──────────────────────────────────────
+  if (lower.match(/(frais|commiss|coute|cout|tarif|price|fee|cost|how much|combien|cuanto|precio|menuhir|ثمن|preco)/)) {
+    return {
+      response: pick([
+        reply(lang,
+          `Les frais sur TRAIT sont très avantageux ${pick(['💰', '💸', '✅'])}\n\n• Dépôt : **Gratuit** ✅\n• Retrait : **0.7%**\n• Transfert : **0.7%**\n\n${pick(['C\'est l\'un des meilleurs tarifs du marché!', 'Des tarifs imbattables!', 'Le meilleur rapport qualité-prix!'])}`,
+          `TRAIT fees are very competitive ${pick(['💰', '💸', '✅'])}\n\n• Deposit: **Free** ✅\n• Withdrawal: **0.7%**\n• Transfer: **0.7%**\n\n${pick(['One of the best rates available!', 'Unbeatable prices!', 'Best value for your money!'])}`,
+          `Las tarifas en TRAIT son muy competitivas ${pick(['💰', '💸', '✅'])}\n\n• Depósito: **Gratis** ✅\n• Retiro: **0.7%**\n• Transferencia: **0.7%**\n\n${pick(['¡Es una de las mejores tarifas del mercado!', '¡Precios inmejorables!'])}`,
+        ),
+        reply(lang,
+          `Voici nos frais ${pick(['💰', '📊'])} :\n\n• Dépôt : **GRATUIT** ${pick(['🎉', '✅', '💪'])}\n• Retrait : **0.7%** du montant\n• Transfert : **0.7%** du montant\n\n${pick(['Pas de frais cachés!', 'Tout est transparent!', 'Des frais minimes!'])}`,
+          `Here are our fees ${pick(['💰', '📊'])}:\n\n• Deposit: **FREE** ${pick(['🎉', '✅', '💪'])}\n• Withdrawal: **0.7%**\n• Transfer: **0.7%**\n\n${pick(['No hidden fees!', 'Everything is transparent!', 'Minimal fees!'])}`,
+        ),
+      ]),
+      actions: [{ label: PAGES.send, page: 'send' }, { label: PAGES.withdraw, page: 'withdraw' }],
+    }
+  }
+
+  // ── TRANSFER (5 variants) ──────────────────────────────────
   if (lower.match(/(transfert|transfer|envoyer|send|envoie|send money|transferir|irsal|تحويل|enviar dinero)/)) {
     return {
-      response: reply(lang,
-        "Voici comment envoyer de l'argent sur TRAIT 📤\n\n1️⃣ Appuyez sur « Envoyer »\n2️⃣ Entrez le montant\n3️⃣ Choisissez le destinataire (nom, téléphone ou code agent)\n4️⃣ Confirmez avec votre PIN\n\nLe transfert est **instantané** et coûte seulement 0.7%. Prêt à envoyer ?",
-        "Here's how to send money on TRAIT 📤\n\n1️⃣ Tap « Send »\n2️⃣ Enter the amount\n3️⃣ Choose the recipient (name, phone or agent code)\n4️⃣ Confirm with your PIN\n\nTransfer is **instant** and costs only 0.7%. Ready to send?",
-        "Así se envía dinero en TRAIT 📤\n\n1️⃣ Toca « Enviar »\n2️⃣ Ingresa el monto\n3️⃣ Elige al destinatario (nombre, teléfono o código de agente)\n4️⃣ Confirma con tu PIN\n\nLa transferencia es **instantánea** y cuesta solo 0.7%. ¿Listo para enviar?",
-      ),
+      response: pick([
+        reply(lang,
+          `Pour envoyer de l'argent sur TRAIT ${pick(['📤', '💸', '💰'])}\n\n1️⃣ Appuyez sur « Envoyer »\n2️⃣ Entrez le montant\n3️⃣ Choisissez le destinataire\n4️⃣ Confirmez avec votre PIN\n\n${pick(['Le transfert est instantané!', 'C\'est rapide et sécurisé!', 'En quelques secondes!'])} Frais: 0.7%.`,
+          `How to send money on TRAIT ${pick(['📤', '💸', '💰'])}\n\n1️⃣ Tap « Send »\n2️⃣ Enter the amount\n3️⃣ Choose the recipient\n4️⃣ Confirm with your PIN\n\n${pick(['Transfer is instant!', 'Fast and secure!', 'In just seconds!'])} Fee: 0.7%.`,
+          `Para enviar dinero en TRAIT ${pick(['📤', '💸', '💰'])}\n\n1️⃣ Toca « Enviar »\n2️⃣ Ingresa el monto\n3️⃣ Elige al destinatario\n4️⃣ Confirma con tu PIN\n\n${pick(['¡La transferencia es instantánea!', '¡Rápido y seguro!', '¡En segundos!'])} Comisión: 0.7%.`,
+        ),
+        reply(lang,
+          `Envoyer de l'argent est simple ${pick(['📤', '⚡'])} :\n\n• Allez dans « Envoyer »\n• Sélectionnez un contact ou entrez un numéro\n• Indiquez le montant en USD ou FC\n• Validez avec votre code PIN\n\n${pick(['Transfert instantané!', 'Argent reçu en quelques secondes!', 'Ça arrive tout de suite!'])}`,
+          `Sending money is easy ${pick(['📤', '⚡'])}:\n\n• Go to « Send »\n• Select a contact or enter a number\n• Enter the amount in USD or FC\n• Confirm with your PIN\n\n${pick(['Instant transfer!', 'Money arrives in seconds!', 'Right away!'])}`,
+        ),
+      ]),
       actions: [{ label: '📤 Envoyer maintenant', page: 'send' }],
     }
   }
 
-  // ── WITHDRAWAL ─────────────────────────────────────────────
-  if (lower.match(/(retrait|retirer|withdraw|cash|retirar|sacar|سحب|retir)/)) {
+  // ── WITHDRAWAL (5 variants) ────────────────────────────────
+  if (lower.match(/(retrait|retirer|withdraw|cash|retirar|sacar|سحب|retir|atm|guichet)/)) {
     return {
-      response: reply(lang,
-        "Pour retirer du cash 💵\n\n1️⃣ Allez dans « Retirer »\n2️⃣ Entrez le montant souhaité\n3️⃣ Trouvez un agent TRAIT proche de vous\n4️⃣ Confirmez avec votre PIN\n5️⃣ Récupérez votre cash chez l'agent\n\nFrais : seulement 0.7%. Voulez-vous retirer ?",
-        "To withdraw cash 💵\n\n1️⃣ Go to « Withdraw »\n2️⃣ Enter the amount\n3️⃣ Find a TRAIT agent near you\n4️⃣ Confirm with your PIN\n5️⃣ Get your cash from the agent\n\nFee: only 0.7%. Want to withdraw?",
-        "Para retirar efectivo 💵\n\n1️⃣ Ve a « Retirar »\n2️⃣ Ingresa el monto\n3️⃣ Encuentra un agente TRAIT cerca\n4️⃣ Confirma con tu PIN\n5️⃣ Recibe tu efectivo del agente\n\nComisión: solo 0.7%. ¿Quieres retirar?",
-      ),
+      response: pick([
+        reply(lang,
+          `Pour retirer du cash ${pick(['💵', '🏧', '💰'])}\n\n1️⃣ Allez dans « Retirer »\n2️⃣ Entrez le montant\n3️⃣ Trouvez un agent TRAIT proche\n4️⃣ Confirmez avec votre PIN\n5️⃣ Récupérez votre cash\n\n${pick(['Frais: 0.7%', 'Seulement 0.7% de commission!'])}`,
+          `To withdraw cash ${pick(['💵', '🏧', '💰'])}\n\n1️⃣ Go to « Withdraw »\n2️⃣ Enter the amount\n3️⃣ Find a nearby TRAIT agent\n4️⃣ Confirm with your PIN\n5️⃣ Get your cash\n\n${pick(['Fee: 0.7%', 'Only 0.7% commission!'])}`,
+          `Para retirar efectivo ${pick(['💵', '🏧', '💰'])}\n\n1️⃣ Ve a « Retirar »\n2️⃣ Ingresa el monto\n3️⃣ Encuentra un agente cerca\n4️⃣ Confirma con tu PIN\n5️⃣ Recibe tu efectivo\n\n${pick(['Comisión: 0.7%', '¡Solo 0.7%!'])}`,
+        ),
+        reply(lang,
+          `Retirer du cash ${pick(['💵', '🏪'])}:\n\n• Cherchez un agent TRAIT près de chez vous\n• Montrez le montant à retirer\n• Entrez votre code PIN\n• Recevez votre cash\n\n${pick(['Simple et rapide!', 'En quelques minutes!', 'Frais: seulement 0.7%!'])}`,
+          `Withdraw cash ${pick(['💵', '🏪'])}:\n\n• Find a TRAIT agent near you\n• Show the withdrawal amount\n• Enter your PIN code\n• Receive your cash\n\n${pick(['Simple and fast!', 'In just minutes!', 'Fee: only 0.7%!'])}`,
+        ),
+      ]),
       actions: [{ label: '💵 Retirer', page: 'withdraw' }],
     }
   }
 
-  // ── DEPOSIT ────────────────────────────────────────────────
-  if (lower.match(/(depot|deposer|deposit|recharge|depósito|deposar|recargar|إيداع|top up)/)) {
+  // ── DEPOSIT (5 variants) ───────────────────────────────────
+  if (lower.match(/(depot|deposer|deposit|recharge|depósito|deposar|recargar|إيداع|top up|recharger)/)) {
     return {
-      response: reply(lang,
-        "Pour déposer de l'argent 🏦\n\n1️⃣ Allez dans « Dépôt »\n2️⃣ Choisissez le montant\n3️⃣ Sélectionnez un agent ou mode de paiement\n4️⃣ Confirmez la transaction\n\n✅ Le dépôt est **100% gratuit** ! Voulez-vous déposer ?",
-        "To deposit money 🏦\n\n1️⃣ Go to « Deposit »\n2️⃣ Choose the amount\n3️⃣ Select an agent or payment method\n4️⃣ Confirm the transaction\n\n✅ Deposit is **100% free**! Want to deposit?",
-        "Para depositar dinero 🏦\n\n1️⃣ Ve a « Depósito »\n2️⃣ Elige el monto\n3️⃣ Selecciona un agente o método de pago\n4️⃣ Confirma la transacción\n\n✅ ¡El depósito es **100% gratis**! ¿Quieres depositar?",
-      ),
+      response: pick([
+        reply(lang,
+          `Pour déposer de l'argent ${pick(['🏦', '💳', '💰'])}\n\n1️⃣ Allez dans « Dépôt »\n2️⃣ Choisissez le montant\n3️⃣ Sélectionnez un agent\n4️⃣ Confirmez\n\n✅ ${pick(['Le dépôt est 100% gratuit!', 'Aucun frais de dépôt!', 'Dépôt totalement gratuit!'])}`,
+          `To deposit money ${pick(['🏦', '💳', '💰'])}\n\n1️⃣ Go to « Deposit »\n2️⃣ Choose the amount\n3️⃣ Select an agent\n4️⃣ Confirm\n\n✅ ${pick(['Deposit is 100% free!', 'No deposit fees!', 'Completely free!'])}`,
+          `Para depositar ${pick(['🏦', '💳', '💰'])}\n\n1️⃣ Ve a « Depósito »\n2️⃣ Elige el monto\n3️⃣ Selecciona un agente\n4️⃣ Confirma\n\n✅ ${pick(['¡El depósito es 100% gratis!', '¡Sin comisiones!', '¡Totalmente gratuito!'])}`,
+        ),
+      ]),
       actions: [{ label: '🏦 Déposer', page: 'deposit' }],
     }
   }
 
-  // ── BALANCE ────────────────────────────────────────────────
-  if (lower.match(/(solde|balance|combien|how much|mon argent|mon cash|mein|mi saldo|mi cuenta| saldo|.balance|الرصيد|quanto ho)/)) {
+  // ── BALANCE (5 variants) ───────────────────────────────────
+  if (lower.match(/(solde|balance|combien|how much|mon argent|mon cash|mein|mi saldo|mi cuenta|saldo|.balance|الرصيد|quanto ho|portefeuille|wallet)/)) {
     return {
-      response: reply(lang,
-        "Pour vérifier votre solde 💳\n\nVotre solde s'affiche en haut de l'écran d'accueil. Vous pouvez aussi aller dans « Portefeuille » pour voir le détail de vos comptes USD et FC.\n\nVoulez-vous y aller ?",
-        "To check your balance 💳\n\nYour balance is displayed at the top of the home screen. You can also go to « Wallet » to see details of your USD and FC accounts.\n\nWant to go there?",
-        "Para verificar tu saldo 💳\n\nTu saldo se muestra en la parte superior de la pantalla de inicio. También puedes ir a « Monedero » para ver los detalles de tus cuentas USD y FC.\n\n¿Quieres ir allí?",
-      ),
+      response: pick([
+        reply(lang,
+          `Pour vérifier votre solde ${pick(['💳', '📊', '👀'])}\n\n• Votre solde s'affiche en haut de l'accueil\n• Allez dans « Portefeuille » pour le détail\n• Vos comptes USD et FC y sont affichés\n\n${pick(['Voulez-vous y aller?', 'Je vous y emmène?'])}`,
+          `To check your balance ${pick(['💳', '📊', '👀'])}\n\n• Your balance shows at the top of home\n• Go to « Wallet » for details\n• Your USD and FC accounts are there\n\n${pick(['Want to go there?', 'Shall I take you there?'])}`,
+          `Para verificar tu saldo ${pick(['💳', '📊', '👀'])}\n\n• Tu saldo aparece arriba en el inicio\n• Ve a « Monedero » para detalles\n• Tus cuentas USD y FC están ahí\n\n${pick(['¿Quieres ir allí?', '¿Te llevo?'])}`,
+        ),
+      ]),
       actions: [{ label: '🏠 Voir mon solde', page: 'home' }],
     }
   }
 
-  // ── CARD ───────────────────────────────────────────────────
+  // ── CARD (4 variants) ──────────────────────────────────────
   if (lower.match(/(carte|card|virtuelle|virtual|virtual card|ccv|cvv|numeros|card number|tarjeta|tarjeta virtual|بطاقة)/)) {
     return {
-      response: reply(lang,
-        "La carte TRAIT 💳\n\n• Carte virtuelle sécurisée\n• Utilisable en ligne et en magasin\n• Code CCV visible au dos de la carte\n• Gérez-la directement dans l'app\n• Ajoutez une carte enfant si besoin\n\nVoulez-vous voir votre carte ?",
-        "The TRAIT Card 💳\n\n• Secure virtual card\n• Use online and in stores\n• CCV code visible on the back\n• Manage it directly in the app\n• Add a child card if needed\n\nWant to see your card?",
-        "La tarjeta TRAIT 💳\n\n• Tarjeta virtual segura\n• Úsala en línea y en tiendas\n• Código CCV visible en el reverso\n• Gestiónala directamente en la app\n• Añade una tarjeta hija si necesitas\n\n¿Quieres ver tu tarjeta?",
-      ),
+      response: pick([
+        reply(lang,
+          `La carte TRAIT ${pick(['💳', '💎', '✨'])}\n\n• ${pick(['Carte virtuelle sécurisée', 'Carte sécurisée'])}\n• ${pick(['Utilisable en ligne et en magasin', 'Paiements en ligne et en magasin'])}\n• Code CCV au dos\n• ${pick(['Gérez-la dans l\'app', 'Gestion directe dans l\'app'])}\n\n${pick(['Voulez-vous la voir?', 'Je vous la montre?'])}`,
+          `The TRAIT Card ${pick(['💳', '💎', '✨'])}\n\n• ${pick(['Secure virtual card', 'Secured card'])}\n• ${pick(['Use online and in stores', 'Online and in-store payments'])}\n• CCV code on the back\n• ${pick(['Manage it in the app', 'Direct management in the app'])}\n\n${pick(['Want to see it?', 'Shall I show you?'])}`,
+          `La tarjeta TRAIT ${pick(['💳', '💎', '✨'])}\n\n• ${pick(['Tarjeta virtual segura', 'Tarjeta segura'])}\n• ${pick(['Úsala en línea y en tiendas', 'Pagos en línea y en tiendas'])}\n• Código CCV en el reverso\n• ${pick(['Gestiónala en la app', 'Gestión directa en la app'])}\n\n${pick(['¿Quieres verla?', '¿Te la muestro?'])}`,
+        ),
+      ]),
       actions: [{ label: '💳 Ma carte', page: 'card' }],
     }
   }
 
-  // ── BILLS ──────────────────────────────────────────────────
-  if (lower.match(/(facture|bill|electricite|eau|internet|phone|recharge|pay|payer|factura|pago|bill pay|fatura|eletricidade|agua|invoice|لفاتورة|فواتير)/)) {
+  // ── BILLS (4 variants) ─────────────────────────────────────
+  if (lower.match(/(facture|bill|electricite|eau|internet|phone|recharge|pay|payer|factura|pago|bill pay|fatura|eletricidade|agua|invoice|لفاتورة|فواتير|edl|snel|regideso)/)) {
     return {
-      response: reply(lang,
-        "Pour payer vos factures 📄\n\n1️⃣ Allez dans « Factures »\n2️⃣ Choisissez le type (électricité, eau, internet...)\n3️⃣ Entrez votre numéro client\n4️⃣ Vérifiez le montant\n5️⃣ Payez depuis votre portefeuille\n\nC'est simple et rapide ! Voulez-vous payer ?",
-        "To pay your bills 📄\n\n1️⃣ Go to « Bills »\n2️⃣ Choose the type (electricity, water, internet...)\n3️⃣ Enter your client number\n4️⃣ Verify the amount\n5️⃣ Pay from your wallet\n\nSimple and fast! Want to pay?",
-        "Para pagar tus facturas 📄\n\n1️⃣ Ve a « Facturas »\n2️⃣ Elige el tipo (electricidad, agua, internet...)\n3️⃣ Ingresa tu número de cliente\n4️⃣ Verifica el monto\n5️⃣ Paga desde tu monedero\n\n¡Simple y rápido! ¿Quieres pagar?",
-      ),
+      response: pick([
+        reply(lang,
+          `Pour payer vos factures ${pick(['📄', '⚡', '💧'])}\n\n1️⃣ Allez dans « Factures »\n2️⃣ Choisissez le type\n3️⃣ Entrez votre numéro client\n4️⃣ Vérifiez le montant\n5️⃣ Payez depuis votre portefeuille\n\n${pick(['C\'est simple et rapide!', 'En quelques clics!', 'Facile et rapide!'])}`,
+          `To pay your bills ${pick(['📄', '⚡', '💧'])}\n\n1️⃣ Go to « Bills »\n2️⃣ Choose the type\n3️⃣ Enter your client number\n4️⃣ Verify the amount\n5️⃣ Pay from your wallet\n\n${pick(['Simple and fast!', 'In just a few clicks!', 'Easy and quick!'])}`,
+          `Para pagar tus facturas ${pick(['📄', '⚡', '💧'])}\n\n1️⃣ Ve a « Facturas »\n2️⃣ Elige el tipo\n3️⃣ Ingresa tu número de cliente\n4️⃣ Verifica el monto\n5️⃣ Paga desde tu monedero\n\n${pick(['¡Simple y rápido!', '¡En unos clics!', '¡Fácil y rápido!'])}`,
+        ),
+      ]),
       actions: [{ label: '📄 Payer une facture', page: 'bills' }],
     }
   }
 
-  // ── MARKETPLACE ────────────────────────────────────────────
+  // ── MARKETPLACE (3 variants) ───────────────────────────────
   if (lower.match(/(marche|market|marketplace|acheter|buy|produit|product|shop|store|tienda|mercado|comprar|سوق|comprar)/)) {
     return {
-      response: reply(lang,
-        "Le marché TRAIT 🛒\n\n• Parcourez les produits des vendeurs locaux\n• Payez directement depuis l'app\n• Livraison ou retrait sur place\n• Paiement sécurisé\n\nTrouvez de bonnes affaires ! Voulez-vous explorer ?",
-        "The TRAIT Marketplace 🛒\n\n• Browse products from local sellers\n• Pay directly from the app\n• Delivery or pickup available\n• Secure payment\n\nFind great deals! Want to explore?",
-        "El Mercado TRAIT 🛒\n\n• Explora productos de vendedores locales\n• Paga directamente desde la app\n• Entrega o recogida disponible\n• Pago seguro\n\n¡Encuentra ofertas! ¿Quieres explorar?",
-      ),
+      response: pick([
+        reply(lang,
+          `Le marché TRAIT ${pick(['🛒', '🏪', '🛍️'])}\n\n• ${pick(['Parcourez les produits locaux', 'Des produits de vendeurs locaux'])}\n• ${pick(['Payez directement dans l\'app', 'Paiement sécurisé dans l\'app'])}\n• ${pick(['Livraison ou retrait', 'Livraison ou sur place'])}\n\n${pick(['Explorez le marché!', 'Voulez-vous y aller?'])}`,
+          `The TRAIT Marketplace ${pick(['🛒', '🏪', '🛍️'])}\n\n• ${pick(['Browse local products', 'Products from local sellers'])}\n• ${pick(['Pay directly in the app', 'Secure payment in the app'])}\n• ${pick(['Delivery or pickup', 'Delivery or in-person'])}\n\n${pick(['Explore the marketplace!', 'Want to go there?'])}`,
+        ),
+      ]),
       actions: [{ label: '🛒 Explorer', page: 'marketplace' }],
     }
   }
 
-  // ── SAVINGS ────────────────────────────────────────────────
-  if (lower.match(/(epargne|saving|savings|objectif|goal|budget|ahorrar|ahorro|metas|.JSONException|ma sparplan|ma spar|ادخار| poupanca)/)) {
+  // ── SAVINGS (3 variants) ───────────────────────────────────
+  if (lower.match(/(epargne|saving|savings|objectif|goal|budget|ahorrar|ahorro|metas|sparplan|ادخار| poupanca|thunes)/)) {
     return {
-      response: reply(lang,
-        "L'épargne TRAIT 🎯\n\n• Créez des objectifs d'épargne personnalisés\n• Suivez vos progrès en temps réel\n• Épargnez automatiquement\n• Atteignez vos objectifs plus vite\n\nVoulez-vous créer un objectif ?",
-        "TRAIT Savings 🎯\n\n• Create personalized savings goals\n• Track your progress in real time\n• Save automatically\n• Reach your goals faster\n\nWant to create a goal?",
-        "Ahorro TRAIT 🎯\n\n• Crea metas de ahorro personalizadas\n• Sigue tu progreso en tiempo real\n• Ahorra automáticamente\n• Alcanza tus metas más rápido\n\n¿Quieres crear una meta?",
-      ),
+      response: pick([
+        reply(lang,
+          `L'épargne TRAIT ${pick(['🎯', '🏆', '💰'])}\n\n• ${pick(['Créez des objectifs d\'épargne', 'Définissez vos objectifs'])}\n• ${pick(['Suivez vos progrès', 'Progression en temps réel'])}\n• ${pick(['Épargnez automatiquement', 'Épargne automatique'])}\n• ${pick(['Atteignez vos buts plus vite', 'Objectifs atteints plus rapidement'])}\n\n${pick(['Créez un objectif!', 'Voulez-vous commencer?'])}`,
+          `TRAIT Savings ${pick(['🎯', '🏆', '💰'])}\n\n• ${pick(['Create savings goals', 'Set your goals'])}\n• ${pick(['Track your progress', 'Real-time progress'])}\n• ${pick(['Save automatically', 'Automatic savings'])}\n• ${pick(['Reach goals faster', 'Achieve goals faster'])}\n\n${pick(['Create a goal!', 'Want to start?'])}`,
+        ),
+      ]),
       actions: [{ label: '🎯 Créer un objectif', page: 'savings-goals' }],
     }
   }
 
-  // ── REFERRAL ───────────────────────────────────────────────
-  if (lower.match(/(parrainage|referral|ami|friend|inviter|invite|bonus|recompense|gift|regalo|premio|padrino|referir|دعوة|مكافأة|indicado)/)) {
+  // ── REFERRAL (3 variants) ──────────────────────────────────
+  if (lower.match(/(parrainage|referral|ami|friend|inviter|invite|bonus|recompense|gift|regalo|premio|padrino|referir|دعوة|مكافأة)/)) {
     return {
-      response: reply(lang,
-        "Le parrainage TRAIT 🎁\n\n• Partagez votre code de parrainage unique\n• Gagnez des bonus pour chaque ami inscrit\n• Vos amis gagnent aussi un bonus de bienvenue\n• Suivez vos gains dans l'app\n\nVoulez-vous voir votre code ?",
-        "TRAIT Referral 🎁\n\n• Share your unique referral code\n• Earn bonuses for each friend who signs up\n• Your friends also get a welcome bonus\n• Track your earnings in the app\n\nWant to see your code?",
-        "Referidos TRAIT 🎁\n\n• Comparte tu código de referido único\n• Gana bonificaciones por cada amigo que se registre\n• Tus amigos también reciben un bono de bienvenida\n• Sigue tus ganancias en la app\n\n¿Quieres ver tu código?",
-      ),
+      response: pick([
+        reply(lang,
+          `Le parrainage TRAIT ${pick(['🎁', '🎉', '💝'])}\n\n• ${pick(['Partagez votre code unique', 'Envoyez votre code'])}\n• ${pick(['Gagnez des bonus', 'Des récompenses pour chaque ami'])}\n• ${pick(['Vos amis gagnent aussi!', 'Bonus de bienvenue pour vos amis'])}\n• ${pick(['Suivez vos gains', 'Gains suivis dans l\'app'])}\n\n${pick(['Voir mon code!', 'Voulez-vous votre code?'])}`,
+          `TRAIT Referral ${pick(['🎁', '🎉', '💝'])}\n\n• ${pick(['Share your unique code', 'Send your code'])}\n• ${pick(['Earn bonuses', 'Rewards for each friend'])}\n• ${pick(['Your friends earn too!', 'Welcome bonus for your friends'])}\n• ${pick(['Track your earnings', 'Earnings tracked in the app'])}\n\n${pick(['See my code!', 'Want your code?'])}`,
+        ),
+      ]),
       actions: [{ label: '🎁 Mon code', page: 'referral' }],
     }
   }
 
-  // ── SECURITY ───────────────────────────────────────────────
-  if (lower.match(/(securite|security|pin|code|password|mot de passe|mdp|contraseña|clave|pin code|emprunte|biometrie|face|finger|锁|密码|كلمة المرور|seguranca)/)) {
+  // ── SECURITY (3 variants) ──────────────────────────────────
+  if (lower.match(/(securite|security|pin|code|password|mot de passe|mdp|contraseña|clave|pin code|emprunte|biometrie|face|finger|锁|密码|كلمة المرور|seguranca|empreinte)/)) {
     return {
-      response: reply(lang,
-        "La sécurité TRAIT 🔒\n\n• Code PIN à 4 chiffres pour chaque transaction\n• Authentification par empreinte ou reconnaissance faciale\n• Chiffrement de toutes vos données\n• Bloquez/débloquez votre carte en 1 clic\n• Activez la double authentification\n\nVoulez-vous modifier votre PIN ?",
-        "TRAIT Security 🔒\n\n• 4-digit PIN for each transaction\n• Fingerprint or face recognition\n• All your data is encrypted\n• Block/unblock your card in 1 tap\n• Enable two-factor authentication\n\nWant to change your PIN?",
-        "Seguridad TRAIT 🔒\n\n• PIN de 4 dígitos para cada transacción\n• Huella dactilar o reconocimiento facial\n• Todos tus datos están encriptados\n• Bloquea/desbloquea tu tarjeta con 1 toque\n• Activa la autenticación de dos factores\n\n¿Quieres cambiar tu PIN?",
-      ),
+      response: pick([
+        reply(lang,
+          `La sécurité TRAIT ${pick(['🔒', '🛡️', '🔐'])}\n\n• Code PIN à 4 chiffres\n• ${pick(['Empreinte digitale ou reconnaissance faciale', 'Authentification biométrique'])}\n• ${pick(['Données chiffrées', 'Chiffrement de toutes les données'])}\n• ${pick(['Bloquez/débloquez la carte en 1 clic', 'Gérez la sécurité facilement'])}\n\n${pick(['Voulez-vous changer votre PIN?', 'Paramètres de sécurité?'])}`,
+          `TRAIT Security ${pick(['🔒', '🛡️', '🔐'])}\n\n• 4-digit PIN code\n• ${pick(['Fingerprint or face recognition', 'Biometric authentication'])}\n• ${pick(['Encrypted data', 'All data encrypted'])}\n• ${pick(['Block/unblock card in 1 tap', 'Easy security management'])}\n\n${pick(['Want to change your PIN?', 'Security settings?'])}`,
+        ),
+      ]),
       actions: [{ label: '⚙️ Paramètres', page: 'settings' }],
     }
   }
 
-  // ── AGENT ──────────────────────────────────────────────────
-  if (lower.match(/(agent|agence|agency|point de vente|commercant|boutique|negocio|agente|agen| وكيل|محل)/)) {
+  // ── AGENT (3 variants) ─────────────────────────────────────
+  if (lower.match(/(agent|agence|agency|point de vente|commercant|boutique|negocio|agente|agen|وكيل|محل)/)) {
     return {
-      response: reply(lang,
-        "Les agents TRAIT 🏪\n\n• Les agents sont des partenaires vérifiés\n• Ils facilitent vos dépôts et retraits en cash\n• Trouvez un agent proche de vous\n• Agents disponibles dans toute la région\n\nVoulez-vous trouver un agent ?",
-        "TRAIT Agents 🏪\n\n• Agents are verified partners\n• They help with cash deposits and withdrawals\n• Find an agent near you\n• Agents available throughout the region\n\nWant to find an agent?",
-        "Agentes TRAIT 🏪\n\n• Los agentes son socios verificados\n• Facilitan depósitos y retiros en efectivo\n• Encuentra un agente cerca de ti\n• Agentes disponibles en toda la región\n\n¿Quieres encontrar un agente?",
-      ),
+      response: pick([
+        reply(lang,
+          `Les agents TRAIT ${pick(['🏪', '🤝', '💼'])}\n\n• ${pick(['Partenaires vérifiés', 'Agents de confiance'])}\n• ${pick(['Dépôts et retraits en cash', 'Facilitent vos transactions'])}\n• ${pick(['Trouvez un agent proche', 'Agents disponibles partout'])}\n\n${pick(['Voulez-vous trouver un agent?', 'Comment trouver un agent?'])}`,
+          `TRAIT Agents ${pick(['🏪', '🤝', '💼'])}\n\n• ${pick(['Verified partners', 'Trusted agents'])}\n• ${pick(['Cash deposits and withdrawals', 'Handle your transactions'])}\n• ${pick(['Find an agent nearby', 'Agents available everywhere'])}\n\n${pick(['Want to find an agent?', 'How to find an agent?'])}`,
+        ),
+      ]),
       actions: [{ label: '🏪 Trouver un agent', page: 'deposit' }],
     }
   }
 
-  // ── WHAT IS TRAIT ──────────────────────────────────────────
-  if (lower.match(/(quest|what|what is|c.est quoi|definition|signification|como es|que es|ma huwa|o que|trait cest|trait est|trait app)/)) {
+  // ── WHAT IS TRAIT (3 variants) ─────────────────────────────
+  if (lower.match(/(quest|what|what is|c'est quoi|definition|signification|como es|que es|ma huwa|o que|trait cest|trait est|trait app|quest-ce|c`est|tell me about)/)) {
     return {
-      response: reply(lang,
-        "TRAIT est une application fintech moderne 🚀\n\n• 💸 Envoyez et recevez de l'argent instantanément\n• 💳 Carte virtuelle sécurisée\n• 🏦 Dépôts et retraits via des agents\n• 📄 Payez vos factures\n• 🛒 Achetez sur le marché local\n• 🎯 Épargnez pour vos objectifs\n• 🤖 TRAIT IA vous assiste 24/7\n\nQue voulez-vous découvrir en premier ?",
-        "TRAIT is a modern fintech app 🚀\n\n• 💸 Send and receive money instantly\n• 💳 Secure virtual card\n• 🏦 Deposits and withdrawals via agents\n• 📄 Pay your bills\n• 🛒 Shop at the local marketplace\n• 🎯 Save for your goals\n• 🤖 TRAIT IA assists you 24/7\n\nWhat would you like to discover first?",
-        "TRAIT es una aplicación fintech moderna 🚀\n\n• 💸 Envía y recibe dinero al instante\n• 💳 Tarjeta virtual segura\n• 🏦 Depósitos y retiros a través de agentes\n• 📄 Paga tus facturas\n• 🛒 Compra en el mercado local\n• 🎯 Ahorra para tus metas\n• 🤖 TRAIT IA te asiste 24/7\n\n¿Qué quieres descubrir primero?",
-      ),
+      response: pick([
+        reply(lang,
+          `TRAIT est une application fintech moderne ${pick(['🚀', '📱', '✨'])}\n\n• 💸 ${pick(['Transferts instantanés', 'Envoyez et recevez de l\'argent'])}\n• 💳 ${pick(['Carte virtuelle sécurisée', 'Carte virtuelle'])}\n• 🏦 ${pick(['Dépôts et retraits via agents', 'Via des agents'])}\n• 📄 ${pick(['Paiement de factures', 'Payez vos factures'])}\n• 🛒 ${pick(['Marché local', 'Achetez localement'])}\n• 🎯 ${pick(['Épargne', 'Objectifs d\'épargne'])}\n• 🤖 ${pick(['TRAIT IA 24/7', 'Assistant IA'])}\n\n${pick(['Que voulez-vous découvrir?', 'Par quoi commencer?'])}`,
+          `TRAIT is a modern fintech app ${pick(['🚀', '📱', '✨'])}\n\n• 💸 ${pick(['Instant transfers', 'Send and receive money'])}\n• 💳 ${pick(['Secure virtual card', 'Virtual card'])}\n• 🏦 ${pick(['Deposits & withdrawals via agents', 'Via agents'])}\n• 📄 ${pick(['Bill payments', 'Pay your bills'])}\n• 🛒 ${pick(['Local marketplace', 'Shop locally'])}\n• 🎯 ${pick(['Savings', 'Savings goals'])}\n• 🤖 ${pick(['TRAIT IA 24/7', 'AI assistant'])}\n\n${pick(['What would you like to explore?', 'Where to start?'])}`,
+        ),
+      ]),
       actions: [{ label: '🏠 Découvrir', page: 'home' }, { label: '📤 Envoyer', page: 'send' }],
     }
   }
 
-  // ── HELP ───────────────────────────────────────────────────
-  if (lower.match(/(aide|help|assistance|support|besoin|problem|bug|erreur|error|issue|problema|ayuda|soporte|mushkila|مساعدة|ajuda)/)) {
+  // ── HELP (3 variants) ──────────────────────────────────────
+  if (lower.match(/(aide|help|assistance|support|besoin|problem|bug|erreur|error|issue|problema|ayuda|soporte|mushkila|مساعدة|ajuda|assistir)/)) {
     return {
-      response: reply(lang,
-        "Je suis là pour vous aider ! 🤝\n\nVoici ce que je peux faire :\n• 💸 Envoyer de l'argent\n• 💵 Retirer du cash\n• 🏦 Déposer des fonds\n• 📄 Payer des factures\n• 💳 Gérer votre carte\n• 🎯 Créer un objectif d'épargne\n• 🛒 Explorer le marché\n\nPosez-moi n'importe quelle question !",
-        "I'm here to help! 🤝\n\nHere's what I can do:\n• 💸 Send money\n• 💵 Withdraw cash\n• 🏦 Deposit funds\n• 📄 Pay bills\n• 💳 Manage your card\n• 🎯 Create savings goals\n• 🛒 Explore the marketplace\n\nAsk me anything!",
-        "¡Estoy aquí para ayudar! 🤝\n\nEsto es lo que puedo hacer:\n• 💸 Enviar dinero\n• 💵 Retirar efectivo\n• 🏦 Depositar fondos\n• 📄 Pagar facturas\n• 💳 Gestionar tu tarjeta\n• 🎯 Crear metas de ahorro\n• 🛒 Explorar el mercado\n\n¡Pregúntame lo que sea!",
-      ),
+      response: pick([
+        reply(lang,
+          `Je suis là pour vous aider! ${pick(['🤝', '💪', '✨'])}\n\n${pick(['Voici ce que je peux faire:', 'Je peux vous aider avec:'])}\n• 💸 ${pick(['Envoyer de l\'argent', 'Transferts'])}\n• 💵 ${pick(['Retirer du cash', 'Retraits'])}\n• 🏦 ${pick(['Déposer des fonds', 'Dépôts'])}\n• 📄 ${pick(['Payer des factures', 'Factures'])}\n• 💳 ${pick(['Gérer votre carte', 'Carte'])}\n• 🎯 ${pick(['Épargne', 'Objectifs'])}\n• 🛒 ${pick(['Marché', 'Achats'])}\n\n${pick(['Posez-moi n\'importe quelle question!', 'Demandez-moi ce que vous voulez!'])}`,
+          `I'm here to help! ${pick(['🤝', '💪', '✨'])}\n\n${pick(['Here\'s what I can do:', 'I can help with:'])}\n• 💸 ${pick(['Send money', 'Transfers'])}\n• 💵 ${pick(['Withdraw cash', 'Withdrawals'])}\n• 🏦 ${pick(['Deposit funds', 'Deposits'])}\n• 📄 ${pick(['Pay bills', 'Bills'])}\n• 💳 ${pick(['Manage card', 'Card'])}\n• 🎯 ${pick(['Savings', 'Goals'])}\n• 🛒 ${pick(['Marketplace', 'Shopping'])}\n\n${pick(['Ask me anything!', 'What do you need?'])}`,
+        ),
+      ]),
       actions: [{ label: '🏠 Accueil', page: 'home' }, { label: '💬 Support', page: 'support' }],
     }
   }
 
   // ── HISTORY ────────────────────────────────────────────────
-  if (lower.match(/(historique|history|transaction|transaction log|mi historial|meine historik|minhas transacoes|السجل|العمليات)/)) {
+  if (lower.match(/(historique|history|transaction|transaction log|mi historial|minhas transacoes|السجل|العمليات)/)) {
     return {
       response: reply(lang,
-        "Pour consulter votre historique 📋\n\nToutes vos transactions apparaissent dans l'onglet « Historique ». Vous pouvez filtrer par date, type ou montant.\n\nVoulez-vous y aller ?",
-        "To view your history 📋\n\nAll your transactions appear in the « History » tab. You can filter by date, type or amount.\n\nWant to go there?",
-        "Para ver tu historial 📋\n\nTodas tus transacciones aparecen en la pestaña « Historial ». Puedes filtrar por fecha, tipo o monto.\n\n¿Quieres ir allí?",
+        `Pour consulter votre historique ${pick(['📋', '📊'])}\n\n${pick(['Toutes vos transactions sont dans l\'onglet Historique.', 'Voir toutes vos transactions dans Historique.'])} ${pick(['Filtrez par date, type ou montant.', 'Vous pouvez filtrer par date ou type.'])}\n\n${pick(['Voulez-vous y aller?', 'Je vous y emmène?'])}`,
+        `To view your history ${pick(['📋', '📊'])}\n\n${pick(['All your transactions are in the History tab.', 'See all transactions in History.'])} ${pick(['Filter by date, type or amount.', 'Filter by date or type.'])}\n\n${pick(['Want to go there?', 'Shall I take you?'])}`,
       ),
       actions: [{ label: '📋 Historique', page: 'history' }],
     }
@@ -266,9 +320,8 @@ function matchMessage(message: string): MatchResult | null {
   if (lower.match(/(parametre|setting|configuration|option|preference|config|preferencia|configuracion|الإعدادات|configuracao)/)) {
     return {
       response: reply(lang,
-        "Vos paramètres ⚙️\n\n• Modifiez votre profil\n• Changez votre PIN\n• Gérez la sécurité (empreinte, 2FA)\n• Activez/désactivez les notifications\n• Consultez les conditions d'utilisation\n\nVoulez-vous accéder aux paramètres ?",
-        "Your settings ⚙️\n\n• Edit your profile\n• Change your PIN\n• Manage security (biometrics, 2FA)\n• Enable/disable notifications\n• View terms of use\n\nWant to access settings?",
-        "Tus configuraciones ⚙️\n\n• Edita tu perfil\n• Cambia tu PIN\n• Gestiona la seguridad (biometría, 2FA)\n• Activa/desactiva notificaciones\n• Consulta los términos de uso\n\n¿Quieres acceder a la configuración?",
+        `Vos paramètres ${pick(['⚙️', '🔧'])}\n\n• ${pick(['Modifiez votre profil', 'Profil'])}\n• ${pick(['Changez votre PIN', 'PIN'])}\n• ${pick(['Sécurité', 'Sécurité biométrique'])}\n• ${pick(['Notifications', 'Alertes'])}\n• ${pick(['Conditions d\'utilisation', 'CGU'])}\n\n${pick(['Voulez-vous y aller?', 'Accédez aux paramètres?'])}`,
+        `Your settings ${pick(['⚙️', '🔧'])}\n\n• ${pick(['Edit profile', 'Profile'])}\n• ${pick(['Change PIN', 'PIN'])}\n• ${pick(['Security', 'Biometric security'])}\n• ${pick(['Notifications', 'Alerts'])}\n• ${pick(['Terms of use', 'Terms'])}\n\n${pick(['Want to go there?', 'Access settings?'])}`,
       ),
       actions: [{ label: '⚙️ Paramètres', page: 'settings' }],
     }
@@ -278,9 +331,8 @@ function matchMessage(message: string): MatchResult | null {
   if (lower.match(/(profil|profile|mon compte|my account|mi perfil|minha conta|mekan|الملف|meu perfil)/)) {
     return {
       response: reply(lang,
-        "Votre profil 👤\n\n• Modifiez vos informations personnelles\n• Ajoutez une photo de profil\n• Vérifiez votre KYC\n• Gérez votre numéro de téléphone\n\nVoulez-vous modifier votre profil ?",
-        "Your profile 👤\n\n• Edit your personal info\n• Add a profile photo\n• Complete your KYC verification\n• Manage your phone number\n\nWant to edit your profile?",
-        "Tu perfil 👤\n\n• Edita tu información personal\n• Añade una foto de perfil\n• Completa tu verificación KYC\n• Gestiona tu número de teléfono\n\n¿Quieres editar tu perfil?",
+        `Votre profil ${pick(['👤', '🧑', '📋'])}\n\n• ${pick(['Informations personnelles', 'Vos infos'])}\n• ${pick(['Photo de profil', 'Avatar'])}\n• ${pick(['Vérification KYC', 'KYC'])}\n• ${pick(['Numéro de téléphone', 'Téléphone'])}\n\n${pick(['Voulez-vous modifier votre profil?', 'Modifier votre profil?'])}`,
+        `Your profile ${pick(['👤', '🧑', '📋'])}\n\n• ${pick(['Personal information', 'Your info'])}\n• ${pick(['Profile photo', 'Avatar'])}\n• ${pick(['KYC verification', 'KYC'])}\n• ${pick(['Phone number', 'Phone'])}\n\n${pick(['Want to edit your profile?', 'Edit your profile?'])}`,
       ),
       actions: [{ label: '👤 Profil', page: 'profile' }],
     }
@@ -290,35 +342,110 @@ function matchMessage(message: string): MatchResult | null {
   if (lower.match(/(notification|alert|alerte|avertissement|aviso|notification|الإشعارات|notificacao)/)) {
     return {
       response: reply(lang,
-        "Vos notifications 🔔\n\n• Recevez des alertes pour chaque transaction\n• Notifications de sécurité importantes\n• Alertes promotionnelles\n• Activez les notifications push pour ne rien rater\n\nVoulez-vous voir vos notifications ?",
-        "Your notifications 🔔\n\n• Get alerts for each transaction\n• Important security notifications\n• Promotional alerts\n• Enable push notifications to stay updated\n\nWant to see your notifications?",
-        "Tus notificaciones 🔔\n\n• Recibe alertas por cada transacción\n• Notificaciones de seguridad importantes\n• Alertas promocionales\n• Activa las notificaciones push para no perderte nada\n\n¿Quieres ver tus notificaciones?",
+        `Vos notifications ${pick(['🔔', '📢', '💡'])}\n\n• ${pick(['Alertes de transactions', 'Chaque transaction'])}\n• ${pick(['Alertes de sécurité', 'Sécurité'])}\n• ${pick(['Promotions', 'Offres spéciales'])}\n• ${pick(['Activez les push', 'Notifications push'])}\n\n${pick(['Voulez-vous voir vos notifications?', 'Voir les notifications?'])}`,
+        `Your notifications ${pick(['🔔', '📢', '💡'])}\n\n• ${pick(['Transaction alerts', 'Every transaction'])}\n• ${pick(['Security alerts', 'Security'])}\n• ${pick(['Promotions', 'Special offers'])}\n• ${pick(['Enable push', 'Push notifications'])}\n\n${pick(['Want to see notifications?', 'View notifications?'])}`,
       ),
       actions: [{ label: '🔔 Notifications', page: 'notifications' }],
     }
   }
 
-  // ── KID / CHILD CARD ──────────────────────────────────────
-  if (lower.match(/(enfant|child|kid|fille|fils|hijo|hija|filho|filha|bebe|baby|اولاد|ابن|بنت)/)) {
+  // ── CHILD CARD ─────────────────────────────────────────────
+  if (lower.match(/(enfant|child|kid|fille|fils|hijo|hija|filho|filha|bebe|baby|اولاد|ابن|بنت|mon gamin)/)) {
     return {
       response: reply(lang,
-        "La carte enfant TRAIT 👨‍👩‍👧‍👦\n\n• Créez une carte pour vos enfants\n• Définissez une limite de dépenses\n• Suivez leurs achats en temps réel\n• Enseignez-leur la gestion de l'argent\n\nVoulez-vous créer une carte enfant ?",
-        "TRAIT Child Card 👨‍👩‍👧‍👦\n\n• Create a card for your children\n• Set spending limits\n• Track their purchases in real time\n• Teach them money management\n\nWant to create a child card?",
-        "Tarjeta Infantil TRAIT 👨‍👩‍👧‍👦\n\n• Crea una tarjeta para tus hijos\n• Establece límites de gasto\n• Sigue sus compras en tiempo real\n• Enséñales a manejar el dinero\n\n¿Quieres crear una tarjeta infantil?",
+        `La carte enfant TRAIT ${pick(['👨‍👩‍👧‍👦', '👶', '🧒'])}\n\n• ${pick(['Créez une carte pour vos enfants', 'Carte pour les kids'])}\n• ${pick(['Limite de dépenses', 'Définissez des limites'])}\n• ${pick(['Suivi des achats', 'Achats en temps réel'])}\n• ${pick(['Éducation financière', 'Enseignez la gestion'])}\n\n${pick(['Créer une carte enfant?', 'Voulez-vous créer?'])}`,
+        `TRAIT Child Card ${pick(['👨‍👩‍👧‍👦', '👶', '🧒'])}\n\n• ${pick(['Create a card for your kids', 'Card for children'])}\n• ${pick(['Spending limits', 'Set limits'])}\n• ${pick(['Purchase tracking', 'Real-time tracking'])}\n• ${pick(['Financial education', 'Teach money management'])}\n\n${pick(['Create a child card?', 'Want to create?'])}`,
       ),
       actions: [{ label: '💳 Carte enfant', page: 'card' }],
     }
   }
 
-  // ── MONEY / HOW MUCH ──────────────────────────────────────
-  if (lower.match(/(argent|money|cash|euros|dollars|usd|fc|cdf|francs|dinero|efectivo|euro|dolar|fulus|نقود|فلوس|dinheiro)/)) {
+  // ── MONEY ──────────────────────────────────────────────────
+  if (lower.match(/(argent|money|cash|euros|dollars|usd|fc|cdf|francs|dinero|efectivo|euro|dolar|fulus|نقود|فلوس|dinheiro|monnaie|currency)/)) {
     return {
       response: reply(lang,
-        "Sur TRAIT, vous pouvez gérer votre argent en 💰\n\n• **USD** — Dollar américain\n• **FC** — Franc congolais\n• Changez le taux de change dans les paramètres\n• Transférez entre vos comptes\n\nQue voulez-vous faire avec votre argent ?",
-        "On TRAIT, you can manage your money in 💰\n\n• **USD** — US Dollar\n• **FC** — Congolese Franc\n• Change the exchange rate in settings\n• Transfer between your accounts\n\nWhat would you like to do with your money?",
-        "En TRAIT, puedes gestionar tu dinero en 💰\n\n• **USD** — Dólar estadounidense\n• **FC** — Franco congoleño\n• Cambia el tipo de cambio en configuración\n• Transfiere entre tus cuentas\n\n¿Qué quieres hacer con tu dinero?",
+        `Sur TRAIT, gérez votre argent en ${pick(['💰', '💵', '💱'])}\n\n• **USD** — Dollar américain\n• **FC** — Franc congolais\n• ${pick(['Changez le taux de change', 'Taux de change'])} dans les paramètres\n• ${pick(['Transférez entre comptes', 'Transferts internes'])}\n\n${pick(['Que voulez-vous faire?', 'Quelle opération?'])}`,
+        `On TRAIT, manage your money in ${pick(['💰', '💵', '💱'])}\n\n• **USD** — US Dollar\n• **FC** — Congolese Franc\n• ${pick(['Change exchange rate', 'Exchange rate'])} in settings\n• ${pick(['Transfer between accounts', 'Internal transfers'])}\n\n${pick(['What would you like to do?', 'Which operation?'])}`,
       ),
       actions: [{ label: '🏠 Voir mon solde', page: 'home' }],
+    }
+  }
+
+  // ── OFFERS / PROMO ─────────────────────────────────────────
+  if (lower.match(/(offre|promo|promotion|discount|reduction|solde|deal|优惠|خصم)/)) {
+    return {
+      response: reply(lang,
+        `Les offres TRAIT ${pick(['🎉', '🏷️', '🔥'])}\n\n• ${pick(['Consultez le marché pour les offres', 'Offres disponibles sur le marché'])}\n• ${pick(['Parrainage = bonus', 'Gagnez avec le parrainage'])}\n• ${pick(['Promotions régulières', 'Offres spéciales'])}\n\n${pick(['Voulez-vous voir le marché?', 'Explorer les offres?'])}`,
+        `TRAIT Offers ${pick(['🎉', '🏷️', '🔥'])}\n\n• ${pick(['Check marketplace for deals', 'Offers on the marketplace'])}\n• ${pick(['Referral = bonus', 'Earn with referrals'])}\n• ${pick(['Regular promotions', 'Special offers'])}\n\n${pick(['Want to see the marketplace?', 'Explore offers?'])}`,
+      ),
+      actions: [{ label: '🛒 Marché', page: 'marketplace' }, { label: '🎁 Parrainage', page: 'referral' }],
+    }
+  }
+
+  // ── CONTACT / PHONE ────────────────────────────────────────
+  if (lower.match(/(contact|telephoner|appeler|numero|number|phone|teléfono|telefone|هاتف|اتصال)/)) {
+    return {
+      response: reply(lang,
+        `Pour contacter quelqu'un ${pick(['📞', '📱', '💬'])}\n\n• ${pick(['Utilisez le transfert', 'Envoyez de l\'argent'])} pour envoyer\n• ${pick(['Le support est disponible', 'Contactez le support'])} pour les questions\n• ${pick(['Appelez un agent', 'Trouvez un agent'])} près de chez vous\n\n${pick(['Que souhaitez-vous faire?', 'Quel est votre besoin?'])}`,
+        `To contact someone ${pick(['📞', '📱', '💬'])}\n\n• ${pick(['Use transfer to send', 'Send money'])}\n• ${pick(['Support is available', 'Contact support'])} for questions\n• ${pick(['Call an agent', 'Find an agent'])} near you\n\n${pick(['What would you like to do?', 'What do you need?'])}`,
+      ),
+      actions: [{ label: '📤 Envoyer', page: 'send' }, { label: '💬 Support', page: 'support' }],
+    }
+  }
+
+  // ── COMPLAINT / PROBLEM ────────────────────────────────────
+  if (lower.match(/(plainte|reclamation|problem|problema|problème|bug|erreur|ne marche pas|doesn't work|no funciona|pas content|unhappy| mécontent)/)) {
+    return {
+      response: pick([
+        reply(lang,
+          `Je suis désolé d\'entendre cela ${pick(['😔', '😐', '💬'])}\n\n• ${pick(['Décrivez votre problème', 'Expliquez-moi le souci'])}\n• ${pick(['Le support TRAIT peut vous aider', 'Notre équipe vous assiste'])}\n• ${pick(['Ouvrez un ticket de support', 'Contactez le support'])}\n\n${pick(['Voulez-vous contacter le support?', 'Ouvrir un ticket?'])}`,
+          `I'm sorry to hear that ${pick(['😔', '😐', '💬'])}\n\n• ${pick(['Describe your problem', 'Tell me the issue'])}\n• ${pick(['TRAIT support can help', 'Our team assists you'])}\n• ${pick(['Open a support ticket', 'Contact support'])}\n\n${pick(['Want to contact support?', 'Open a ticket?'])}`,
+        ),
+      ]),
+      actions: [{ label: '💬 Support', page: 'support' }],
+    }
+  }
+
+  // ── SALARY / WORK ──────────────────────────────────────────
+  if (lower.match(/(salaire|salary|travailler|work|emploi|job|emploi|trabajo|empleo|kerja|عمل)/)) {
+    return {
+      response: reply(lang,
+        `TRAIT ${pick(['💼', '🏦'])}\n\n• ${pick(['Devenez agent TRAIT', 'Rejoignez nos agents'])}\n• ${pick(['Gagnez des commissions', 'Commissions attractives'])}\n• ${pick(['Ou vendez sur le marché', 'Vendez vos produits'])}\n\n${pick(['Intéressé? Découvrez nos offres!', 'Voulez-vous devenir agent?'])}`,
+        `TRAIT ${pick(['💼', '🏦'])}\n\n• ${pick(['Become a TRAIT agent', 'Join our agents'])}\n• ${pick(['Earn commissions', 'Attractive commissions'])}\n• ${pick(['Or sell on the marketplace', 'Sell your products'])}\n\n${pick(['Interested? Check our offers!', 'Want to become an agent?'])}`,
+      ),
+      actions: [{ label: '🏪 Devenir agent', page: 'deposit' }, { label: '🛒 Marché', page: 'marketplace' }],
+    }
+  }
+
+  // ── CRYPTO / INVEST ────────────────────────────────────────
+  if (lower.match(/(crypto|bitcoin|btc|eth|investir|invest|trading|bourse|action|stock|bitcoin)/)) {
+    return {
+      response: reply(lang,
+        `TRAIT ne propose pas encore de trading crypto ${pick(['📈', '💡'])}\n\n• ${pick(['Restez connecté pour les mises à jour', 'Bientôt disponible'])}\n• ${pick(['Utilisez l\'épargne pour vos objectifs', 'Épargnez maintenant'])}\n• ${pick(['Consultez le marché', 'Explorez nos services'])}\n\n${pick(['En attendant, que puis-je faire pour vous?', 'Voulez-vous autre chose?'])}`,
+        `TRAIT doesn't offer crypto trading yet ${pick(['📈', '💡'])}\n\n• ${pick(['Stay tuned for updates', 'Coming soon'])}\n• ${pick(['Use savings for your goals', 'Save now'])}\n• ${pick(['Check the marketplace', 'Explore our services'])}\n\n${pick(['Meanwhile, what can I do for you?', 'Anything else?'])}`,
+      ),
+      actions: [{ label: '🎯 Épargne', page: 'savings-goals' }],
+    }
+  }
+
+  // ── TIME / DATE ────────────────────────────────────────────
+  if (lower.match(/(heure|time|date|jour|day|mois|month|année|year|aujourd|demain|hier|maintenant|now|today|tomorrow|yesterday|hora|fecha|heure|وقت|تاريخ)/)) {
+    return {
+      response: reply(lang,
+        `TRAIT est disponible 24h/24, 7j/7 ${pick(['⏰', '📅', '🌍'])}\n\n• ${pick(['Transferts instantanés à tout moment', 'Envoyez de l\'argent quand vous voulez'])}\n• ${pick(['Service client disponible', 'Support disponible'])}\n• ${pick(['Agent disponibles selon horaires', 'Agents selon leurs horaires'])}\n\n${pick(['Que voulez-vous faire maintenant?', 'Quelle opération?'])}`,
+        `TRAIT is available 24/7 ${pick(['⏰', '📅', '🌍'])}\n\n• ${pick(['Instant transfers anytime', 'Send money anytime'])}\n• ${pick(['Customer service available', 'Support available'])}\n• ${pick(['Agents available by schedule', 'Agents by schedule'])}\n\n${pick(['What would you like to do now?', 'Which operation?'])}`,
+      ),
+      actions: [{ label: '📤 Envoyer', page: 'send' }],
+    }
+  }
+
+  // ── LANGUAGES ──────────────────────────────────────────────
+  if (lower.match(/(langue|language|français|english|español|arabe|portugais|lingala|swahili|langues|idioma|idiomas|لغة|لغات)/)) {
+    return {
+      response: reply(lang,
+        `TRAIT IA parle ${pick(['🌍', '🗣️', '💬'])} ${pick(['français', 'plusieurs langues'])}\n\n• ${pick(['Répondez dans la langue de votre choix', 'Écrivez dans votre langue'])}\n• ${pick(['Je comprends le français, anglais, espagnol', 'FR, EN, ES, AR, PT'])}\n• ${pick(['Utilisez votre langue naturellement', 'Parlez naturellement'])}\n\n${pick(['Dans quelle langue voulez-vous continuer?', 'Continuez dans votre langue!'])}`,
+        `TRAIT IA speaks ${pick(['🌍', '🗣️', '💬'])} ${pick(['French', 'multiple languages'])}\n\n• ${pick(['Reply in your preferred language', 'Write in your language'])}\n• ${pick(['I understand French, English, Spanish', 'FR, EN, ES, AR, PT'])}\n• ${pick(['Use your language naturally', 'Speak naturally'])}\n\n${pick(['Which language would you like to continue in?', 'Continue in your language!'])}`,
+      ),
     }
   }
 
@@ -330,7 +457,7 @@ function matchMessage(message: string): MatchResult | null {
    GLM API — Bonus AI for complex questions
    ═══════════════════════════════════════════════════════════════ */
 
-const GLM_SYSTEM_PROMPT = `You are TRAIT IA, a fintech app assistant. You help users with transfers, withdrawals, deposits, cards, bills, marketplace, savings, referrals, and app navigation. Be concise (2-3 sentences max). Respond in the SAME language the user writes in. Never do real financial operations. Be friendly and helpful. If asked about fees: deposit free, withdrawal 0.7%, transfer 0.7%. Available pages: home, send, withdraw, deposit, history, marketplace, bills, card, savings-goals, referral, settings, profile, notifications, support, agent-dashboard, seller-dashboard, ussd.`
+const GLM_SYSTEM_PROMPT = `You are TRAIT IA, a fintech app assistant for TRAIT (money transfers, payments, cards, marketplace, savings in DRC Congo). You help users navigate the app. Be concise (2-3 sentences). Respond in the SAME language the user writes in. Never do real financial operations. Be friendly. Fees: deposit free, withdrawal 0.7%, transfer 0.7%. Pages: home, send, withdraw, deposit, history, marketplace, bills, card, savings-goals, referral, settings, profile, notifications, support.`
 
 async function callGLM(message: string, userName: string, userRole: string, history: Array<{role: string; content: string}>): Promise<string | null> {
   if (!GLM_API_KEY) return null
@@ -373,13 +500,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Message requis' }, { status: 400 })
     }
 
-    // 1. Try local match first (instant, always works)
     const localMatch = matchMessage(message)
     if (localMatch) {
       return NextResponse.json({ success: true, message: localMatch.response, actions: localMatch.actions || [] })
     }
 
-    // 2. Try GLM API for complex questions
     const glmResponse = await callGLM(message, userName || '', userRole || '', history || [])
     if (glmResponse) {
       let actions: Array<{ label: string; page: string }> = []
@@ -395,14 +520,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, message: glmResponse, actions })
     }
 
-    // 3. Fallback for unmatched questions
     const lang = detectLang(message)
     return NextResponse.json({
       success: true,
       message: reply(lang,
-        "Je ne suis pas sûr de comprendre votre question. Voici ce que je peux faire :\n\n• 💸 Envoyer de l'argent\n• 💵 Retirer du cash\n• 🏦 Déposer des fonds\n• 📄 Payer des factures\n• 💳 Gérer votre carte\n• 🛒 Explorer le marché\n\nN'hésitez pas à me poser une question précise !",
-        "I'm not sure I understand your question. Here's what I can do:\n\n• 💸 Send money\n• 💵 Withdraw cash\n• 🏦 Deposit funds\n• 📄 Pay bills\n• 💳 Manage your card\n• 🛒 Explore the marketplace\n\nFeel free to ask me a specific question!",
-        "No estoy seguro de entender tu pregunta. Esto es lo que puedo hacer:\n\n• 💸 Enviar dinero\n• 💵 Retirar efectivo\n• 🏦 Depositar fondos\n• 📄 Pagar facturas\n• 💳 Gestionar tu tarjeta\n• 🛒 Explorar el mercado\n\n¡No dudes en preguntarme algo específico!",
+        `Je ne suis pas sûr de comprendre ${pick(['🤔', '💡', '❓'])}\n\nVoici ce que je peux faire :\n• 💸 Envoyer de l'argent\n• 💵 Retirer du cash\n• 🏦 Déposer des fonds\n• 📄 Payer des factures\n• 💳 Gérer votre carte\n• 🛒 Explorer le marché\n\n${pick(['Posez-moi une question précise!', 'Essayez une autre question!'])}`,
+        `I'm not sure I understand ${pick(['🤔', '💡', '❓'])}\n\nHere's what I can do:\n• 💸 Send money\n• 💵 Withdraw cash\n• 🏦 Deposit funds\n• 📄 Pay bills\n• 💳 Manage your card\n• 🛒 Explore the marketplace\n\n${pick(['Ask me a specific question!', 'Try another question!'])}`,
       ),
       actions: [{ label: '🏠 Accueil', page: 'home' }, { label: '💬 Support', page: 'support' }],
     })
@@ -410,7 +533,7 @@ export async function POST(request: NextRequest) {
     console.error('Trait AI error:', error)
     return NextResponse.json({
       success: true,
-      message: "Je suis TRAIT IA, votre assistant. Posez-moi une question sur l'application et je vous aiderai !",
+      message: `Je suis TRAIT IA, votre assistant ${pick(['🤖', '💙', '✨'])}. ${pick(['Posez-moi une question!', 'Comment puis-je vous aider?'])}`,
       actions: [{ label: '🏠 Accueil', page: 'home' }],
     })
   }
