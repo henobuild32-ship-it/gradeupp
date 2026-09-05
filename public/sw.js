@@ -1,6 +1,5 @@
-// TRAIT Service Worker — Push Notifications + Auto Update
-const CACHE_NAME = 'trait-v2';
-const VERSION_CHECK_URL = '/api/app/version';
+// TRAIT Service Worker — Push Notifications
+const CACHE_NAME = 'trait-v3';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -21,16 +20,10 @@ self.addEventListener('message', (event) => {
   if (event.data?.type === 'CLEAR_CACHE') {
     caches.keys().then((keys) =>
       Promise.all(keys.map((k) => caches.delete(k)))
-    ).then(() => {
-      self.clients.matchAll().then((clients) => {
-        clients.forEach((c) => c.postMessage({ type: 'CACHE_CLEARED' }));
-      });
-    });
+    );
   }
 });
 
-// Version check on every navigation
-let lastCheck = 0;
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -51,38 +44,11 @@ self.addEventListener('fetch', (event) => {
 
   // Network-first for API calls
   if (url.pathname.startsWith('/api/')) {
-    event.respondWith(
-      fetch(request).catch(() => caches.match(request))
-    );
+    event.respondWith(fetch(request));
     return;
   }
 
-  // Cache-first for static assets with version check
-  const now = Date.now();
-  if (now - lastCheck > 10 * 60 * 1000) {
-    lastCheck = now;
-    event.waitUntil(
-      fetch(VERSION_CHECK_URL + '?t=' + now, { cache: 'no-store' })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.success && data.deployId) {
-            const storedId = 'unknown';
-            self.clients.matchAll({ type: 'window' }).then((clients) => {
-              clients.forEach((client) => {
-                client.postMessage({
-                  type: 'SW_UPDATE_AVAILABLE',
-                  version: data.version,
-                  deployId: data.deployId,
-                });
-              });
-            });
-          }
-        })
-        .catch(() => {})
-    );
-  }
-
-  // Stale-while-revalidate for static assets
+  // Cache-first for static assets (JS, CSS, images)
   event.respondWith(
     caches.match(request).then((cached) => {
       const fetchPromise = fetch(request).then((response) => {
@@ -92,7 +58,6 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       }).catch(() => cached);
-
       return cached || fetchPromise;
     })
   );
@@ -106,19 +71,18 @@ self.addEventListener('push', (event) => {
     data = { title: 'TRAIT', body: event.data?.text() || '' };
   }
 
-  const title = data.title || 'TRAIT';
-  const options = {
-    body: data.body || data.message || '',
-    icon: '/trait-logo.png',
-    badge: '/trait-logo.png',
-    vibrate: [200, 100, 200],
-    tag: data.tag || 'trait-notification',
-    renotify: true,
-    data: { url: data.url || '/', ...data },
-    actions: data.actions || [],
-  };
-
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'TRAIT', {
+      body: data.body || data.message || '',
+      icon: '/trait-logo.png',
+      badge: '/trait-logo.png',
+      vibrate: [200, 100, 200],
+      tag: data.tag || 'trait-notification',
+      renotify: true,
+      data: { url: data.url || '/', ...data },
+      actions: data.actions || [],
+    })
+  );
 });
 
 self.addEventListener('notificationclick', (event) => {
