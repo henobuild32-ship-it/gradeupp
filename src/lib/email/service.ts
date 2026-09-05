@@ -34,7 +34,7 @@ export async function sendOTPEmail(email: string, otp: string): Promise<boolean>
   }
 
   if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
-    console.log(`[OTP] SMTP non configuré. Code pour ${normalizedEmail}: ${otp}`)
+    console.warn('[OTP] SMTP not configured')
     return false
   }
   try {
@@ -71,7 +71,7 @@ export async function sendOTPEmail(email: string, otp: string): Promise<boolean>
         </div>
       `,
     })
-    console.log(`[OTP] Email sent to ${normalizedEmail}: ${info.messageId}`)
+    console.log('[OTP] Email sent')
     return true
   } catch (err) {
     console.error(`[OTP] Email failed for ${normalizedEmail}:`, err)
@@ -88,7 +88,7 @@ export async function sendPasswordResetEmail(email: string, newPassword: string)
   }
 
   if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
-    console.log(`[OTP] SMTP non configuré. Nouveau mot de passe pour ${normalizedEmail}: ${newPassword}`)
+    console.warn('[Reset] SMTP not configured')
     return false
   }
   try {
@@ -170,7 +170,7 @@ export async function sendAgentCredentialsEmail(
   }
 
   if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
-    console.log(`[Agent] SMTP non configuré. Identifiants pour ${normalizedEmail}: Code=${agentCode}, MDP=${systemPassword}`)
+    console.warn('[Agent] SMTP not configured')
     return false
   }
   try {

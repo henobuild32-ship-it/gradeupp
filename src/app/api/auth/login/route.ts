@@ -133,9 +133,12 @@ export async function POST(request: NextRequest) {
     // Sign JWT
     const token = await signToken({ userId: user.id, role: user.role })
 
+    const requiresTwoFactor = user.twoFactorEnabled
+
     const response = NextResponse.json({
       success: true,
-      token,
+      token: requiresTwoFactor ? null : token,
+      requiresTwoFactor,
       user: {
         id: user.id,
         phone: user.phone,

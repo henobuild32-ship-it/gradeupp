@@ -2,9 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { isValidEmail, normalizeEmail, sendOTPEmail } from '@/lib/email/service';
 import { generateOTP } from '@/lib/otp';
+import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+    const rl = checkRateLimit({ windowMs: 60000, maxRequests: 3, key: `otp:${ip}` })
+    if (!rl.allowed) return rateLimitResponse(rl.resetIn)
+
     const body = await request.json();
     const { email } = body;
 
@@ -32,8 +37,6 @@ export async function POST(request: NextRequest) {
     }).catch(() => {});
 
     const emailSent = await sendOTPEmail(normalizedEmail, code);
-
-    console.log(`[OTP] Code for ${normalizedEmail}: ${code}`);
 
     return NextResponse.json({
       success: true,

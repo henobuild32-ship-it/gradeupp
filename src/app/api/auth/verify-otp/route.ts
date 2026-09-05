@@ -37,6 +37,15 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      const expectedCode = Buffer.from(record.code)
+      const inputCode = Buffer.from(code)
+      if (expectedCode.length !== inputCode.length || !timingSafeEqual(expectedCode, inputCode)) {
+        return NextResponse.json(
+          { success: false, message: 'Code invalide ou expiré' },
+          { status: 400 }
+        );
+      }
+
       if (mode !== 'forgot') {
         await db.verificationCode.update({
           where: { id: record.id },

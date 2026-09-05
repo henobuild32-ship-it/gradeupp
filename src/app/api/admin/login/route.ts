@@ -2,10 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { logSecurityEvent } from '@/lib/security';
 import { signToken, setTokenCookie } from '@/lib/auth';
+import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import bcrypt from 'bcryptjs';
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+    const rl = checkRateLimit({ windowMs: 60000, maxRequests: 5, key: `admin_login:${ip}` })
+    if (!rl.allowed) return rateLimitResponse(rl.resetIn)
+
     const { username, password } = await request.json();
 
     if (!username || !password) {

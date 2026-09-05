@@ -1,11 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { hashPassword } from '@/lib/auth'
+import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit'
+import { RegisterSchema, validateRequest } from '@/lib/validations'
 import crypto from 'crypto'
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+    const rl = checkRateLimit({ windowMs: 60000, maxRequests: 3, key: `register:${ip}` })
+    if (!rl.allowed) return rateLimitResponse(rl.resetIn)
+
     const body = await request.json()
+
+    const validation = validateRequest(RegisterSchema, body)
+    if (!validation.success) {
+      return NextResponse.json({ success: false, message: validation.error }, { status: 400 })
+    }
+
     const {
       phone,
       name,
@@ -19,33 +31,11 @@ export async function POST(request: NextRequest) {
       city,
       address,
       photoId,
-      referralCode, // optional referral code provided by user
-    } = body as {
-      phone: string
-      name: string
-      pseudo: string
-      country: string
-      role: 'client' | 'agent'
-      pin: string
-      password: string
-      email?: string
-      gender?: string
-      city?: string
-      address?: string
-      photoId?: string
-      referralCode?: string
-    }
-
+      referralCode,
+    } = validation.data
     if (!phone || !name || !pseudo || !role || !password) {
       return NextResponse.json(
         { success: false, message: 'Tous les champs requis doivent être remplis' },
-        { status: 400 }
-      )
-    }
-
-    if (role !== 'client' && role !== 'agent') {
-      return NextResponse.json(
-        { success: false, message: 'Le rôle doit être "client" ou "agent"' },
         { status: 400 }
       )
     }

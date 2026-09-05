@@ -20,7 +20,7 @@ export async function signToken(payload: { userId: string; role: string }) {
   const enc = getSecret()
   return new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
-    .setExpirationTime('7d')
+    .setExpirationTime('2h')
     .setIssuedAt()
     .sign(enc);
 }
@@ -39,9 +39,9 @@ export function setTokenCookie(response: NextResponse, token: string, isAdmin = 
   response.cookies.set(isAdmin ? ADMIN_TOKEN_COOKIE : TOKEN_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    sameSite: 'strict',
     path: '/',
-    maxAge: 7 * 24 * 60 * 60,
+    maxAge: 2 * 60 * 60,
   });
 }
 
@@ -49,7 +49,7 @@ export function clearTokenCookie(response: NextResponse, isAdmin = false) {
   response.cookies.set(isAdmin ? ADMIN_TOKEN_COOKIE : TOKEN_COOKIE, '', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    sameSite: 'strict',
     path: '/',
     maxAge: 0,
   });
@@ -119,7 +119,6 @@ export async function requireUser(request: NextRequest) {
     }
     return payload;
   } catch (error) {
-    console.error('requireUser error:', error);
     return NextResponse.json({ success: false, message: 'Erreur d\'authentification' }, { status: 500 });
   }
 }
@@ -131,12 +130,11 @@ export async function requireAdmin(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Non autorisé' }, { status: 401 });
     }
     const payload = await verifyToken(token);
-    if (!payload || payload.role === 'user') {
+    if (!payload || payload.role !== 'admin') {
       return NextResponse.json({ success: false, message: 'Non autorisé' }, { status: 401 });
     }
     return payload;
   } catch (error) {
-    console.error('requireAdmin error:', error);
     return NextResponse.json({ success: false, message: 'Erreur d\'authentification' }, { status: 500 });
   }
 }

@@ -2,9 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { isValidEmail, normalizeEmail, sendOTPEmail } from '@/lib/email/service';
 import { generateOTP } from '@/lib/otp';
+import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+    const rl = checkRateLimit({ windowMs: 300000, maxRequests: 3, key: `forgot:${ip}` })
+    if (!rl.allowed) return rateLimitResponse(rl.resetIn)
+
     const { email } = await request.json();
 
     if (!email || typeof email !== 'string') {

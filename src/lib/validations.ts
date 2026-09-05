@@ -38,6 +38,8 @@ export const RegisterSchema = z.object({
   gender: z.string().optional(),
   city: z.string().optional(),
   address: z.string().optional(),
+  photoId: z.string().optional(),
+  referralCode: z.string().optional(),
 })
 
 export const QRPaymentSchema = z.object({
