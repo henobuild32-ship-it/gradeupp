@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
-// Generate a deploy ID based on build time (changes each deployment)
-const DEPLOY_ID = process.env.VERCEL_DEPLOYMENT_ID || process.env.VERCEL_GIT_COMMIT_SHA || String(Date.now());
-const DEPLOY_TIME = new Date().toISOString();
-
 export async function GET(request: NextRequest) {
   try {
     const latest = await db.appVersion.findFirst({
@@ -12,22 +8,27 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
     });
 
+    const deployId = process.env.VERCEL_DEPLOYMENT_ID || String(Date.now());
+
     const changelog = latest?.description
       ? latest.description.split('\n').filter(Boolean)
       : [
-          'TRAIT IA - Assistant intelligent intégré',
-          'Notifications push améliorées',
-          'Mises à jour automatiques PWA',
-          'Corrections et performances',
+          'Nouveau design Super App premium dark',
+          'Solde hero avec masquer/afficher',
+          'Services par catégories avec onglets',
+          'Cartes TRAIT avec nouveau design',
+          'Transactions récentes améliorées',
+          'Sécurité hyper-renforcée',
+          'TRAIT IA - 25+ sujets, 5 langues',
         ];
 
-    const version = latest?.version || '2.1.0';
+    const version = latest?.version || '3.1.0';
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       version,
-      deployId: DEPLOY_ID,
-      deployTime: DEPLOY_TIME,
+      deployId,
+      deployTime: new Date().toISOString(),
       releaseDate: latest ? latest.createdAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       changelog,
       minAppVersion: '0.2.0',
@@ -35,22 +36,31 @@ export async function GET(request: NextRequest) {
       latestVersion: version,
       downloadUrl: latest?.downloadUrl || '/downloads/trait.apk',
     });
+
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    response.headers.set('Surrogate-Control', 'no-store');
+
+    return response;
   } catch (error) {
-    console.error('Version error:', error);
+    const deployId = process.env.VERCEL_DEPLOYMENT_ID || String(Date.now());
     return NextResponse.json({
       success: true,
-      version: '2.1.0',
-      deployId: DEPLOY_ID,
-      deployTime: DEPLOY_TIME,
+      version: '3.1.0',
+      deployId,
+      deployTime: new Date().toISOString(),
       releaseDate: new Date().toISOString().split('T')[0],
       changelog: [
-        'TRAIT IA - Assistant intelligent intégré',
-        'Notifications push améliorées',
-        'Mises à jour automatiques PWA',
+        'Nouveau design Super App premium dark',
+        'Solde hero avec masquer/afficher',
+        'Services par catégories avec onglets',
+        'Sécurité hyper-renforcée',
+        'TRAIT IA - 25+ sujets, 5 langues',
       ],
       minAppVersion: '0.2.0',
       hasUpdate: true,
-      latestVersion: '2.1.0',
+      latestVersion: '3.1.0',
       downloadUrl: '/downloads/trait.apk',
     });
   }

@@ -26,6 +26,13 @@ const nextConfig: NextConfig = {
       ],
     },
     {
+      source: '/',
+      headers: [
+        { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+        { key: 'Pragma', value: 'no-cache' },
+      ],
+    },
+    {
       source: '/sw.js',
       headers: [
         { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
@@ -36,6 +43,8 @@ const nextConfig: NextConfig = {
       source: '/api/app/version',
       headers: [
         { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+        { key: 'Pragma', value: 'no-cache' },
+        { key: 'Expires', value: '0' },
       ],
     },
     {
