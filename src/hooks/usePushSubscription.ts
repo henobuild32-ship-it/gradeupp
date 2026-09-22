@@ -15,11 +15,14 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 export function usePushSubscription() {
-  const { user } = useAppStore()
+  const { user, token } = useAppStore()
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [permission, setPermission] = useState<NotificationPermission>('default')
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    setPermission(Notification.permission)
+
     if (!user || !('serviceWorker' in navigator) || !('PushManager' in window)) return
 
     navigator.serviceWorker.register('/sw.js').then(() => {
@@ -29,58 +32,83 @@ export function usePushSubscription() {
         })
       })
     }).catch(() => {})
-
-    setPermission(Notification.permission)
   }, [user])
 
-  const subscribe = useCallback(async () => {
+  const saveSubscription = useCallback(async (sub: PushSubscription) => {
+    const { endpoint, keys } = sub.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } }
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (token) headers['Authorization'] = `Bearer ${token}`
+    const res = await fetch('/api/notifications/push', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ userId: user?.id, endpoint, p256dh: keys.p256dh, auth: keys.auth }),
+    })
+    return res.ok
+  }, [user, token])
+
+  const subscribe = useCallback(async (): Promise<boolean> => {
+    if (typeof window === 'undefined') return false
     if (!user || !('serviceWorker' in navigator) || !('PushManager' in window)) return false
 
-    const result = await Notification.requestPermission()
-    setPermission(result)
+    // If already granted, try to get/create subscription without re-prompting
+    let result: NotificationPermission = Notification.permission
+    if (result === 'default') {
+      result = await Notification.requestPermission()
+      setPermission(result)
+    }
 
-    if (result !== 'granted') return false
+    if (result !== 'granted') {
+      setPermission(result)
+      return false
+    }
 
     try {
       const reg = await navigator.serviceWorker.ready
-      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || ''
+      let sub = await reg.pushManager.getSubscription()
 
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidKey),
-      })
+      if (!sub) {
+        const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || ''
+        if (!vapidKey) {
+          console.error('VAPID key missing')
+          return false
+        }
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidKey),
+        })
+      }
 
-      const { endpoint, keys } = sub.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } }
-
-      await fetch('/api/notifications/push', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, endpoint, p256dh: keys.p256dh, auth: keys.auth }),
-      })
-
-      setIsSubscribed(true)
-      return true
+      const saved = await saveSubscription(sub)
+      if (saved) {
+        setIsSubscribed(true)
+        return true
+      }
+      // Server rejected (e.g. auth) — browser sub exists but not saved
+      setIsSubscribed(true) // at least browser-side works
+      return false
     } catch (error) {
       console.error('Push subscribe error:', error)
       return false
     }
-  }, [user])
+  }, [user, saveSubscription])
 
   const unsubscribe = useCallback(async () => {
-    if (!('serviceWorker' in navigator)) return
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return
 
     try {
       const reg = await navigator.serviceWorker.ready
       const sub = await reg.pushManager.getSubscription()
       if (sub) {
         await sub.unsubscribe()
-        await fetch('/api/notifications/push', { method: 'DELETE' })
+        const headers: Record<string, string> = {}
+        if (token) headers['Authorization'] = `Bearer ${token}`
+        await fetch('/api/notifications/push', { method: 'DELETE', headers })
       }
       setIsSubscribed(false)
     } catch (error) {
       console.error('Push unsubscribe error:', error)
     }
-  }, [])
+  }, [token])
 
   return { isSubscribed, permission, subscribe, unsubscribe }
 }

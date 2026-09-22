@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, browserLocalPersistence, setPersistence, isSignInWithEmailLink, signInWithEmailLink } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, browserLocalPersistence, setPersistence } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -26,15 +26,36 @@ export function isMobileDevice(): boolean {
 }
 
 export async function signInWithGoogle(): Promise<{ idToken: string; uid: string } | null> {
+  // Mobile always uses redirect
   if (isMobileDevice()) {
-    // Mobile: redirect flow
     await signInWithRedirect(auth, googleProvider);
-    return null; // redirect navigates away
+    return null;
   }
-  // Desktop: popup flow
-  const result = await signInWithPopup(auth, googleProvider);
-  const idToken = await result.user.getIdToken();
-  return { idToken, uid: result.user.uid };
+
+  // Desktop: try popup first
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    const idToken = await result.user.getIdToken();
+    return { idToken, uid: result.user.uid };
+  } catch (err: any) {
+    const code = err?.code || '';
+    // If popup fails for network/popup reasons, fallback to redirect
+    if (
+      code === 'auth/network-request-failed' ||
+      code === 'auth/popup-blocked' ||
+      code === 'auth/popup-closed-by-user' ||
+      code === 'auth/cancelled-popup-request'
+    ) {
+      // For closed-by-user, don't force redirect (user cancelled intentionally)
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+        throw err;
+      }
+      // For network/blocked, try redirect as fallback
+      await signInWithRedirect(auth, googleProvider);
+      return null;
+    }
+    throw err;
+  }
 }
 
 export async function completeGoogleRedirect(): Promise<{ idToken: string; uid: string } | null> {

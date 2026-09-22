@@ -232,7 +232,7 @@ export default function SettingsScreen() {
 
   const handlePushPermission = async () => {
     if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
-      toast.error('Les notifications ne sont pas prises en charge sur cet appareil.');
+      toast.error(t('settings.notif_unsupported'));
       return;
     }
 
@@ -240,11 +240,11 @@ export default function SettingsScreen() {
     try {
       const success = await subscribe();
       if (success) {
-        toast.success('Notifications activées. Vous recevrez désormais les mises à jour et alertes importantes.');
-      } else if (permission === 'denied') {
-        toast.error('Les notifications sont bloquées dans votre navigateur. Vous pouvez les réactiver dans les paramètres du site.');
+        toast.success(t('settings.notif_success'));
+      } else if (Notification.permission === 'denied') {
+        toast.error(t('settings.notif_denied'));
       } else {
-        toast.info('Autorisation demandée. Confirmez la notification dans la fenêtre du navigateur.');
+        toast.info(t('settings.notif_ask'));
       }
     } finally {
       setPushLoading(false);
@@ -329,8 +329,8 @@ export default function SettingsScreen() {
         },
         {
           icon: Bell,
-          label: isSubscribed ? 'Notifications activées' : 'Activer les notifications',
-          value: pushLoading ? 'Demande...' : isSubscribed ? 'Activées' : permission === 'denied' ? 'Bloquées' : 'Désactivées',
+          label: isSubscribed ? t('settings.notif_enabled') : t('settings.notif_enable'),
+          value: pushLoading ? t('settings.notif_requesting') : isSubscribed ? t('settings.notif_on') : permission === 'denied' ? t('settings.notif_blocked') : t('settings.notif_off'),
           action: handlePushPermission,
           badge: !isSubscribed,
         },

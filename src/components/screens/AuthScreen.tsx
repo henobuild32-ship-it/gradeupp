@@ -311,7 +311,7 @@ export default function AuthScreen() {
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            Connexion
+            {t('auth.tab_login')}
           </button>
           <button
             type="button"
@@ -322,7 +322,7 @@ export default function AuthScreen() {
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            Inscription
+            {t('auth.tab_register')}
           </button>
         </div>
 
@@ -357,7 +357,7 @@ export default function AuthScreen() {
               transition={{ duration: 0.25 }}
             >
               <div className="flex flex-col gap-2 mb-6">
-                <h1 className="text-2xl font-bold text-foreground">Bon retour</h1>
+                <h1 className="text-2xl font-bold text-foreground">{t('auth.welcome_back')}</h1>
                 <p className="text-muted-foreground">{t('auth.login_subtitle')}</p>
               </div>
 
@@ -422,7 +422,7 @@ export default function AuthScreen() {
                   onClick={() => navigateTo('forgot-password')}
                   className="self-end text-xs font-medium text-[#0D5C63] hover:underline cursor-pointer -mt-2"
                 >
-                  Mot de passe oublié ?
+                  {t('auth.forgot_password')}
                 </button>
 
                 <Button
@@ -436,7 +436,7 @@ export default function AuthScreen() {
                       {t('auth.connecting')}
                     </>
                   ) : (
-                    'Se connecter'
+                    t('auth.login')
                   )}
                 </Button>
               </form>
@@ -444,7 +444,7 @@ export default function AuthScreen() {
               {/* Divider */}
               <div className="flex items-center gap-3 my-5">
                 <div className="flex-1 h-px bg-border" />
-                <span className="text-xs text-muted-foreground font-medium">ou</span>
+                <span className="text-xs text-muted-foreground font-medium">{t('auth.or')}</span>
                 <div className="flex-1 h-px bg-border" />
               </div>
 
@@ -468,7 +468,7 @@ export default function AuthScreen() {
               transition={{ duration: 0.25 }}
             >
               <div className="flex flex-col gap-2 mb-6">
-                <h1 className="text-2xl font-bold text-foreground">Créer un compte</h1>
+                <h1 className="text-2xl font-bold text-foreground">{t('auth.create_account')}</h1>
                 <p className="text-muted-foreground">{t('auth.enter_info')}</p>
               </div>
 
@@ -709,7 +709,7 @@ export default function AuthScreen() {
                       {t('auth.creating')}
                     </>
                   ) : (
-                    'Créer mon compte'
+                    t('auth.create_my_account')
                   )}
                 </Button>
               </form>
@@ -717,7 +717,7 @@ export default function AuthScreen() {
               {/* Divider */}
               <div className="flex items-center gap-3 my-5">
                 <div className="flex-1 h-px bg-border" />
-                <span className="text-xs text-muted-foreground font-medium">ou</span>
+                <span className="text-xs text-muted-foreground font-medium">{t('auth.or')}</span>
                 <div className="flex-1 h-px bg-border" />
               </div>
 
@@ -739,18 +739,18 @@ export default function AuthScreen() {
         <div className="mt-auto pt-6 flex flex-col items-center gap-2">
           {mode === 'login' && (
             <p className="text-sm text-muted-foreground">
-              Pas de compte ?{' '}
+              {t('auth.no_account')}{' '}
               <button
                 type="button"
                 onClick={() => setMode('register')}
                 className="font-semibold text-[#0D5C63] hover:underline underline-offset-2 cursor-pointer"
               >
-                Créer un compte
+                {t('auth.create_account')}
               </button>
             </p>
           )}
           <p className="text-xs text-muted-foreground text-center max-w-xs">
-            Conditions d'utilisation
+            {t('common.terms')}
           </p>
         </div>
       </motion.main>

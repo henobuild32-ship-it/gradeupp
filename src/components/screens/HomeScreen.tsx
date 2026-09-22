@@ -51,51 +51,51 @@ interface HistoryItem {
 }
 
 const primaryActions = [
-  { label: 'Envoyer', icon: Send, page: 'send' as const, gradient: 'from-[#0D5C63] to-[#14888F]' },
-  { label: 'Retirer', icon: ArrowDownToLine, page: 'withdraw' as const, gradient: 'from-[#DC2626] to-[#EF4444]' },
-  { label: 'Déposer', icon: ArrowUpFromLine, page: 'deposit' as const, gradient: 'from-[#059669] to-[#10B981]' },
-  { label: 'Scanner', icon: ScanLine, page: '__scan__' as const, gradient: 'from-[#7C3AED] to-[#A78BFA]' },
+  { labelKey: 'action.send', icon: Send, page: 'send' as const, gradient: 'from-[#0D5C63] to-[#14888F]' },
+  { labelKey: 'action.withdraw', icon: ArrowDownToLine, page: 'withdraw' as const, gradient: 'from-[#DC2626] to-[#EF4444]' },
+  { labelKey: 'action.deposit', icon: ArrowUpFromLine, page: 'deposit' as const, gradient: 'from-[#059669] to-[#10B981]' },
+  { labelKey: 'home.scanner', icon: ScanLine, page: '__scan__' as const, gradient: 'from-[#7C3AED] to-[#A78BFA]' },
 ];
 
 const serviceCategories = [
   {
-    title: 'Finance',
+    titleKey: 'home.finance',
     items: [
-      { label: 'Transfert international', icon: Globe, page: 'international-transfer' as const, color: '#7C3AED' },
-      { label: 'Factures', icon: FileText, page: 'bills' as const, color: '#CA8A04' },
-      { label: 'Épargne', icon: Target, page: 'savings-goals' as const, color: '#0284C7' },
-      { label: 'Microcrédits', icon: PiggyBank, page: 'micro-credit' as const, color: '#059669' },
+      { labelKey: 'home.cat_intl', icon: Globe, page: 'international-transfer' as const, color: '#7C3AED' },
+      { labelKey: 'home.cat_bills', icon: FileText, page: 'bills' as const, color: '#CA8A04' },
+      { labelKey: 'home.cat_savings', icon: Target, page: 'savings-goals' as const, color: '#0284C7' },
+      { labelKey: 'home.cat_micro', icon: PiggyBank, page: 'micro-credit' as const, color: '#059669' },
     ],
   },
   {
-    title: 'Services',
+    titleKey: 'home.services',
     items: [
-      { label: 'Marché', icon: Store, page: 'marketplace' as const, color: '#0891B2' },
-      { label: 'Paiements récurrents', icon: Repeat, page: 'recurring-payments' as const, color: '#7C3AED' },
-      { label: 'Recharge', icon: Radio, page: 'bundle-catalog' as const, color: '#E11D48' },
-      { label: 'Liens de paiement', icon: Link, page: 'payment-links' as const, color: '#0D9488' },
+      { labelKey: 'home.cat_market', icon: Store, page: 'marketplace' as const, color: '#0891B2' },
+      { labelKey: 'home.cat_recurring', icon: Repeat, page: 'recurring-payments' as const, color: '#7C3AED' },
+      { labelKey: 'home.cat_topup', icon: Radio, page: 'bundle-catalog' as const, color: '#E11D48' },
+      { labelKey: 'home.cat_payment_links', icon: Link, page: 'payment-links' as const, color: '#0D9488' },
     ],
   },
   {
-    title: 'Social',
+    titleKey: 'home.social',
     items: [
-      { label: 'Parrainage', icon: Gift, page: 'referral' as const, color: '#C026D3' },
-      { label: 'Contacts', icon: Contact, page: 'contact-pay' as const, color: '#65A30D' },
-      { label: 'USSD', icon: Phone, page: 'ussd' as const, color: '#7C3AED' },
-      { label: 'Analytics', icon: BarChart3, page: 'analytics' as const, color: '#0891B2' },
+      { labelKey: 'home.cat_referral', icon: Gift, page: 'referral' as const, color: '#C026D3' },
+      { labelKey: 'home.cat_contacts', icon: Contact, page: 'contact-pay' as const, color: '#65A30D' },
+      { labelKey: 'action.ussd', icon: Phone, page: 'ussd' as const, color: '#7C3AED' },
+      { labelKey: 'home.cat_analytics', icon: BarChart3, page: 'analytics' as const, color: '#0891B2' },
     ],
   },
 ];
 
 const agentActions = [
-  { label: 'Dépôt client', icon: UserPlus, page: 'agent-deposit' as const, color: '#0D5C63' },
-  { label: 'Valider retrait', icon: ShieldCheck, page: 'agent-withdraw-validate' as const, color: '#059669' },
-  { label: 'Activité', icon: Activity, page: 'agent-activity' as const, color: '#D97706' },
-  { label: 'Messages', icon: MessageSquare, page: 'agent-messages' as const, color: '#DC2626' },
-  { label: 'Marketplace', icon: Store, page: 'marketplace' as const, color: '#0891B2' },
-  { label: 'USSD', icon: Phone, page: 'ussd' as const, color: '#7C3AED' },
-  { label: 'QR Code', icon: QrCode, page: 'my-qr-code' as const, color: '#4F46E5' },
-  { label: 'Support', icon: MessageCircle, page: 'support' as const, color: '#0D9488' },
+  { labelKey: 'action.agent_deposit', icon: UserPlus, page: 'agent-deposit' as const, color: '#0D5C63' },
+  { labelKey: 'action.agent_validate', icon: ShieldCheck, page: 'agent-withdraw-validate' as const, color: '#059669' },
+  { labelKey: 'action.agent_activity', icon: Activity, page: 'agent-activity' as const, color: '#D97706' },
+  { labelKey: 'action.messages', icon: MessageSquare, page: 'agent-messages' as const, color: '#DC2626' },
+  { labelKey: 'action.marketplace', icon: Store, page: 'marketplace' as const, color: '#0891B2' },
+  { labelKey: 'action.ussd', icon: Phone, page: 'ussd' as const, color: '#7C3AED' },
+  { labelKey: 'QR Code', icon: QrCode, page: 'my-qr-code' as const, color: '#4F46E5' },
+  { labelKey: 'home.extra_support', icon: MessageCircle, page: 'support' as const, color: '#0D9488' },
 ];
 
 function getTypeIcon(type: string) {
@@ -113,20 +113,30 @@ function fmtCurrency(amount: number, currency: string) {
   return `${symbol}${amount.toFixed(2)} ${currency === 'FC' ? 'FC' : 'USD'}`;
 }
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string, lang: string): string {
   const now = new Date();
   const date = new Date(dateStr);
   const diff = Math.floor((now.getTime() - date.getTime()) / 1000);
-  if (diff < 60) return "à l'instant";
-  if (diff < 3600) return `il y a ${Math.floor(diff / 60)}min`;
-  if (diff < 86400) return `il y a ${Math.floor(diff / 3600)}h`;
-  if (diff < 604800) return `il y a ${Math.floor(diff / 86400)}j`;
-  return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+  const locale = lang === 'en' ? 'en-US' : 'fr-FR';
+  if (diff < 60) return lang === 'en' ? 'Just now' : "à l'instant";
+  if (diff < 3600) {
+    const n = Math.floor(diff / 60);
+    return lang === 'en' ? `${n}min ago` : `il y a ${n}min`;
+  }
+  if (diff < 86400) {
+    const n = Math.floor(diff / 3600);
+    return lang === 'en' ? `${n}h ago` : `il y a ${n}h`;
+  }
+  if (diff < 604800) {
+    const n = Math.floor(diff / 86400);
+    return lang === 'en' ? `${n}d ago` : `il y a ${n}j`;
+  }
+  return date.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
 }
 
 export default function HomeScreen() {
   const { user, navigateTo, setUser } = useAppStore();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [recentTransactions, setRecentTransactions] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [codeCopied, setCodeCopied] = useState(false);
@@ -152,12 +162,9 @@ export default function HomeScreen() {
     fetchRecentTransactions();
     refreshUserBalance();
     fetchUserCards();
-    if ('serviceWorker' in navigator && 'PushManager' in window) {
-      const perm = Notification.permission;
-      if (perm === 'granted') subscribe().catch(() => {});
-      else if (perm !== 'denied') {
-        Notification.requestPermission().then((r) => { if (r === 'granted') subscribe().catch(() => {}); });
-      }
+    // Only re-sync existing subscription — never request permission without user gesture
+    if ('serviceWorker' in navigator && 'PushManager' in window && Notification.permission === 'granted') {
+      subscribe().catch(() => {});
     }
     const interval = setInterval(() => refreshUserBalance(), 30000);
     return () => clearInterval(interval);
@@ -202,7 +209,7 @@ export default function HomeScreen() {
     if (!displayAgentCode) return;
     navigator.clipboard?.writeText(displayAgentCode);
     setCodeCopied(true);
-    toast.success('Code copié !');
+    toast.success(t('home.copied'));
     setTimeout(() => setCodeCopied(false), 2000);
   }
 
@@ -216,7 +223,7 @@ export default function HomeScreen() {
               <Image src="/trait-logo.png" alt="TRAIT" width={28} height={28} className="object-contain" />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] text-gray-500 font-medium tracking-wider uppercase">Bienvenue</p>
+              <p className="text-[10px] text-gray-500 font-medium tracking-wider uppercase">{t('home.welcome')}</p>
               <h1 className="text-[15px] font-bold text-white truncate">{user?.name || user?.pseudo || 'User'}</h1>
             </div>
           </div>
@@ -243,7 +250,7 @@ export default function HomeScreen() {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Wallet className="w-4 h-4 text-[#00D4AA]" />
-                  <p className="text-[11px] text-gray-400 font-semibold tracking-wider uppercase">Solde total</p>
+                  <p className="text-[11px] text-gray-400 font-semibold tracking-wider uppercase">{t('home.total_balance')}</p>
                 </div>
                 <button onClick={() => setShowBalance(!showBalance)} className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
                   {showBalance ? <Eye className="w-3.5 h-3.5 text-gray-400" /> : <EyeOff className="w-3.5 h-3.5 text-gray-400" />}
@@ -289,7 +296,7 @@ export default function HomeScreen() {
                       <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${action.gradient} flex items-center justify-center shadow-lg`}>
                         <Icon className="w-4 h-4 text-white" />
                       </div>
-                      <span className="text-[10px] font-semibold text-gray-300">{action.label}</span>
+                      <span className="text-[10px] font-semibold text-gray-300">{t(action.labelKey)}</span>
                     </motion.button>
                   );
                 })}
@@ -307,7 +314,7 @@ export default function HomeScreen() {
                 <BadgeCheck className="w-5 h-5 text-[#00D4AA]" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-widest">Code Agent</p>
+                <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-widest">{t('home.agent_code')}</p>
                 <p className="text-lg font-bold font-mono text-[#00D4AA] tracking-wider">{displayAgentCode}</p>
               </div>
               <button onClick={handleCopyCode} className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
@@ -329,8 +336,8 @@ export default function HomeScreen() {
                   <ScanLine className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1 text-left">
-                  <p className="text-sm font-bold text-white">Payer par scan</p>
-                  <p className="text-[11px] text-gray-400">Scannez un QR Code pour envoyer de l&apos;argent</p>
+                  <p className="text-sm font-bold text-white">{t('home.pay_scan')}</p>
+                  <p className="text-[11px] text-gray-400">{t('home.pay_scan_desc')}</p>
                 </div>
                 <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
                   <QrCode className="w-4 h-4 text-[#A78BFA]" />
@@ -346,10 +353,10 @@ export default function HomeScreen() {
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-bold text-white flex items-center gap-2">
                 <CreditCard className="w-4 h-4 text-[#00D4AA]" />
-                Mes Cartes
+                {t('home.my_cards')}
               </h2>
               <button onClick={() => navigateTo('card')} className="text-[11px] font-semibold text-[#00D4AA] hover:opacity-80">
-                Voir tout
+                {t('home.view_all')}
               </button>
             </div>
 
@@ -370,8 +377,8 @@ export default function HomeScreen() {
                 <div className="flex items-center gap-3">
                   <Clock className="w-5 h-5 text-amber-400 shrink-0" />
                   <div>
-                    <p className="text-sm font-semibold text-white">Carte en cours de traitement</p>
-                    <p className="text-[11px] text-gray-400">Votre demande est en cours de validation.</p>
+                    <p className="text-sm font-semibold text-white">{t('home.card_processing')}</p>
+                    <p className="text-[11px] text-gray-400">{t('home.card_processing_desc')}</p>
                   </div>
                 </div>
               </div>
@@ -386,8 +393,8 @@ export default function HomeScreen() {
                     <CreditCard className="w-5 h-5 text-white" />
                   </div>
                   <div className="text-left flex-1">
-                    <p className="text-sm font-bold text-white">Demander une carte</p>
-                    <p className="text-[10px] text-white/60">Carte virtuelle sécurisée</p>
+                    <p className="text-sm font-bold text-white">{t('home.card_request')}</p>
+                    <p className="text-[10px] text-white/60">{t('home.card_secure')}</p>
                   </div>
                   <ArrowRight className="w-4 h-4 text-white/60" />
                 </div>
@@ -401,7 +408,7 @@ export default function HomeScreen() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-bold text-white flex items-center gap-2">
               <Zap className="w-4 h-4 text-[#00D4AA]" />
-              Services
+              {t('home.services')}
             </h2>
           </div>
 
@@ -410,13 +417,13 @@ export default function HomeScreen() {
               {/* Category tabs */}
               <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
                 {serviceCategories.map((cat, i) => (
-                  <button key={cat.title} onClick={() => setActiveCategory(i)}
+                  <button key={cat.titleKey} onClick={() => setActiveCategory(i)}
                     className={`px-4 py-2 rounded-xl text-[11px] font-semibold whitespace-nowrap transition-all ${
                       activeCategory === i
                         ? 'bg-[#0D5C63] text-white'
                         : 'bg-white/5 text-gray-400 hover:bg-white/10'
                     }`}>
-                    {cat.title}
+                    {t(cat.titleKey)}
                   </button>
                 ))}
               </div>
@@ -433,7 +440,7 @@ export default function HomeScreen() {
                         <Icon className="w-4 h-4" style={{ color: item.color }} />
                       </div>
                       <span className="text-[9px] font-semibold text-gray-400 text-center leading-tight px-1">
-                        {item.label}
+                        {t(item.labelKey)}
                       </span>
                     </motion.button>
                   );
@@ -443,10 +450,10 @@ export default function HomeScreen() {
               {/* Extra services */}
               <div className="grid grid-cols-4 gap-2 mt-2">
                 {[
-                  { label: 'Historique', icon: History, page: 'history' as const, color: '#D97706' },
-                  { label: 'Demande', icon: Handshake, page: 'payment-requests' as const, color: '#EA580C' },
-                  { label: 'Support', icon: MessageCircle, page: 'support' as const, color: '#0D9488' },
-                  { label: 'Espace Vendeur', icon: Store, page: ('seller-dashboard' as const), color: '#DB2777' },
+                  { labelKey: 'action.history', icon: History, page: 'history' as const, color: '#D97706' },
+                  { labelKey: 'home.extra_request', icon: Handshake, page: 'payment-requests' as const, color: '#EA580C' },
+                  { labelKey: 'home.extra_support', icon: MessageCircle, page: 'support' as const, color: '#0D9488' },
+                  { labelKey: 'home.seller_space', icon: Store, page: ('seller-dashboard' as const), color: '#DB2777' },
                 ].map((item) => {
                   const Icon = item.icon;
                   return (
@@ -457,7 +464,7 @@ export default function HomeScreen() {
                         <Icon className="w-4 h-4" style={{ color: item.color }} />
                       </div>
                       <span className="text-[9px] font-semibold text-gray-400 text-center leading-tight px-1">
-                        {item.label}
+                        {t(item.labelKey)}
                       </span>
                     </motion.button>
                   );
@@ -471,7 +478,7 @@ export default function HomeScreen() {
                 return (
                     <motion.button key={item.page} whileTap={{ scale: 0.95 }}
                       onClick={() => {
-                        if (item.label === 'Espace Vendeur') navigateTo(user?.role === 'seller' ? 'seller-dashboard' : 'seller-register');
+                        if (item.page === 'my-qr-code') navigateTo('my-qr-code');
                         else navigateTo(item.page);
                       }}
                     className="flex flex-col items-center gap-2 py-3 rounded-2xl bg-[#0f1729] border border-white/5 hover:border-white/10 transition-all">
@@ -479,7 +486,7 @@ export default function HomeScreen() {
                       <Icon className="w-4 h-4" style={{ color: item.color }} />
                     </div>
                     <span className="text-[9px] font-semibold text-gray-400 text-center leading-tight px-1">
-                      {item.label}
+                      {item.labelKey === 'QR Code' ? 'QR Code' : t(item.labelKey)}
                     </span>
                   </motion.button>
                 );
@@ -493,10 +500,10 @@ export default function HomeScreen() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-bold text-white flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-[#00D4AA]" />
-              Transactions récentes
+              {t('home.recent_transactions')}
             </h2>
             <button onClick={() => navigateTo('history')} className="text-[11px] font-semibold text-[#00D4AA]">
-              Tout voir
+              {t('home.see_all')}
             </button>
           </div>
 
@@ -515,9 +522,9 @@ export default function HomeScreen() {
               <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center mb-3">
                 <History className="w-5 h-5 text-gray-600" />
               </div>
-              <p className="text-sm font-semibold text-gray-500">Aucune transaction</p>
+              <p className="text-sm font-semibold text-gray-500">{t('home.no_transactions')}</p>
               <p className="text-[11px] text-gray-600 mt-1">
-                {isAgent ? 'Vos transactions apparaîtront ici' : 'Commencez par envoyer de l\'argent'}
+                {isAgent ? t('home.no_transactions_agent') : t('home.start_send')}
               </p>
             </div>
           ) : (
@@ -533,7 +540,7 @@ export default function HomeScreen() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[13px] font-medium text-white truncate">{tx.description}</p>
-                      <p className="text-[11px] text-gray-500 mt-0.5">{formatDate(tx.createdAt)}</p>
+                      <p className="text-[11px] text-gray-500 mt-0.5">{formatDate(tx.createdAt, language)}</p>
                     </div>
                     <p className={`text-[13px] font-bold ${isReceive ? 'text-green-400' : 'text-red-400'}`}>
                       {isReceive ? '+' : '-'}{fmtCurrency(tx.amount, tx.currency)}
@@ -556,8 +563,8 @@ export default function HomeScreen() {
               </div>
             </div>
             <div className="text-left flex-1">
-              <p className="text-sm font-semibold text-violet-400">Besoin d&apos;aide ?</p>
-              <p className="text-xs text-gray-500">Parler à TRAIT IA</p>
+              <p className="text-sm font-semibold text-violet-400">{t('home.need_help')}</p>
+              <p className="text-xs text-gray-500">{t('home.talk_ai')}</p>
             </div>
             <ArrowRight className="w-4 h-4 text-violet-400/60" />
           </button>

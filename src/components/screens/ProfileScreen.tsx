@@ -242,7 +242,7 @@ export default function ProfileScreen() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <Wallet className="size-4" />
-                Informations de solde
+                {t('profile.balance_info')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -251,7 +251,7 @@ export default function ProfileScreen() {
                   <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
                     <Wallet className="size-4 text-emerald-700" />
                   </div>
-                  <span className="text-sm">Solde réel</span>
+                  <span className="text-sm">{t('profile.real_balance')}</span>
                 </div>
                 <span className="font-bold text-emerald-600">
                   ${(user.realBalance ?? 0).toFixed(2)}
@@ -266,9 +266,9 @@ export default function ProfileScreen() {
                     <Gift className="size-4 text-amber-700" />
                   </div>
                   <div>
-                    <span className="text-sm block">Solde bonus</span>
+                    <span className="text-sm block">{t('profile.bonus_balance')}</span>
                     <span className="text-xs text-muted-foreground">
-                      Non retirable, non transférable
+                      {t('profile.bonus_not_withdrawable')}
                     </span>
                   </div>
                 </div>
