@@ -7,7 +7,7 @@ import {
   Smartphone, Apple, Check, Globe, Headphones,
   Shield, Zap, Gift, Wallet, ChevronRight,
   ArrowRight, Lock, Star, Download, ChevronDown, X,
-  CreditCard, TrendingUp, Landmark, MessageCircle, Languages,
+  CreditCard, Landmark, Languages, QrCode, UserRound,
 } from 'lucide-react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
@@ -17,12 +17,8 @@ import { useTranslation, languages, type Language } from '@/lib/i18n'
 import { toast } from 'sonner'
 
 const services = [
-  { icon: Send, label: 'Transferts', desc: 'Argent instantané' },
-  { icon: Phone, label: 'Mobile Money', desc: 'Payez partout' },
-  { icon: CreditCard, label: 'Cartes', desc: 'USD & FC' },
-  { icon: ArrowLeftRight, label: 'Troc', desc: 'Échangez facilement' },
-  { icon: ShoppingBag, label: 'Marketplace', desc: 'Achetez & vendez' },
-  { icon: Code, label: 'API', desc: 'Intégrez TRAIT' },
+  { icon: Send, key: 'welcome.service_transfer' }, { icon: Phone, key: 'welcome.service_mobile' }, { icon: CreditCard, key: 'welcome.service_cards' },
+  { icon: ArrowLeftRight, key: 'welcome.service_barter' }, { icon: ShoppingBag, key: 'welcome.service_marketplace' }, { icon: Code, key: 'welcome.service_api' },
 ]
 
 const steps = [
@@ -37,8 +33,6 @@ const faq = [
   { q: 'Quelles devises ?', a: 'USD et Franc Congolais (FC), avec conversion automatique.' },
   { q: 'Comment contacter le support ?', a: 'Disponible 24/7 via chat, email ou téléphone.' },
 ]
-
-const langLabels: Record<string, string> = { fr: 'Français', en: 'English', es: 'Español', ar: 'العربية', pt: 'Português', ln: 'Lingála', sw: 'Kiswahili', tl: 'Tshiluba', kg: 'Kikongo' }
 
 export default function WelcomeScreen() {
   const navigateTo = useAppStore((s) => s.navigateTo)
@@ -101,7 +95,7 @@ export default function WelcomeScreen() {
                         }`}
                       >
                         <span className="w-5 h-5 rounded-md bg-muted/60 flex items-center justify-center text-[9px] font-bold">{lang.toUpperCase()}</span>
-                        {langLabels[lang] || lang}
+                        {lang === 'fr' ? 'Français' : 'English'}
                       </button>
                     ))}
                   </motion.div>
@@ -134,7 +128,7 @@ export default function WelcomeScreen() {
               className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#0D5C63]/10 border border-[#0D5C63]/15 text-[#0D5C63] text-xs font-semibold mb-6"
             >
               <Zap className="w-3.5 h-3.5" />
-              Nouveau : Transferts internationaux disponibles
+              {t('welcome.badge')}
             </motion.div>
 
             <motion.div
@@ -159,11 +153,7 @@ export default function WelcomeScreen() {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="text-4xl sm:text-5xl lg:text-6xl font-black text-foreground leading-[1.1] mb-5 tracking-tight"
             >
-              Votre argent,
-              <br />
-              <span className="bg-gradient-to-r from-[#0D5C63] via-[#14888F] to-blue-500 bg-clip-text text-transparent">
-                sans frontières.
-              </span>
+              {t('welcome.hero')}
             </motion.h1>
 
             <motion.p
@@ -172,7 +162,7 @@ export default function WelcomeScreen() {
               transition={{ duration: 0.6, delay: 0.3 }}
               className="text-base sm:text-lg text-muted-foreground max-w-md mx-auto mb-8 leading-relaxed"
             >
-              Transférez, payez et échangez en toute simplicité avec TRAIT. La fintech de nouvelle génération pour l&apos;Afrique.
+              {t('welcome.hero_desc')}
             </motion.p>
 
             <motion.div
@@ -199,17 +189,16 @@ export default function WelcomeScreen() {
           </div>
         </section>
 
-        {/* ── Stats ── */}
+        {/* ── Benefits ── */}
         <section className="pb-16">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid sm:grid-cols-3 gap-3">
             {[
-              { value: '50+', label: 'Pays', icon: Globe },
-              { value: '0,7%', label: 'Frais', icon: Zap },
-              { value: '10$', label: 'Bonus', icon: Gift },
-              { value: '99,9%', label: 'Disponibilité', icon: TrendingUp },
+              { key: 'welcome.benefit_transfer', icon: Send },
+              { key: 'welcome.benefit_qr', icon: QrCode },
+              { key: 'welcome.benefit_offline', icon: Smartphone },
             ].map((s, i) => (
               <motion.div
-                key={s.label}
+                key={s.key}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -219,23 +208,46 @@ export default function WelcomeScreen() {
                 <div className="w-10 h-10 rounded-xl bg-[#0D5C63]/10 flex items-center justify-center mx-auto mb-3">
                   <s.icon className="w-5 h-5 text-[#0D5C63]" />
                 </div>
-                <p className="text-2xl font-black text-foreground tracking-tight">{s.value}</p>
-                <p className="text-xs text-muted-foreground mt-0.5 font-medium">{s.label}</p>
+                <p className="text-base font-black text-foreground tracking-tight">{t(s.key).split('|')[0]}</p>
+                <p className="text-xs text-muted-foreground mt-1 font-medium leading-relaxed">{t(s.key).split('|')[1]}</p>
               </motion.div>
             ))}
+          </div>
+        </section>
+
+        {/* ── App preview ── */}
+        <section className="pb-16 grid lg:grid-cols-2 gap-8 items-center">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-[#0D5C63] mb-3">{t('welcome.preview_label')}</p>
+            <h2 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight mb-3">{t('welcome.preview_title')}</h2>
+            <p className="text-sm text-muted-foreground leading-relaxed">{t('welcome.preview_desc')}</p>
+          </div>
+          <div className="rounded-3xl bg-[#0F172A] p-5 shadow-xl shadow-[#0D5C63]/10 max-w-sm w-full mx-auto">
+            <div className="flex items-center justify-between text-white mb-6"><span className="text-sm font-semibold">{t('welcome.wallet')}</span><Wallet className="w-5 h-5 text-[#00D4AA]" /></div>
+            <p className="text-xs text-slate-400">{t('welcome.available')}</p><p className="text-3xl font-black text-white mt-1">$ 1 250,00</p>
+            <div className="grid grid-cols-2 gap-3 mt-6"><button onClick={() => navigateTo('send')} className="rounded-xl bg-[#00D4AA] py-3 text-sm font-bold text-[#0F172A]">{t('action.send')}</button><button onClick={() => navigateTo('my-qr-code')} className="rounded-xl bg-white/10 py-3 text-sm font-bold text-white">{t('welcome.qr')}</button></div>
+            <div className="mt-5 rounded-xl bg-white/5 p-3 text-xs text-slate-300">{t('welcome.currencies')}</div>
+          </div>
+        </section>
+
+        {/* ── Profiles ── */}
+        <section className="pb-16">
+          <div className="text-center mb-8"><h2 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight mb-2">{t('welcome.profiles_title')}</h2><p className="text-sm text-muted-foreground">{t('welcome.profiles_desc')}</p></div>
+          <div className="grid md:grid-cols-3 gap-3">
+            {[['welcome.profile_client', UserRound, () => navigateTo('auth', { mode: 'register' })], ['welcome.profile_agent', Landmark, () => navigateTo('agent-register')], ['welcome.profile_seller', Store, () => navigateTo('auth', { mode: 'register' })]].map(([key, Icon, action]) => { const [title, desc] = t(key as string).split('|'); return <button key={key as string} onClick={action as () => void} className="text-left bg-white dark:bg-zinc-900 rounded-2xl border border-black/5 dark:border-white/5 p-5 hover:border-[#0D5C63]/30 hover:shadow-lg transition-all"><Icon className="w-5 h-5 text-[#0D5C63] mb-4" /><p className="font-bold text-foreground">{title}</p><p className="text-sm text-muted-foreground mt-1">{desc}</p><span className="inline-flex items-center gap-1 text-xs font-bold text-[#0D5C63] mt-4">{t('welcome.discover')} <ArrowRight className="w-3 h-3" /></span></button> })}
           </div>
         </section>
 
         {/* ── Services ── */}
         <section className="pb-16">
           <div className="text-center mb-10">
-            <h2 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight mb-2">Nos services</h2>
-            <p className="text-sm text-muted-foreground max-w-md mx-auto">Tout ce dont vous avez besoin pour gérer votre argent.</p>
+            <h2 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight mb-2">{t('welcome.services_title')}</h2>
+            <p className="text-sm text-muted-foreground max-w-md mx-auto">{t('welcome.services_desc')}</p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {services.map((s, i) => (
               <motion.div
-                key={s.label}
+                key={s.key}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -245,8 +257,8 @@ export default function WelcomeScreen() {
                 <div className="w-12 h-12 rounded-xl bg-[#0D5C63]/10 flex items-center justify-center mx-auto mb-3 group-hover:bg-[#0D5C63] group-hover:scale-110 transition-all duration-300">
                   <s.icon className="w-5 h-5 text-[#0D5C63] group-hover:text-white transition-colors" />
                 </div>
-                <p className="text-sm font-bold text-foreground mb-0.5">{s.label}</p>
-                <p className="text-[11px] text-muted-foreground">{s.desc}</p>
+                <p className="text-sm font-bold text-foreground mb-0.5">{t(`${s.key}_title`)}</p>
+                <p className="text-[11px] text-muted-foreground">{t(`${s.key}_desc`)}</p>
               </motion.div>
             ))}
           </div>
@@ -255,8 +267,8 @@ export default function WelcomeScreen() {
         {/* ── How it works ── */}
         <section className="pb-16">
           <div className="text-center mb-10">
-            <h2 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight mb-2">Comment ça marche</h2>
-            <p className="text-sm text-muted-foreground">Commencez en 3 étapes simples.</p>
+            <h2 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight mb-2">{t('welcome.how_title')}</h2>
+            <p className="text-sm text-muted-foreground">{t('welcome.how_desc')}</p>
           </div>
           <div className="grid sm:grid-cols-3 gap-4">
             {steps.map((s, i) => (
@@ -295,9 +307,9 @@ export default function WelcomeScreen() {
               <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 flex items-center justify-center mx-auto mb-5">
                 <Shield className="w-7 h-7 text-[#00D4AA]" />
               </div>
-              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight mb-3">Sécurité maximale</h2>
+              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight mb-3">{t('welcome.security_title')}</h2>
               <p className="text-sm text-blue-200/60 leading-relaxed mb-6">
-                Vos transactions sont protégées par les technologies les plus avancées. Vos données sont sécurisées de bout en bout.
+                {t('welcome.security_desc')}
               </p>
               <div className="flex items-center justify-center gap-6">
                 {[
@@ -332,8 +344,8 @@ export default function WelcomeScreen() {
                   <Landmark className="w-5 h-5" />
                 </div>
                 <div className="text-left">
-                  <p className="font-bold">Agent TRAIT</p>
-                  <p className="text-xs font-normal opacity-70">Devenez agent de transfert</p>
+                  <p className="font-bold">{t('welcome.agent')}</p>
+                  <p className="text-xs font-normal opacity-70">{t('welcome.agent_desc')}</p>
                 </div>
               </span>
               <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -352,8 +364,8 @@ export default function WelcomeScreen() {
                   <Code className="w-5 h-5 text-slate-600 dark:text-slate-400" />
                 </div>
                 <div className="text-left">
-                  <p className="font-bold">Espace Développeur</p>
-                  <p className="text-xs font-normal text-muted-foreground">Intégrez TRAIT dans vos applications</p>
+                  <p className="font-bold">{t('welcome.developer')}</p>
+                  <p className="text-xs font-normal text-muted-foreground">{t('welcome.developer_desc')}</p>
                 </div>
               </span>
               <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -372,8 +384,8 @@ export default function WelcomeScreen() {
                   <Headphones className="w-5 h-5" />
                 </div>
                 <div className="text-left">
-                  <p className="font-bold text-foreground">Support</p>
-                  <p className="text-xs font-normal">Aide disponible 24/7</p>
+                  <p className="font-bold text-foreground">{t('welcome.support')}</p>
+                  <p className="text-xs font-normal">{t('welcome.support_msg')}</p>
                 </div>
               </span>
               <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -384,7 +396,7 @@ export default function WelcomeScreen() {
         {/* ── FAQ ── */}
         <section className="pb-16">
           <div className="text-center mb-10">
-            <h2 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight mb-2">Questions fréquentes</h2>
+            <h2 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight mb-2">{t('welcome.faq_title')}</h2>
           </div>
           <div className="max-w-xl mx-auto space-y-2">
             {faq.map((f, i) => (
@@ -429,8 +441,8 @@ export default function WelcomeScreen() {
               viewport={{ once: true }}
               className="bg-white dark:bg-zinc-900 rounded-3xl border border-black/5 dark:border-white/5 p-8 text-center"
             >
-              <h2 className="text-2xl font-black text-foreground tracking-tight mb-2">Téléchargez l&apos;application</h2>
-              <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">Disponible sur Android et iOS. Emportez TRAIT partout avec vous.</p>
+              <h2 className="text-2xl font-black text-foreground tracking-tight mb-2">{t('welcome.download_title')}</h2>
+              <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">{t('welcome.download_desc')}</p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 <button
                   onClick={() => handleInstall('android')}
@@ -476,9 +488,9 @@ export default function WelcomeScreen() {
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-white/5 rounded-full blur-[80px]" />
             </div>
             <div className="relative z-10">
-              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight mb-3">Prêt à commencer ?</h2>
+              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight mb-3">{t('welcome.final_title')}</h2>
               <p className="text-sm text-white/70 max-w-sm mx-auto mb-6 leading-relaxed">
-                Rejoignez des milliers d&apos;utilisateurs qui font confiance à TRAIT pour leurs transactions financières.
+                {t('welcome.final_desc')}
               </p>
               <Button
                 onClick={() => navigateTo('auth', { mode: 'register' })}

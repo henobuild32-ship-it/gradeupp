@@ -23,6 +23,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useAppStore } from '@/lib/store';
+import { useTranslation } from '@/lib/i18n';
 import { toast } from 'sonner';
 
 function fmtCur(amount: number, currency: string) {
@@ -32,6 +33,7 @@ function fmtCur(amount: number, currency: string) {
 
 export default function SendScreen() {
   const { user, navigateTo, setUser, setPendingPinAction, pageParams } = useAppStore();
+  const { t } = useTranslation();
   const [receiverPhone, setReceiverPhone] = useState('');
   const [receiverName, setReceiverName] = useState('');
   const [lookingUp, setLookingUp] = useState(false);
@@ -99,15 +101,15 @@ export default function SendScreen() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!receiverPhone.trim()) {
-      toast.error('Veuillez entrer le numéro du destinataire');
+      toast.error(t('send.phone_required'));
       return;
     }
     if (numericAmount <= 0) {
-      toast.error('Veuillez entrer un montant valide');
+      toast.error(t('send.amount_required'));
       return;
     }
     if (total > availableBalance) {
-      toast.error(`Solde insuffisant en ${isFC ? 'FC' : 'USD'}. Disponible: ${fmtCur(availableBalance, currency)}`);
+      toast.error(t('send.insufficient', { currency: isFC ? 'FC' : 'USD', amount: fmtCur(availableBalance, currency) }));
       return;
     }
     setShowConfirm(true);
@@ -142,16 +144,16 @@ export default function SendScreen() {
               bonusBalanceFC: data.updatedBalances.bonusBalanceFC,
             } as any);
           }
-          toast.success('Transfert envoyé avec succès !');
+          toast.success(t('send.success'));
           setReceiverPhone('');
           setAmount('');
           setNote('');
           navigateTo('home');
         } else {
-          toast.error(data.message || 'Erreur lors du transfert');
+          toast.error(data.message || t('send.error'));
         }
       } catch {
-        toast.error('Erreur de connexion. Veuillez réessayer.');
+        toast.error(t('validation.connection_error'));
       } finally {
         setLoading(false);
       }
@@ -172,7 +174,7 @@ export default function SendScreen() {
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-xl font-bold text-foreground">Envoyer de l&apos;argent</h1>
+        <h1 className="text-xl font-bold text-foreground">{t('send.title')}</h1>
       </div>
 
       {/* Balance Info */}
@@ -180,7 +182,7 @@ export default function SendScreen() {
         <Card className="border-border bg-gradient-to-br from-emerald-50 to-emerald-100">
           <CardContent className="p-4">
             <p className="text-sm text-emerald-600 mb-1">
-              Solde disponible ({isFC ? 'FC' : 'USD'})
+              {t('send.available')} ({isFC ? 'FC' : 'USD'})
             </p>
             <p className="text-2xl font-bold text-emerald-700">
               {fmtCur(availableBalance, currency)}
@@ -193,7 +195,7 @@ export default function SendScreen() {
       <div className="px-4 mb-4">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Lock className="size-3" />
-          <span>Code PIN requis pour confirmer</span>
+          <span>{t('send.pin_required')}</span>
         </div>
       </div>
 
@@ -208,7 +210,7 @@ export default function SendScreen() {
           <CardContent className="p-6 space-y-5">
             {/* Currency - first so user picks before entering amount */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Devise</Label>
+              <Label className="text-sm font-medium">{t('send.currency')}</Label>
               <Select value={currency} onValueChange={setCurrency}>
                 <SelectTrigger className="w-full h-11">
                   <SelectValue />
@@ -223,7 +225,7 @@ export default function SendScreen() {
             {/* Receiver Phone */}
             <div className="space-y-2">
               <Label htmlFor="receiver" className="text-sm font-medium">
-                Numéro du destinataire
+                {t('send.recipient_phone')}
               </Label>
               <div className="relative">
                 <Input
@@ -245,11 +247,11 @@ export default function SendScreen() {
                   <div className="flex items-center gap-2 text-sm text-emerald-600 font-medium">
                     <User className="h-3.5 w-3.5" />
                     <span>{receiverName}</span>
-                    <span className="text-xs text-muted-foreground font-normal">— compte TRAIT trouvé</span>
+                    <span className="text-xs text-muted-foreground font-normal">— {t('send.account_found')}</span>
                   </div>
                 ) : (
                   <div className="text-xs text-muted-foreground">
-                    Nouveau compte sera créé automatiquement
+                    {t('send.new_account')}
                   </div>
                 )
               )}
@@ -258,7 +260,7 @@ export default function SendScreen() {
             {/* Amount */}
             <div className="space-y-2">
               <Label htmlFor="amount" className="text-sm font-medium">
-                Montant
+                {t('send.amount')}
               </Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
@@ -283,12 +285,12 @@ export default function SendScreen() {
             {/* Note */}
             <div className="space-y-2">
               <Label htmlFor="note" className="text-sm font-medium">
-                Note <span className="text-muted-foreground font-normal">(optionnel)</span>
+                {t('send.note')} <span className="text-muted-foreground font-normal">({t('send.optional')})</span>
               </Label>
               <Input
                 id="note"
                 type="text"
-                placeholder="Ajouter une note..."
+                placeholder={t('send.note_placeholder')}
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 className="h-11"
@@ -299,15 +301,15 @@ export default function SendScreen() {
             {numericAmount > 0 && (
               <div className="rounded-xl bg-muted/50 p-4 space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Frais ({0.7}%)</span>
+                  <span className="text-muted-foreground">{t('send.fees')} ({0.7}%)</span>
                   <span className="font-medium">{fmtCur(fee, currency)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Total</span>
+                  <span className="text-muted-foreground">{t('send.total')}</span>
                   <span className="font-bold text-foreground">{fmtCur(total, currency)}</span>
                 </div>
                 {total > availableBalance && (
-                  <p className="text-xs text-red-500 mt-1">Solde insuffisant</p>
+                  <p className="text-xs text-red-500 mt-1">{t('send.insufficient_short')}</p>
                 )}
               </div>
             )}
@@ -321,9 +323,9 @@ export default function SendScreen() {
               {loading ? (
                 <span className="flex items-center gap-2">
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  Envoi en cours...
+                  {t('send.sending')}
                 </span>
-              ) : 'Envoyer'}
+              ) : t('action.send')}
             </Button>
           </CardContent>
         </Card>
@@ -333,43 +335,43 @@ export default function SendScreen() {
       <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
         <DialogContent className="mx-4 rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Confirmer le transfert</DialogTitle>
+            <DialogTitle>{t('send.confirm_title')}</DialogTitle>
             <DialogDescription>
-              Vous êtes sur le point d&apos;envoyer de l&apos;argent.
+              {t('send.confirm_desc')}
             </DialogDescription>
           </DialogHeader>
           <div className="rounded-xl bg-muted/50 p-4 space-y-2 my-2">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Destinataire</span>
+              <span className="text-muted-foreground">{t('send.recipient')}</span>
               <span className="font-medium">{receiverPhone}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Montant</span>
+              <span className="text-muted-foreground">{t('send.amount')}</span>
               <span className="font-medium">{fmtCur(numericAmount, currency)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Frais</span>
+              <span className="text-muted-foreground">{t('send.fees')}</span>
               <span className="font-medium">{fmtCur(fee, currency)}</span>
             </div>
             <div className="border-t pt-2 flex justify-between text-sm">
-              <span className="font-medium">Total</span>
+              <span className="font-medium">{t('send.total')}</span>
               <span className="font-bold text-emerald-600">{fmtCur(total, currency)}</span>
             </div>
           </div>
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             <Lock className="size-3" />
-            Votre code PIN sera demandé pour confirmer
+            {t('send.pin_confirm')}
           </p>
           <DialogFooter className="flex gap-2 sm:gap-0">
             <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setShowConfirm(false)}>
-              Annuler
+              {t('send.cancel')}
             </Button>
             <Button
               className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white"
               onClick={requestPinAndSend}
               disabled={loading}
             >
-              Confirmer
+              {t('send.confirm')}
             </Button>
           </DialogFooter>
         </DialogContent>

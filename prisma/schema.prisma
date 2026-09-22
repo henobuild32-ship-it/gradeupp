@@ -22,6 +22,9 @@ model User {
   agentNumber            String?                 @unique
   address                String?
   photoId                String?
+  photoUrl               String?
+  authProvider           String                  @default("local")
+  firebaseUid            String?                 @unique
   businessName           String?
   businessType           String?
   location               String?

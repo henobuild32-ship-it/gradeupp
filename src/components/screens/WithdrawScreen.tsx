@@ -23,6 +23,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useAppStore } from '@/lib/store';
+import { useTranslation } from '@/lib/i18n';
 import { toast } from 'sonner';
 
 function fmtCur(amount: number, currency: string) {
@@ -32,6 +33,7 @@ function fmtCur(amount: number, currency: string) {
 
 export default function WithdrawScreen() {
   const { user, navigateTo, setUser, setPendingPinAction } = useAppStore();
+  const { t } = useTranslation();
   const [amount, setAmount] = useState('');
   const [agentCode, setAgentCode] = useState('');
   const [currency, setCurrency] = useState('USD');
@@ -50,15 +52,15 @@ export default function WithdrawScreen() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (numericAmount <= 0) {
-      toast.error('Veuillez entrer un montant valide');
+      toast.error(t('send.amount_required'));
       return;
     }
     if (!agentCode.trim()) {
-      toast.error('Le code agent est obligatoire pour tout retrait');
+      toast.error(t('withdraw.agent_required'));
       return;
     }
     if (total > realBalance) {
-      toast.error(`Solde insuffisant. Solde réel: ${fmtCur(realBalance, currency)}`);
+      toast.error(t('withdraw.insufficient', { amount: fmtCur(realBalance, currency) }));
       return;
     }
     setShowConfirm(true);
@@ -93,15 +95,15 @@ export default function WithdrawScreen() {
               bonusBalanceFC: data.updatedBalances.bonusBalanceFC,
             } as any);
           }
-          toast.success('Retrait effectué avec succès !');
+          toast.success(t('withdraw.success'));
           setAmount('');
           setAgentCode('');
           navigateTo('home');
         } else {
-          toast.error(data.message || 'Erreur lors du retrait');
+          toast.error(data.message || t('withdraw.error'));
         }
       } catch {
-        toast.error('Erreur de connexion. Veuillez réessayer.');
+        toast.error(t('validation.connection_error'));
       } finally {
         setLoading(false);
       }
@@ -117,7 +119,7 @@ export default function WithdrawScreen() {
         <Button variant="ghost" size="icon" className="rounded-full" onClick={() => navigateTo('home')}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-xl font-bold text-foreground">Retirer de l&apos;argent</h1>
+        <h1 className="text-xl font-bold text-foreground">{t('withdraw.title')}</h1>
       </div>
 
       {/* Info banner */}
@@ -125,9 +127,9 @@ export default function WithdrawScreen() {
         <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-start gap-3">
           <ShieldCheck className="size-5 text-amber-600 shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-medium text-amber-800">Code agent obligatoire</p>
+            <p className="text-sm font-medium text-amber-800">{t('withdraw.agent_required')}</p>
             <p className="text-xs text-amber-700 mt-0.5">
-              Tout retrait nécessite le code d&apos;un agent Trait autorisé.
+              {t('withdraw.agent_required_desc')}
             </p>
           </div>
         </div>
@@ -137,7 +139,7 @@ export default function WithdrawScreen() {
       <div className="px-4 mb-4">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Lock className="size-3" />
-          <span>Code PIN requis pour confirmer</span>
+          <span>{t('send.pin_required')}</span>
         </div>
       </div>
 
@@ -146,7 +148,7 @@ export default function WithdrawScreen() {
         <Card className={`border-border ${isFC ? 'bg-gradient-to-br from-blue-50 to-blue-100' : 'bg-gradient-to-br from-emerald-50 to-emerald-100'}`}>
           <CardContent className="p-4 text-center">
             <p className={`text-sm ${isFC ? 'text-blue-600' : 'text-emerald-600'} mb-1`}>
-              Solde disponible ({currency})
+              {t('withdraw.available')} ({currency})
             </p>
             <p className={`text-3xl font-bold ${isFC ? 'text-blue-700' : 'text-emerald-700'}`}>
               {fmtCur(realBalance, currency)}

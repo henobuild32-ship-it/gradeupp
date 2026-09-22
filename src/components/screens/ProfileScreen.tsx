@@ -21,9 +21,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useAppStore } from '@/lib/store';
+import { useTranslation } from '@/lib/i18n';
 
 export default function ProfileScreen() {
   const { goBack, user, setUser } = useAppStore();
+  const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     name: '',
@@ -52,7 +54,7 @@ export default function ProfileScreen() {
     e.preventDefault();
 
     if (!form.name.trim()) {
-      toast.error('Le nom est obligatoire');
+      toast.error(t('profile.name_required'));
       return;
     }
 
@@ -74,12 +76,12 @@ export default function ProfileScreen() {
 
       if (data.success) {
         setUser(data.user);
-        toast.success('Profil mis à jour avec succès !');
+        toast.success(t('profile.updated'));
       } else {
-        toast.error(data.message || 'Erreur lors de la mise à jour');
+        toast.error(data.message || t('profile.update_error'));
       }
     } catch {
-      toast.error('Erreur de connexion');
+      toast.error(t('validation.connection_error'));
     } finally {
       setSaving(false);
     }
@@ -102,11 +104,11 @@ export default function ProfileScreen() {
             <Button variant="ghost" size="icon" onClick={goBack}>
               <ArrowLeft className="size-5" />
             </Button>
-            <h1 className="text-lg font-semibold">Mon Profil</h1>
+            <h1 className="text-lg font-semibold">{t('profile.title')}</h1>
           </div>
         </header>
         <div className="flex-1 flex items-center justify-center">
-          <p className="text-muted-foreground">Non connecté</p>
+          <p className="text-muted-foreground">{t('profile.not_connected')}</p>
         </div>
       </div>
     );
@@ -120,7 +122,7 @@ export default function ProfileScreen() {
           <Button variant="ghost" size="icon" onClick={goBack}>
             <ArrowLeft className="size-5" />
           </Button>
-          <h1 className="text-lg font-semibold">Mon Profil</h1>
+          <h1 className="text-lg font-semibold">{t('profile.title')}</h1>
         </div>
       </header>
 
@@ -149,12 +151,12 @@ export default function ProfileScreen() {
         >
           {/* Name */}
           <div className="space-y-2">
-            <Label htmlFor="name">Nom complet</Label>
+            <Label htmlFor="name">{t('auth.full_name')}</Label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
                 id="name"
-                placeholder="Votre nom complet"
+                placeholder={t('profile.name_placeholder')}
                 value={form.name}
                 onChange={(e) => handleChange('name', e.target.value)}
                 disabled={saving}
@@ -165,10 +167,10 @@ export default function ProfileScreen() {
 
           {/* Pseudo */}
           <div className="space-y-2">
-            <Label htmlFor="pseudo">Pseudo</Label>
+            <Label htmlFor="pseudo">{t('auth.pseudo')}</Label>
             <Input
               id="pseudo"
-              placeholder="Votre pseudo"
+              placeholder={t('profile.pseudo_placeholder')}
               value={form.pseudo}
               onChange={(e) => handleChange('pseudo', e.target.value)}
               disabled={saving}
@@ -177,7 +179,7 @@ export default function ProfileScreen() {
 
           {/* Phone (read-only) */}
           <div className="space-y-2">
-            <Label htmlFor="phone">Numéro de téléphone</Label>
+            <Label htmlFor="phone">{t('auth.phone')}</Label>
             <div className="relative">
               <Phone className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
@@ -189,18 +191,18 @@ export default function ProfileScreen() {
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Le numéro ne peut pas être modifié
+              {t('profile.phone_readonly')}
             </p>
           </div>
 
           {/* Country */}
           <div className="space-y-2">
-            <Label htmlFor="country">Pays</Label>
+            <Label htmlFor="country">{t('auth.country')}</Label>
             <div className="relative">
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
                 id="country"
-                placeholder="Votre pays"
+                placeholder={t('profile.country_placeholder')}
                 value={form.country}
                 onChange={(e) => handleChange('country', e.target.value)}
                 disabled={saving}
@@ -219,12 +221,12 @@ export default function ProfileScreen() {
             {saving ? (
               <>
                 <Loader2 className="size-5 animate-spin" />
-                Enregistrement...
+                {t('profile.saving')}
               </>
             ) : (
               <>
                 <Save className="size-5" />
-                Sauvegarder
+                {t('profile.save')}
               </>
             )}
           </Button>

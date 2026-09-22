@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { useAppStore } from '@/lib/store'
+import { useTranslation } from '@/lib/i18n'
 import { toast } from 'sonner'
 
 function fmtCur(amount: number, currency: string) {
@@ -29,6 +30,7 @@ const depositMethods = [
 
 export default function DepositScreen() {
   const { user, goBack, navigateTo, setUser } = useAppStore()
+  const { t } = useTranslation()
   const [selectedMethod, setSelectedMethod] = useState('mobile_money')
   const [amount, setAmount] = useState('')
   const [currency, setCurrency] = useState('USD')
@@ -109,12 +111,12 @@ export default function DepositScreen() {
           })
         }
         setStep('success')
-        toast.success('Dépôt effectué avec succès !')
+        toast.success(t('deposit.success'))
       } else {
-        toast.error(data.message || 'Erreur lors du dépôt')
+        toast.error(data.message || t('deposit.error'))
       }
     } catch {
-      toast.error('Erreur de connexion')
+      toast.error(t('validation.connection_error'))
     }
     setLoading(false)
   }
@@ -153,10 +155,10 @@ export default function DepositScreen() {
         <Button variant="ghost" size="icon" className="rounded-full" onClick={() => step === 'success' ? resetForm() : goBack()}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-xl font-bold text-foreground">Déposer</h1>
+        <h1 className="text-xl font-bold text-foreground">{t('action.deposit')}</h1>
         <div className="ml-auto flex items-center gap-2">
           <span className="text-xs font-medium text-muted-foreground bg-muted px-2.5 py-1 rounded-full">
-            Solde: {fmtCur(isFC ? (user?.realBalanceFC || 0) : (user?.realBalance || 0), currency)}
+            {t('deposit.balance')}: {fmtCur(isFC ? (user?.realBalanceFC || 0) : (user?.realBalance || 0), currency)}
           </span>
         </div>
       </div>
@@ -167,7 +169,7 @@ export default function DepositScreen() {
             <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <Check className="w-10 h-10 text-green-600" />
             </div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">Dépôt réussi !</h2>
+            <h2 className="text-2xl font-bold text-foreground mb-2">{t('deposit.success_title')}</h2>
             <p className="text-4xl font-bold text-[#0D5C63] mb-2">{fmtCur(numericAmount, currency)}</p>
             <p className="text-sm text-muted-foreground mb-8">
               {selectedMethod === 'mobile_money' ? `Via ${mobileOperator} (${mobilePhone})` :
@@ -178,14 +180,14 @@ export default function DepositScreen() {
               onClick={() => { resetForm(); navigateTo('home') }}
               className="h-12 px-8 bg-[#0D5C63] hover:bg-[#083A3E] text-white rounded-xl font-semibold"
             >
-              Retour à l&apos;accueil
+              {t('deposit.back_home')}
             </Button>
           </motion.div>
         ) : step === 'confirm' ? (
           <motion.div key="confirm" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="px-4 space-y-4">
             <Card>
               <CardContent className="p-5 space-y-4">
-                <h3 className="font-bold text-lg">Confirmer le dépôt</h3>
+                <h3 className="font-bold text-lg">{t('deposit.confirm_title')}</h3>
                 <div className="bg-gray-50 rounded-xl p-4 space-y-3">
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Montant</span>

@@ -125,7 +125,7 @@ function formatDate(dateStr: string): string {
 }
 
 export default function HomeScreen() {
-  const { user, navigateTo, setUser, language, setLanguage } = useAppStore();
+  const { user, navigateTo, setUser } = useAppStore();
   const { t } = useTranslation();
   const [recentTransactions, setRecentTransactions] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -147,10 +147,6 @@ export default function HomeScreen() {
   const agentCode = user?.agentCode || user?.agentNumber;
   const displayAgentCode = agentCode ? (agentCode.startsWith('AGT-') ? agentCode : `AGT-${agentCode}`) : null;
   const { subscribe } = usePushSubscription();
-
-  useEffect(() => {
-    if (language !== 'fr') setLanguage('fr');
-  }, [language, setLanguage]);
 
   useEffect(() => {
     fetchRecentTransactions();

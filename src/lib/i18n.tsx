@@ -1,35 +1,39 @@
 'use client';
 
-import React, { createContext, useContext, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useCallback, useEffect, useMemo } from 'react';
 
 // ─── Language Type ──────────────────────────────────────────────
-export type Language = 'fr' | 'en' | 'ln' | 'sw' | 'tl' | 'kg';
+export type Language = 'fr' | 'en';
 
 export const languageNames: Record<Language, string> = {
   fr: 'Français',
   en: 'English',
-  ln: 'Lingála',
-  sw: 'Kiswahili',
-  tl: 'Tshiluba',
-  kg: 'Kikongo',
 };
 
 export const languageFlags: Record<Language, string> = {
   fr: '🇫🇷',
   en: '🇬🇧',
-  ln: '🇨🇩',
-  sw: '🇨🇩',
-  tl: '🇨🇩',
-  kg: '🇨🇩',
 };
 
-export const languages: Language[] = ['fr', 'en', 'ln', 'sw', 'tl', 'kg'];
+export const languages: Language[] = ['fr', 'en'];
+
+export const localeForLanguage: Record<Language, string> = {
+  fr: 'fr-FR',
+  en: 'en-US',
+};
 
 // ─── Translation Dictionaries ───────────────────────────────────
 type TranslationDict = Record<string, string>;
 
 const translations: Record<Language, TranslationDict> = {
   fr: {
+    'welcome.service_transfer_title': 'Transferts', 'welcome.service_transfer_desc': 'Argent instantané', 'welcome.service_mobile_title': 'Mobile Money', 'welcome.service_mobile_desc': 'Payez partout', 'welcome.service_cards_title': 'Cartes', 'welcome.service_cards_desc': 'USD et FC', 'welcome.service_barter_title': 'Troc', 'welcome.service_barter_desc': 'Échangez facilement', 'welcome.service_marketplace_title': 'Marketplace', 'welcome.service_marketplace_desc': 'Achetez et vendez', 'welcome.service_api_title': 'API', 'welcome.service_api_desc': 'Intégrez TRAIT',
+    'notifications.load_error': 'Erreur lors du chargement', 'notifications.copied': 'Message copié', 'notifications.copy_error': 'Erreur lors de la copie', 'notifications.marked_all': '{count} notification(s) marquée(s) comme lue(s)', 'notifications.mark_all': 'Tout marquer lu', 'notifications.empty_title': 'Aucune notification', 'notifications.empty_desc': "Vous n’avez pas encore de notifications", 'notifications.admin_messages': 'Messages de l’Admin',
+    'profile.title': 'Mon Profil', 'profile.not_connected': 'Non connecté', 'profile.name_required': 'Le nom est obligatoire', 'profile.updated': 'Profil mis à jour avec succès !', 'profile.update_error': 'Erreur lors de la mise à jour', 'profile.name_placeholder': 'Votre nom complet', 'profile.pseudo_placeholder': 'Votre pseudo', 'profile.phone_readonly': 'Le numéro ne peut pas être modifié', 'profile.country_placeholder': 'Votre pays', 'profile.saving': 'Enregistrement...', 'profile.save': 'Sauvegarder',
+    'deposit.success': 'Dépôt effectué avec succès !', 'deposit.error': 'Erreur lors du dépôt', 'deposit.balance': 'Solde', 'deposit.success_title': 'Dépôt réussi !', 'deposit.back_home': "Retour à l’accueil", 'deposit.confirm_title': 'Confirmer le dépôt',
+    'withdraw.agent_required': 'Code agent obligatoire', 'withdraw.agent_required_desc': "Tout retrait nécessite le code d’un agent TRAIT autorisé.", 'withdraw.insufficient': 'Solde insuffisant. Solde réel : {amount}', 'withdraw.success': 'Retrait effectué avec succès !', 'withdraw.error': 'Erreur lors du retrait', 'withdraw.title': "Retirer de l’argent", 'withdraw.available': 'Solde disponible',
+    'send.phone_required': 'Veuillez entrer le numéro du destinataire', 'send.amount_required': 'Veuillez entrer un montant valide', 'send.insufficient': 'Solde insuffisant en {currency}. Disponible : {amount}', 'send.success': 'Transfert envoyé avec succès !', 'send.error': 'Erreur lors du transfert', 'send.title': "Envoyer de l’argent", 'send.available': 'Solde disponible', 'send.pin_required': 'Code PIN requis pour confirmer', 'send.currency': 'Devise', 'send.recipient_phone': 'Numéro du destinataire', 'send.account_found': 'compte TRAIT trouvé', 'send.new_account': 'Nouveau compte sera créé automatiquement', 'send.amount': 'Montant', 'send.note': 'Note', 'send.optional': 'optionnel', 'send.note_placeholder': 'Ajouter une note...', 'send.fees': 'Frais', 'send.total': 'Total', 'send.insufficient_short': 'Solde insuffisant', 'send.sending': 'Envoi en cours...', 'send.confirm_title': 'Confirmer le transfert', 'send.confirm_desc': "Vous êtes sur le point d’envoyer de l’argent.", 'send.recipient': 'Destinataire', 'send.pin_confirm': 'Votre code PIN sera demandé pour confirmer', 'send.cancel': 'Annuler', 'send.confirm': 'Confirmer',
+    'welcome.services_title': 'Nos services', 'welcome.services_desc': 'Tout ce dont vous avez besoin pour gérer votre argent.', 'welcome.how_title': 'Comment ça marche', 'welcome.how_desc': 'Commencez en 3 étapes simples.', 'welcome.security_title': 'Sécurité maximale', 'welcome.security_desc': 'Vos transactions sont protégées par des technologies fiables et vos données sont sécurisées de bout en bout.', 'welcome.agent_desc': 'Devenez agent de transfert', 'welcome.developer_desc': 'Intégrez TRAIT dans vos applications', 'welcome.faq_title': 'Questions fréquentes', 'welcome.download_title': "Téléchargez l’application", 'welcome.download_desc': 'Disponible sur Android et iOS. Emportez TRAIT partout avec vous.', 'welcome.final_title': 'Prêt à commencer ?', 'welcome.final_desc': 'Rejoignez les utilisateurs qui font confiance à TRAIT pour leurs transactions financières.',
     // ── Welcome Screen ──
     'welcome.tagline': 'Transférez. Payez. Échangez.',
     'welcome.subtitle': 'La solution financière complète pour l\'Afrique',
@@ -635,6 +639,13 @@ const translations: Record<Language, TranslationDict> = {
   },
 
   en: {
+    'welcome.service_transfer_title': 'Transfers', 'welcome.service_transfer_desc': 'Instant money', 'welcome.service_mobile_title': 'Mobile Money', 'welcome.service_mobile_desc': 'Pay everywhere', 'welcome.service_cards_title': 'Cards', 'welcome.service_cards_desc': 'USD and FC', 'welcome.service_barter_title': 'Barter', 'welcome.service_barter_desc': 'Trade easily', 'welcome.service_marketplace_title': 'Marketplace', 'welcome.service_marketplace_desc': 'Buy and sell', 'welcome.service_api_title': 'API', 'welcome.service_api_desc': 'Integrate TRAIT',
+    'notifications.load_error': 'Loading error', 'notifications.copied': 'Message copied', 'notifications.copy_error': 'Copy error', 'notifications.marked_all': '{count} notification(s) marked as read', 'notifications.mark_all': 'Mark all as read', 'notifications.empty_title': 'No notifications', 'notifications.empty_desc': 'You do not have any notifications yet', 'notifications.admin_messages': 'Admin messages',
+    'profile.title': 'My Profile', 'profile.not_connected': 'Not connected', 'profile.name_required': 'Name is required', 'profile.updated': 'Profile updated successfully!', 'profile.update_error': 'Update error', 'profile.name_placeholder': 'Your full name', 'profile.pseudo_placeholder': 'Your username', 'profile.phone_readonly': 'This number cannot be changed', 'profile.country_placeholder': 'Your country', 'profile.saving': 'Saving...', 'profile.save': 'Save',
+    'deposit.success': 'Deposit completed successfully!', 'deposit.error': 'Deposit error', 'deposit.balance': 'Balance', 'deposit.success_title': 'Deposit successful!', 'deposit.back_home': 'Back to home', 'deposit.confirm_title': 'Confirm deposit',
+    'withdraw.agent_required': 'Agent code required', 'withdraw.agent_required_desc': 'Every withdrawal requires the code of an authorized TRAIT agent.', 'withdraw.insufficient': 'Insufficient balance. Real balance: {amount}', 'withdraw.success': 'Withdrawal completed successfully!', 'withdraw.error': 'Withdrawal error', 'withdraw.title': 'Withdraw money', 'withdraw.available': 'Available balance',
+    'send.phone_required': 'Enter the recipient phone number', 'send.amount_required': 'Enter a valid amount', 'send.insufficient': 'Insufficient {currency} balance. Available: {amount}', 'send.success': 'Transfer sent successfully!', 'send.error': 'Transfer failed', 'send.title': 'Send money', 'send.available': 'Available balance', 'send.pin_required': 'PIN required to confirm', 'send.currency': 'Currency', 'send.recipient_phone': 'Recipient phone number', 'send.account_found': 'TRAIT account found', 'send.new_account': 'A new account will be created automatically', 'send.amount': 'Amount', 'send.note': 'Note', 'send.optional': 'optional', 'send.note_placeholder': 'Add a note...', 'send.fees': 'Fees', 'send.total': 'Total', 'send.insufficient_short': 'Insufficient balance', 'send.sending': 'Sending...', 'send.confirm_title': 'Confirm transfer', 'send.confirm_desc': 'You are about to send money.', 'send.recipient': 'Recipient', 'send.pin_confirm': 'Your PIN will be requested to confirm', 'send.cancel': 'Cancel', 'send.confirm': 'Confirm',
+    'welcome.services_title': 'Our services', 'welcome.services_desc': 'Everything you need to manage your money.', 'welcome.how_title': 'How it works', 'welcome.how_desc': 'Get started in 3 simple steps.', 'welcome.security_title': 'Maximum security', 'welcome.security_desc': 'Your transactions are protected by reliable technology and your data is secured end to end.', 'welcome.agent_desc': 'Become a transfer agent', 'welcome.developer_desc': 'Integrate TRAIT into your applications', 'welcome.faq_title': 'Frequently asked questions', 'welcome.download_title': 'Download the app', 'welcome.download_desc': 'Available on Android and iOS. Take TRAIT everywhere.', 'welcome.final_title': 'Ready to get started?', 'welcome.final_desc': 'Join users who trust TRAIT for their financial transactions.',
     // ── Welcome Screen ──
     'welcome.tagline': 'Transfer. Pay. Exchange.',
     'welcome.subtitle': 'The complete financial solution for Africa',
@@ -1545,6 +1556,40 @@ const translations: Record<Language, TranslationDict> = {
   },
 };
 
+// Text added by the simplified public homepage. Keep it here so every supported
+// language stays complete without scattering one-off strings through components.
+const homepageTranslations: Record<Language, TranslationDict> = {
+  fr: {
+    'welcome.badge': 'Transferts simples, avec ou sans Internet',
+    'welcome.hero': 'Envoyez et recevez votre argent simplement, même sans Internet.',
+    'welcome.hero_desc': "Un portefeuille conçu pour envoyer de l'argent, payer par QR et garder le contrôle de vos transactions.",
+    'welcome.benefit_transfer': "Transfert d’argent|Envoyez et recevez en quelques étapes.",
+    'welcome.benefit_qr': 'Paiement par QR|Payez chez les vendeurs sans saisir de numéro.',
+    'welcome.benefit_offline': 'Avec ou sans Internet|Continuez à utiliser les services disponibles hors ligne.',
+    'welcome.preview_label': 'Une vue claire de votre argent',
+    'welcome.preview_title': "Tout l’essentiel, au même endroit.",
+    'welcome.preview_desc': "Consultez votre solde, envoyez de l’argent et ouvrez le paiement QR depuis un écran simple, pensé pour le mobile.",
+    'welcome.wallet': 'Mon portefeuille', 'welcome.available': 'Solde disponible', 'welcome.qr': 'Paiement QR', 'welcome.currencies': 'Disponible en USD et FC',
+    'welcome.profiles_title': "TRAIT s’adapte à votre activité", 'welcome.profiles_desc': 'Choisissez l’espace qui vous correspond.',
+    'welcome.profile_client': 'Je suis un particulier|Envoyez, recevez et payez simplement.', 'welcome.profile_agent': 'Je suis un agent|Développez votre activité de transfert.', 'welcome.profile_seller': 'Je suis un vendeur|Acceptez les paiements QR.', 'welcome.discover': 'Découvrir',
+  },
+  en: {
+    'welcome.badge': 'Simple transfers, online or offline', 'welcome.hero': 'Send and receive your money simply, even without Internet.', 'welcome.hero_desc': 'A wallet designed to send money, pay by QR and keep control of your transactions.', 'welcome.benefit_transfer': 'Money transfer|Send and receive in a few steps.', 'welcome.benefit_qr': 'QR payment|Pay merchants without entering a number.', 'welcome.benefit_offline': 'Online or offline|Keep using available services without Internet.', 'welcome.preview_label': 'A clear view of your money', 'welcome.preview_title': 'Everything essential, in one place.', 'welcome.preview_desc': 'Check your balance, send money and open QR payments from a simple mobile-first screen.', 'welcome.wallet': 'My wallet', 'welcome.available': 'Available balance', 'welcome.qr': 'QR payment', 'welcome.currencies': 'Available in USD and FC', 'welcome.profiles_title': 'TRAIT adapts to your activity', 'welcome.profiles_desc': 'Choose the space that fits you.', 'welcome.profile_client': 'I am an individual|Send, receive and pay simply.', 'welcome.profile_agent': 'I am an agent|Grow your transfer business.', 'welcome.profile_seller': 'I am a seller|Accept QR payments.', 'welcome.discover': 'Discover',
+  },
+  ln: {
+    'welcome.badge': 'Botindisi ya pete, na to Internet to te', 'welcome.hero': 'Tindela mpe zua mbongo na yo na pete, ata soki Internet ezali te.', 'welcome.hero_desc': 'Portefeuille mpo na kotinda mbongo, kofuta na QR mpe kotambwisa misala na yo.', 'welcome.benefit_transfer': 'Kotinda mbongo|Tindela mpe zua na makambo moke.', 'welcome.benefit_qr': 'Kofuta na QR|Futa epai ya bateki kozanga kokoma nimero.', 'welcome.benefit_offline': 'Na Internet to te|Salela misala oyo ezali kaka.', 'welcome.preview_label': 'Emoniseli ya polele ya mbongo na yo', 'welcome.preview_title': 'Makambo nyonso na esika moko.', 'welcome.preview_desc': 'Tala solde, tindela mbongo mpe fungola kofuta na QR.', 'welcome.wallet': 'Portefeuille na ngai', 'welcome.available': 'Solde oyo ezali', 'welcome.qr': 'Kofuta na QR', 'welcome.currencies': 'Ezali na USD mpe FC', 'welcome.profiles_title': 'TRAIT ebongisami mpo na yo', 'welcome.profiles_desc': 'Pona esika oyo ebongi na yo.', 'welcome.profile_client': 'Nazali moto moko|Tindela, zua mpe futa na pete.', 'welcome.profile_agent': 'Nazali agent|Kolisá mosala na yo ya botindisi.', 'welcome.profile_seller': 'Nazali moteki|Zwá kofuta na QR.', 'welcome.discover': 'Tala',
+  },
+  sw: {
+    'welcome.badge': 'Tuma kwa urahisi, ukiwa na intaneti au bila', 'welcome.hero': 'Tuma na pokea pesa yako kwa urahisi, hata bila intaneti.', 'welcome.hero_desc': 'Pochi ya kutuma pesa, kulipa kwa QR na kudhibiti miamala yako.', 'welcome.benefit_transfer': 'Kutuma pesa|Tuma na pokea kwa hatua chache.', 'welcome.benefit_qr': 'Malipo ya QR|Lipa wauzaji bila kuandika nambari.', 'welcome.benefit_offline': 'Na au bila intaneti|Endelea kutumia huduma zinazopatikana.', 'welcome.preview_label': 'Mwonekano wazi wa pesa yako', 'welcome.preview_title': 'Kila kitu muhimu mahali pamoja.', 'welcome.preview_desc': 'Angalia salio, tuma pesa na fungua malipo ya QR.', 'welcome.wallet': 'Pochi yangu', 'welcome.available': 'Salio linalopatikana', 'welcome.qr': 'Malipo ya QR', 'welcome.currencies': 'Inapatikana kwa USD na FC', 'welcome.profiles_title': 'TRAIT inalingana na shughuli yako', 'welcome.profiles_desc': 'Chagua sehemu inayokufaa.', 'welcome.profile_client': 'Mimi ni mtu binafsi|Tuma, pokea na lipa kwa urahisi.', 'welcome.profile_agent': 'Mimi ni wakala|Kukuza biashara yako ya uhamisho.', 'welcome.profile_seller': 'Mimi ni muuzaji|Kubali malipo ya QR.', 'welcome.discover': 'Gundua',
+  },
+  tl: {
+    'welcome.badge': 'Mukenji wa malanda, ne Internet ne kabidi', 'welcome.hero': 'Tumina ne ambulula mushinga wa ngebe, ne Internet ne kabidi.', 'welcome.hero_desc': 'Wallet wa kutumina, kufuta na QR ne kulongolola makanda a ngebe.', 'welcome.benefit_transfer': 'Kutumina makanda|Tumina ne ambulula mu matambe makese.', 'welcome.benefit_qr': 'Kufuta na QR|Futa ku bateki ne kusungula numero.', 'welcome.benefit_offline': 'Ne Internet ne kabidi|Salela misala eyi ipatikana.', 'welcome.preview_label': 'Mumone mushinga wa ngebe', 'welcome.preview_title': 'Bintu byonso pa kisika kimwe.', 'welcome.preview_desc': 'Mona solde, tumina makanda ne futa na QR.', 'welcome.wallet': 'Wallet wanyi', 'welcome.available': 'Solde ipatikana', 'welcome.qr': 'Kufuta na QR', 'welcome.currencies': 'USD ne FC', 'welcome.profiles_title': 'TRAIT ne misala ya ngebe', 'welcome.profiles_desc': 'Sungula kisika kiakukwatana.', 'welcome.profile_client': 'Ndi muntu|Tumina, ambulula ne futa na pete.', 'welcome.profile_agent': 'Ndi agent|Kulisa musala wa kutumina.', 'welcome.profile_seller': 'Ndi muteki|Ambula kufuta na QR.', 'welcome.discover': 'Mona',
+  },
+  kg: {
+    'welcome.badge': 'Bintuma ya pete, na Internet to ve', 'welcome.hero': 'Tuma mpe baka mbongo na nge na pete, ata Internet ve.', 'welcome.hero_desc': 'Portefeuille samu na kutuma mbongo, kufuta na QR mpe kuyidika misala na nge.', 'welcome.benefit_transfer': 'Kutuma mbongo|Tuma mpe baka na matambe ya fioti.', 'welcome.benefit_qr': 'Kufuta na QR|Futa na bateki kukonda kusonika nimero.', 'welcome.benefit_offline': 'Na Internet to ve|Sadila misala yina kele.', 'welcome.preview_label': 'Mmonama ya mbongo na nge', 'welcome.preview_title': 'Mambu nyonso na kisika mosi.', 'welcome.preview_desc': 'Tala solde, tuma mbongo mpe futa na QR.', 'welcome.wallet': 'Portefeuille na mono', 'welcome.available': 'Solde kele', 'welcome.qr': 'Kufuta na QR', 'welcome.currencies': 'USD mpe FC', 'welcome.profiles_title': 'TRAIT mebongisama samu na nge', 'welcome.profiles_desc': 'Pona kisika yina mefwana na nge.', 'welcome.profile_client': 'Mono kele muntu|Tuma, baka mpe futa na pete.', 'welcome.profile_agent': 'Mono kele agent|Kulisa kisalu na nge ya kutuma.', 'welcome.profile_seller': 'Mono kele muteki|Baka kufuta na QR.', 'welcome.discover': 'Mona',
+  },
+};
+
 // ─── I18n Context ────────────────────────────────────────────────
 interface I18nContextType {
   language: Language;
@@ -1564,9 +1609,16 @@ export function I18nProvider({ children, language, setLanguage }: {
   language: Language;
   setLanguage: (lang: Language) => void;
 }) {
+  const activeLanguage: Language = language === 'en' ? 'en' : 'fr';
+
+  useEffect(() => {
+    document.documentElement.lang = activeLanguage;
+    if (language !== activeLanguage) setLanguage(activeLanguage);
+  }, [activeLanguage, language, setLanguage]);
+
   const t = useCallback((key: string, params?: Record<string, string | number>): string => {
-    const dict = translations[language] || translations['fr'];
-    let text = dict[key] || translations['fr'][key] || key;
+    const dict = translations[activeLanguage];
+    let text = dict[key] || homepageTranslations[activeLanguage][key] || key;
 
     if (params) {
       Object.entries(params).forEach(([k, v]) => {
@@ -1575,10 +1627,10 @@ export function I18nProvider({ children, language, setLanguage }: {
     }
 
     return text;
-  }, [language]);
+  }, [activeLanguage]);
 
   const contextValue = useMemo(() => ({
-    language,
+    language: activeLanguage,
     setLanguage,
     t,
   }), [language, setLanguage, t]);

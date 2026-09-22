@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { useAppStore, type Notification } from '@/lib/store';
+import { useTranslation } from '@/lib/i18n';
 
 const NOTIFICATION_ICONS: Record<string, typeof Bell> = {
   transaction: DollarSign,
@@ -87,6 +88,7 @@ function formatRelativeTime(dateStr: string): string {
 
 export default function NotificationsScreen() {
   const { goBack, user, setNotifications, markAsRead } = useAppStore();
+  const { t, language } = useTranslation();
   const [notifications, setLocalNotifications] = useState<Notification[]>([]);
   const [adminMessages, setAdminMessages] = useState<AdminMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -124,7 +126,7 @@ export default function NotificationsScreen() {
         setNotifications(mapped);
       }
     } catch {
-      toast.error('Erreur lors du chargement');
+      toast.error(t('notifications.load_error'));
     }
   }, [user, setNotifications]);
 
@@ -183,10 +185,10 @@ export default function NotificationsScreen() {
     try {
       await navigator.clipboard.writeText(msg.message);
       setCopiedId(msg.id);
-      toast.success('Message copié');
+      toast.success(t('notifications.copied'));
       setTimeout(() => setCopiedId(null), 2000);
     } catch {
-      toast.error('Erreur lors de la copie');
+      toast.error(t('notifications.copy_error'));
     }
   };
 
@@ -209,7 +211,7 @@ export default function NotificationsScreen() {
         setNotifications((prev) =>
           prev.map((n) => ({ ...n, read: true }))
         );
-        toast.success(`${data.markedCount} notification(s) marquée(s) comme lue(s)`);
+        toast.success(t('notifications.marked_all', { count: data.markedCount }));
       }
     } catch {
       toast.error('Erreur');
@@ -230,7 +232,7 @@ export default function NotificationsScreen() {
           </Button>
           <div className="flex items-center gap-2 flex-1">
             <Bell className="size-5 text-emerald-600" />
-            <h1 className="text-lg font-semibold">Notifications</h1>
+            <h1 className="text-lg font-semibold">{t('nav.notifications')}</h1>
             {unreadCount > 0 && (
               <Badge className="bg-emerald-600 text-white border-0">
                 {unreadCount}
@@ -245,7 +247,7 @@ export default function NotificationsScreen() {
             className="text-emerald-600 text-xs"
           >
             <CheckCheck className="size-4" />
-            Tout marquer lu
+            {t('notifications.mark_all')}
           </Button>
         </div>
       </header>
@@ -273,9 +275,9 @@ export default function NotificationsScreen() {
             <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
               <BellOff className="size-8 text-muted-foreground" />
             </div>
-            <h3 className="font-medium text-lg">Aucune notification</h3>
+            <h3 className="font-medium text-lg">{t('notifications.empty_title')}</h3>
             <p className="text-muted-foreground text-sm mt-1">
-              Vous n&apos;avez pas encore de notifications
+              {t('notifications.empty_desc')}
             </p>
           </motion.div>
         ) : (
@@ -285,7 +287,7 @@ export default function NotificationsScreen() {
               <section>
                 <h2 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
                   <MessageSquare className="size-4 text-indigo-500" />
-                  Messages de l&apos;Admin
+                  {t('notifications.admin_messages')}
                   {adminMessages.some((m) => !m.isRead) && (
                     <Badge className="bg-indigo-600 text-white border-0 text-[10px]">
                       {adminMessages.filter((m) => !m.isRead).length} nouveau(x)

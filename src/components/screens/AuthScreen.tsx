@@ -23,6 +23,8 @@ import type { User as AppUser } from '@/lib/store';
 import { useTranslation } from '@/lib/i18n';
 import { toast } from 'sonner';
 import Image from 'next/image';
+import GoogleAuthButton from '@/components/auth/GoogleAuthButton';
+import GoogleSignupModal from '@/components/auth/GoogleSignupModal';
 
 const countryCodes = [
   { code: '+228', label: '+228', country: 'Togo' },
@@ -89,6 +91,11 @@ export default function AuthScreen() {
 
   const [loginLoading, setLoginLoading] = useState(false);
   const [registerLoading, setRegisterLoading] = useState(false);
+
+  // Google Auth modal state
+  const [googleModalOpen, setGoogleModalOpen] = useState(false);
+  const [googleData, setGoogleData] = useState<any>(null);
+  const [googleIdToken, setGoogleIdToken] = useState('');
 
   // Biometric functionality removed
 
@@ -433,6 +440,24 @@ export default function AuthScreen() {
                   )}
                 </Button>
               </form>
+
+              {/* Divider */}
+              <div className="flex items-center gap-3 my-5">
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-xs text-muted-foreground font-medium">ou</span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+
+              {/* Google Login */}
+              <GoogleAuthButton
+                mode="login"
+                selectedRole={selectedRole}
+                onNeedsProfile={(data, idToken) => {
+                  setGoogleData(data);
+                  setGoogleIdToken(idToken);
+                  setGoogleModalOpen(true);
+                }}
+              />
             </motion.div>
           ) : (
             <motion.div
@@ -688,6 +713,24 @@ export default function AuthScreen() {
                   )}
                 </Button>
               </form>
+
+              {/* Divider */}
+              <div className="flex items-center gap-3 my-5">
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-xs text-muted-foreground font-medium">ou</span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+
+              {/* Google Register */}
+              <GoogleAuthButton
+                mode="register"
+                selectedRole={selectedRole}
+                onNeedsProfile={(data, idToken) => {
+                  setGoogleData(data);
+                  setGoogleIdToken(idToken);
+                  setGoogleModalOpen(true);
+                }}
+              />
             </motion.div>
           )}
         </AnimatePresence>
@@ -713,6 +756,15 @@ export default function AuthScreen() {
       </motion.main>
 
       {/* Biometric scanner dialog removed */}
+
+      {/* Google Signup Completion Modal */}
+      <GoogleSignupModal
+        open={googleModalOpen}
+        onClose={() => setGoogleModalOpen(false)}
+        googleData={googleData || {}}
+        idToken={googleIdToken}
+        selectedRole={selectedRole}
+      />
     </div>
   );
 }
