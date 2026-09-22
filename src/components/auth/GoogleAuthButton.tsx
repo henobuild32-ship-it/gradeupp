@@ -132,19 +132,9 @@ function handleGoogleError(err: any) {
   const code = err?.code || '';
   if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
     toast.info('Connexion annulée');
-  } else if (code === 'auth/popup-blocked') {
-    toast.error('Popup bloquée — redirection en cours...');
-  } else if (code === 'auth/network-request-failed') {
-    toast.error('Connexion à Google impossible. Vérifiez que Google Auth est activé dans la console Firebase et que trait-rho.vercel.app est dans les domaines autorisés.', { duration: 6000 });
   } else if (code === 'auth/account-exists-with-different-credential') {
-    toast.error('Un compte existe déjà avec cet email via une autre méthode.');
-  } else if (code === 'auth/unauthorized-domain') {
-    toast.error('Domaine non autorisé. Ajoutez trait-rho.vercel.app dans Firebase Console → Authentication → Settings → Authorized domains.', { duration: 6000 });
-  } else if (code === 'auth/invalid-api-key') {
-    toast.error('Configuration Firebase incorrecte (clé API).');
-  } else if (code === 'auth/operation-not-allowed') {
-    toast.error('Connexion Google non activée. Activez Google dans Firebase Console → Authentication → Sign-in method.');
+    toast.error('Ce compte existe déjà avec une autre méthode.');
   } else {
-    toast.error(err?.message || "Erreur d'authentification Google");
+    toast.error('Problème de connexion. Veuillez réessayer.');
   }
 }

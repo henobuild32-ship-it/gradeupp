@@ -80,9 +80,9 @@ export default function MicroCreditScreen() {
 
   async function fetchKycStatus() {
     try {
-      const res = await fetch(`/api/kyc/status?userId=${user?.id}`);
+      const res = await fetch(`/api/kyc?userId=${user?.id}`);
       const data = await res.json();
-      if (data.success) setKycStatus(data.status);
+      if (data.success && data.kyc) setKycStatus(data.kyc.status);
     } catch {}
   }
 

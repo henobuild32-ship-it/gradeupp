@@ -21,40 +21,35 @@ googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 export function isMobileDevice(): boolean {
   if (typeof window === 'undefined') return false;
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-    || window.innerWidth < 768;
+  // iOS/Android always redirect (popup unreliable, especially in PWA)
+  if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+    return true;
+  }
+  // Installed PWA (standalone) — popup may be blocked
+  if (window.matchMedia('(display-mode: standalone)').matches) {
+    return true;
+  }
+  return false;
 }
 
 export async function signInWithGoogle(): Promise<{ idToken: string; uid: string } | null> {
-  // Mobile always uses redirect
   if (isMobileDevice()) {
     await signInWithRedirect(auth, googleProvider);
     return null;
   }
 
-  // Desktop: try popup first
   try {
     const result = await signInWithPopup(auth, googleProvider);
     const idToken = await result.user.getIdToken();
     return { idToken, uid: result.user.uid };
   } catch (err: any) {
     const code = err?.code || '';
-    // If popup fails for network/popup reasons, fallback to redirect
-    if (
-      code === 'auth/network-request-failed' ||
-      code === 'auth/popup-blocked' ||
-      code === 'auth/popup-closed-by-user' ||
-      code === 'auth/cancelled-popup-request'
-    ) {
-      // For closed-by-user, don't force redirect (user cancelled intentionally)
-      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
-        throw err;
-      }
-      // For network/blocked, try redirect as fallback
-      await signInWithRedirect(auth, googleProvider);
-      return null;
+    if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+      throw err;
     }
-    throw err;
+    // popup-blocked, network-request-failed, internal-error, unauthorized-domain → try redirect
+    await signInWithRedirect(auth, googleProvider);
+    return null;
   }
 }
 

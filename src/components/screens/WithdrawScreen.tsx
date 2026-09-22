@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Lock, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -39,7 +39,43 @@ export default function WithdrawScreen() {
   const [currency, setCurrency] = useState('USD');
   const [method, setMethod] = useState('agent');
   const [loading, setLoading] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
+
+  // -- Agent Name Resolution --
+  const [agentName, setAgentName] = useState<string | null>(null);
+  const [resolvingAgent, setResolvingAgent] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const code = agentCode.trim().toUpperCase().replace(/\s+/g, '');
+    if (code.length >= 6) {
+      setResolvingAgent(true);
+      fetch(`/api/ussd/agent-lookup?code=${encodeURIComponent(code)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (active) {
+            if (data.success && data.agent) {
+              setAgentName(data.agent.name);
+            } else {
+              setAgentName(null);
+            }
+            setResolvingAgent(false);
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setAgentName(null);
+            setResolvingAgent(false);
+          }
+        });
+    } else {
+      setAgentName(null);
+    }
+    return () => {
+      active = false;
+    };
+  }, [agentCode]);
 
   const isFC = currency === 'FC';
   const numericAmount = parseFloat(amount) || 0;
@@ -205,7 +241,13 @@ export default function WithdrawScreen() {
                 }}
                 className="h-11 font-mono"
               />
-              <p className="text-xs text-muted-foreground">Entrez le numéro de l&apos;agent — le préfixe AGT- s&apos;ajoute automatiquement</p>
+              {resolvingAgent ? (
+                <p className="text-xs text-blue-500 animate-pulse">Recherche de l&apos;agent...</p>
+              ) : agentName ? (
+                <p className="text-sm text-emerald-600 font-medium">✅ {agentName}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">Entrez le numéro de l&apos;agent — le préfixe AGT- s&apos;ajoute automatiquement</p>
+              )}
             </div>
 
             {/* Withdrawal Method - Enforced Agent-Only */}

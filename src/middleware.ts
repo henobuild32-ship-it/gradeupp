@@ -22,12 +22,14 @@ export function middleware(request: NextRequest) {
 
   response.headers.set('Content-Security-Policy', [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+    "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://accounts.google.com https://apis.google.com",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:",
+    "img-src 'self' data: blob: https://*.googleusercontent.com https://*.firebaseapp.com",
     "font-src 'self'",
-    "connect-src 'self' https://open.bigmodel.cn https://*.vercel.app wss://*.vercel.app",
+    "connect-src 'self' https://open.bigmodel.cn https://*.vercel.app wss://*.vercel.app https://*.firebaseapp.com https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://accounts.google.com",
+    "frame-src 'self' https://accounts.google.com https://*.firebaseapp.com https://*.google.com",
     "frame-ancestors 'self'",
+    "worker-src 'self' blob:",
   ].join('; '))
 
   if (pathname.startsWith('/api/')) {
