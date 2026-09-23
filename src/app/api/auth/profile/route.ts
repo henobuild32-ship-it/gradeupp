@@ -70,8 +70,8 @@ export async function GET(request: NextRequest) {
       } catch {}
     }
 
-    // Auto-migrate old agent codes to AGT-{6digits} format
-    if (user.role === 'agent' && user.phone) {
+    // Auto-migrate legacy agent codes (not AGT-XXXXXX) to phone-based format
+    if (user.role === 'agent' && user.phone && !/^AGT-\d{6}$/.test(user.agentCode || '')) {
       const phone = user.phone.replace(/\D/g, '')
       const last6 = phone.slice(-6)
       const expectedCode = `AGT-${last6}`

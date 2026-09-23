@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: 'Code OTP envoyé. Vérifiez votre téléphone.',
+        demoOtp: code,
       });
     }
 
