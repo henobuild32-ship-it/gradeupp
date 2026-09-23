@@ -200,6 +200,11 @@ interface LanguageState {
   setLanguage: (lang: Language) => void;
 }
 
+interface CurrencyState {
+  preferredCurrency: 'USD' | 'FC';
+  setPreferredCurrency: (currency: 'USD' | 'FC') => void;
+}
+
 interface VersionState {
   lastSeenVersion: string | null;
   lastSeenDeployId: string | null;
@@ -207,7 +212,7 @@ interface VersionState {
   setLastSeenDeployId: (deployId: string) => void;
 }
 
-export interface AppStore extends NavigationState, AuthState, AuthFormState, PinState, NotificationState, ThemeState, LanguageState, VersionState {}
+export interface AppStore extends NavigationState, AuthState, AuthFormState, PinState, NotificationState, ThemeState, LanguageState, CurrencyState, VersionState {}
 
 // Store version for migration
 const STORE_VERSION = 2;
@@ -250,11 +255,13 @@ export const useAppStore = create<AppStore>()(
       admin: null,
       selectedRole: 'client',
       token: null,
+      preferredCurrency: 'USD' as const,
 
       setUser: (user) => set({ user }),
       setAdmin: (admin) => set({ admin }),
       setSelectedRole: (role) => set({ selectedRole: role }),
       setToken: (token) => set({ token }),
+      setPreferredCurrency: (currency) => set({ preferredCurrency: currency }),
 
       logout: () => {
         if (typeof document !== 'undefined') {
@@ -360,6 +367,7 @@ export const useAppStore = create<AppStore>()(
         isDarkMode: state.isDarkMode,
         selectedRole: state.selectedRole,
         language: state.language,
+        preferredCurrency: state.preferredCurrency,
         lastSeenVersion: state.lastSeenVersion,
         lastSeenDeployId: state.lastSeenDeployId,
       }),

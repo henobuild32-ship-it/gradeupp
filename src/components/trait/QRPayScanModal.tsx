@@ -5,7 +5,18 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft, Camera, CameraOff, QrCode, X, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAppStore } from '@/lib/store'
+import { Capacitor } from '@capacitor/core'
+import { useCameraPermission } from '@/hooks/useCameraPermission'
 import jsQR from 'jsqr'
+
+let BarcodeScannerModule: any = null
+
+async function getBarcodeScanner() {
+  if (!BarcodeScannerModule) {
+    BarcodeScannerModule = await import('@capacitor-mlkit/barcode-scanning')
+  }
+  return BarcodeScannerModule.BarcodeScanner
+}
 
 interface Props {
   open: boolean
@@ -14,6 +25,7 @@ interface Props {
 
 export default function QRPayScanModal({ open, onOpenChange }: Props) {
   const { navigateTo } = useAppStore()
+  const { checkPermission, requestPermission } = useCameraPermission()
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -34,9 +46,62 @@ export default function QRPayScanModal({ open, onOpenChange }: Props) {
     setScanning(false)
   }
 
+  async function startNativeCamera() {
+    setCameraError('')
+    setScanning(true)
+    try {
+      const BarcodeScanner = await getBarcodeScanner()
+      const { camera } = await BarcodeScanner.checkPermissions()
+      if (camera !== 'granted') {
+        const { camera: granted } = await BarcodeScanner.requestPermissions()
+        if (granted !== 'granted') {
+          setCameraError("Permission caméra refusée. Autorisez la caméra dans les paramètres.")
+          setScanning(false)
+          return
+        }
+      }
+
+      const result = await BarcodeScanner.scan({ formats: ['QR_CODE'], autoZoom: true })
+      if (result.barcodes && result.barcodes.length > 0) {
+        const code = result.barcodes[0]
+        handleQRDetected(code.displayValue || code.rawValue || '')
+      } else {
+        setScanning(false)
+      }
+    } catch (err: any) {
+      if (err.message?.includes('camera') || err.message?.includes('permission')) {
+        setCameraError("Permission caméra refusée.")
+      } else {
+        setCameraError("Erreur lors du scan. Réessayez.")
+      }
+      setScanning(false)
+    }
+  }
+
   async function startCamera() {
     setCameraError('')
     setScanning(true)
+
+    if (Capacitor.isNativePlatform()) {
+      await startNativeCamera()
+      return
+    }
+
+    const perm = await checkPermission()
+    if (perm === 'denied') {
+      setCameraError("Permission caméra refusée. Autorisez la caméra dans les paramètres.")
+      setScanning(false)
+      return
+    }
+    if (perm === 'prompt' || perm === 'prompt-with-rationale') {
+      const granted = await requestPermission()
+      if (granted !== 'granted') {
+        setCameraError("Permission caméra refusée. Autorisez la caméra dans les paramètres.")
+        setScanning(false)
+        return
+      }
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -86,6 +151,8 @@ export default function QRPayScanModal({ open, onOpenChange }: Props) {
   function handleQRDetected(raw: string) {
     stopCamera()
     let recipientId = ''
+    let payAmount: string | undefined
+    let payCurrency: string | undefined
 
     // Product QR: TRAIT-PROD-... → open marketplace product detail
     if (raw.startsWith('TRAIT-PROD-') || raw.includes('TRAIT-PROD-')) {
@@ -101,9 +168,11 @@ export default function QRPayScanModal({ open, onOpenChange }: Props) {
     try {
       const parsed = JSON.parse(raw)
       if (parsed.userId) recipientId = parsed.userId
-      else if (parsed.card) recipientId = parsed.card
       else if (parsed.holder) recipientId = parsed.holder
-      else if (parsed.productId) {
+      else if (parsed.card && typeof parsed.card === 'string' && parsed.card.startsWith('usr_')) recipientId = parsed.card
+      if (parsed.amount !== undefined) payAmount = String(parsed.amount)
+      if (parsed.currency) payCurrency = String(parsed.currency)
+      if (parsed.productId) {
         onOpenChange(false)
         navigateTo('marketplace-detail', { productId: parsed.productId })
         return
@@ -114,11 +183,18 @@ export default function QRPayScanModal({ open, onOpenChange }: Props) {
           const url = new URL(raw)
           const payId = url.searchParams.get('pay')
           if (payId) recipientId = payId
+          payAmount = url.searchParams.get('amount') || undefined
+          payCurrency = url.searchParams.get('currency') || undefined
           const productId = url.searchParams.get('product')
           if (productId) {
             onOpenChange(false)
             navigateTo('marketplace-detail', { productId })
             return
+          }
+          // /pay/{userId} path form
+          if (!recipientId) {
+            const payMatch = url.pathname.match(/\/pay\/([^/?#]+)/)
+            if (payMatch) recipientId = payMatch[1]
           }
         } catch {
           recipientId = raw
@@ -135,7 +211,11 @@ export default function QRPayScanModal({ open, onOpenChange }: Props) {
     onOpenChange(false)
 
     if (recipientId) {
-      navigateTo('send', { payRecipientId: recipientId })
+      navigateTo('send', {
+        payRecipientId: recipientId,
+        ...(payAmount ? { payAmount } : {}),
+        ...(payCurrency ? { payCurrency } : {}),
+      })
     } else {
       navigateTo('send')
     }

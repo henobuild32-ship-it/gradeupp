@@ -74,6 +74,8 @@ const serviceCategories = [
       { labelKey: 'home.cat_recurring', icon: Repeat, page: 'recurring-payments' as const, color: '#7C3AED' },
       { labelKey: 'home.cat_topup', icon: Radio, page: 'bundle-catalog' as const, color: '#E11D48' },
       { labelKey: 'home.cat_payment_links', icon: Link, page: 'payment-links' as const, color: '#0D9488' },
+      { labelKey: 'QR Code', icon: QrCode, page: 'my-qr-code' as const, color: '#4F46E5' },
+      { labelKey: 'home.cat_cards', icon: CreditCard, page: 'card' as const, color: '#0D5C63' },
     ],
   },
   {
@@ -153,6 +155,15 @@ export default function HomeScreen() {
   const realBalanceFC = user?.realBalanceFC ?? 0;
   const bonusBalanceFC = user?.bonusBalanceFC ?? 0;
   const totalFC = realBalanceFC + bonusBalanceFC;
+  const [exchangeRate, setExchangeRate] = useState(2850);
+  const totalConvertedUSD = totalUSD + totalFC / exchangeRate;
+
+  useEffect(() => {
+    fetch('/api/config/exchange-rate')
+      .then((r) => r.json())
+      .then((d) => { if (d.success && d.rate > 0) setExchangeRate(d.rate); })
+      .catch(() => {});
+  }, []);
 
   const agentCode = user?.agentCode || user?.agentNumber;
   const displayAgentCode = agentCode ? (agentCode.startsWith('AGT-') ? agentCode : `AGT-${agentCode}`) : null;
@@ -259,12 +270,18 @@ export default function HomeScreen() {
 
               <div className="flex items-baseline gap-3 mb-5">
                 <p className="text-4xl font-black text-white tracking-tight">
-                  {showBalance ? `$${totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '••••••'}
+                  {showBalance ? `$${totalConvertedUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '••••••'}
                 </p>
                 <p className="text-lg font-bold text-gray-500">USD</p>
               </div>
 
               <div className="flex items-center gap-4 mb-6">
+                <div className="flex-1 rounded-xl bg-white/5 p-3">
+                  <p className="text-[9px] text-gray-500 font-semibold tracking-wider uppercase mb-1">USD</p>
+                  <p className="text-lg font-bold text-white">
+                    {showBalance ? totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '••••'}
+                  </p>
+                </div>
                 <div className="flex-1 rounded-xl bg-white/5 p-3">
                   <p className="text-[9px] text-gray-500 font-semibold tracking-wider uppercase mb-1">FC</p>
                   <p className="text-lg font-bold text-white">
@@ -440,7 +457,7 @@ export default function HomeScreen() {
                         <Icon className="w-4 h-4" style={{ color: item.color }} />
                       </div>
                       <span className="text-[9px] font-semibold text-gray-400 text-center leading-tight px-1">
-                        {t(item.labelKey)}
+                        {item.labelKey === 'QR Code' ? 'QR Code' : t(item.labelKey)}
                       </span>
                     </motion.button>
                   );

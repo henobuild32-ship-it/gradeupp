@@ -32,6 +32,13 @@ const filterTabs: { id: FilterTab; label: string }[] = [
   { id: 'withdrawal', label: 'Retraits' },
 ];
 
+type CurrencyFilter = 'all' | 'USD' | 'FC';
+const currencyFilters: { id: CurrencyFilter; label: string }[] = [
+  { id: 'all', label: 'Toutes' },
+  { id: 'USD', label: 'USD' },
+  { id: 'FC', label: 'CDF' },
+];
+
 function getTypeIcon(type: string) {
   switch (type) {
     case 'send': return '💸';
@@ -85,6 +92,7 @@ export default function HistoryScreen() {
   const { user, navigateTo } = useAppStore();
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
+  const [currencyFilter, setCurrencyFilter] = useState<CurrencyFilter>('all');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -151,10 +159,9 @@ export default function HistoryScreen() {
     window.open(`/api/transfer/export?userId=${user?.id}&type=${activeTab}`, '_blank');
   }
 
-  const filteredHistory =
-    activeTab === 'all'
-      ? history
-      : history.filter((item) => item.type === activeTab);
+  const filteredHistory = history
+    .filter((item) => activeTab === 'all' || item.type === activeTab)
+    .filter((item) => currencyFilter === 'all' || item.currency === currencyFilter);
 
   return (
     <div className="min-h-screen bg-background">
@@ -186,6 +193,21 @@ export default function HistoryScreen() {
               }`}
             >
               {tab.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2 mt-2">
+          {currencyFilters.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => setCurrencyFilter(c.id)}
+              className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                currencyFilter === c.id
+                  ? 'bg-[#0D5C63] text-white shadow-sm'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              {c.label}
             </button>
           ))}
         </div>

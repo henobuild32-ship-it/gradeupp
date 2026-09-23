@@ -306,7 +306,7 @@ export default function CardScreen() {
                 </div>
                 <h2 className="text-lg font-semibold text-foreground mb-2">Aucune carte</h2>
                 <p className="text-sm text-muted-foreground text-center mb-8 max-w-xs">
-                  Vous n&apos;avez pas encore de carte TRAIT. Demandez une carte numérique et profitez de tous les avantages.
+                  Vous n&apos;avez pas encore de carte TRAIT. Demandez une carte numérique ou créez une carte pour quelqu&apos;un d&apos;autre.
                 </p>
                 <Button
                   className="w-full max-w-xs h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl"
@@ -315,9 +315,29 @@ export default function CardScreen() {
                   <Plus className="w-4 h-4 mr-2" />
                   Demander une carte
                 </Button>
+                <Button
+                  variant="outline"
+                  className="w-full max-w-xs h-12 mt-3 font-semibold rounded-xl"
+                  onClick={() => navigateTo('child-sponsorship')}
+                >
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Créer une carte pour quelqu&apos;un
+                </Button>
               </div>
             ) : (
               <>
+                {/* Create card for someone else — always visible */}
+                <div className="mb-4">
+                  <Button
+                    variant="outline"
+                    className="w-full h-12 font-semibold rounded-xl border-dashed"
+                    onClick={() => navigateTo('child-sponsorship')}
+                  >
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Créer une carte pour quelqu&apos;un
+                  </Button>
+                </div>
+
                 {/* Active cards */}
                 {cards.length > 0 && (
                   <div className="space-y-6">

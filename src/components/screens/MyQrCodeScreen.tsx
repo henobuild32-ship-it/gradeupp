@@ -24,7 +24,9 @@ export default function MyQrCodeScreen() {
 
   if (!user) return null
 
-  const qrValue = `https://trait-rho.vercel.app/pay/${user.id}`
+  const qrValue = typeof window !== 'undefined'
+    ? `${window.location.origin}/pay/${user.id}`
+    : `https://trait-rho.vercel.app/pay/${user.id}`
 
   const renderToCanvas = (): Promise<Blob | null> =>
     new Promise((resolve) => {

@@ -32,13 +32,13 @@ function fmtCur(amount: number, currency: string) {
 }
 
 export default function SendScreen() {
-  const { user, navigateTo, setUser, setPendingPinAction, pageParams } = useAppStore();
+  const { user, navigateTo, setUser, setPendingPinAction, pageParams, preferredCurrency, setPreferredCurrency } = useAppStore();
   const { t } = useTranslation();
   const [receiverPhone, setReceiverPhone] = useState('');
   const [receiverName, setReceiverName] = useState('');
   const [lookingUp, setLookingUp] = useState(false);
   const [amount, setAmount] = useState('');
-  const [currency, setCurrency] = useState('USD');
+  const [currency, setCurrency] = useState(preferredCurrency || 'USD');
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -84,6 +84,20 @@ export default function SendScreen() {
       .catch(() => {})
       .finally(() => setLookingUp(false))
   }, [pageParams?.payRecipientId])
+
+  // Prefill amount/currency from QR scan
+  useEffect(() => {
+    const payAmount = pageParams?.payAmount
+    if (payAmount !== undefined && payAmount !== null && String(payAmount).length > 0) {
+      setAmount(String(payAmount))
+    }
+    const payCurrency = pageParams?.payCurrency
+    if (payCurrency === 'USD' || payCurrency === 'FC' || payCurrency === 'CDF') {
+      const cur = payCurrency === 'CDF' ? 'FC' : payCurrency
+      setCurrency(cur)
+      setPreferredCurrency(cur)
+    }
+  }, [pageParams?.payAmount, pageParams?.payCurrency])
 
   const isFC = currency === 'FC';
   const numericAmount = parseFloat(amount) || 0;
@@ -209,7 +223,7 @@ export default function SendScreen() {
             {/* Currency - first so user picks before entering amount */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">{t('send.currency')}</Label>
-              <Select value={currency} onValueChange={setCurrency}>
+              <Select value={currency} onValueChange={(v) => { setCurrency(v); setPreferredCurrency(v as 'USD' | 'FC'); }}>
                 <SelectTrigger className="w-full h-11">
                   <SelectValue />
                 </SelectTrigger>

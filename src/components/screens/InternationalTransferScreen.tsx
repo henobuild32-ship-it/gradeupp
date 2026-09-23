@@ -51,7 +51,7 @@ import { toast } from 'sonner';
 
 // ─── Constants ─────────────────────────────────────────────────────
 
-const EXCHANGE_RATE_USD_FC = 2850;
+let EXCHANGE_RATE_USD_FC = 2850;
 const TRANSFER_FEE_RATE = 0.007; // 0.7%
 const TRAIT_COMMISSION_RATE = 0.015; // 1.5%
 
@@ -250,6 +250,13 @@ export default function InternationalTransferScreen() {
   const [kycStatus, setKycStatus] = useState<string | null>(null);
   const [dailyRemaining, setDailyRemaining] = useState<number | null>(null);
   const [kycLoading, setKycLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/config/exchange-rate')
+      .then((r) => r.json())
+      .then((d) => { if (d.success && d.rate > 0) EXCHANGE_RATE_USD_FC = d.rate; })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const currentUserId = user?.id;
