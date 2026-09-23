@@ -78,7 +78,16 @@ export async function POST(request: NextRequest) {
 
     const isFC = (currency || 'USD') === 'FC';
 
-    // Atomic: create deposit, update client balance, create notifications for both parties
+    // Verify agent has enough balance
+    const agentBalance = isFC ? agent.realBalanceFC : agent.realBalance;
+    if (agentBalance < amount) {
+      return NextResponse.json(
+        { success: false, message: 'Solde insuffisant pour effectuer ce dépôt' },
+        { status: 400 }
+      )
+    }
+
+    // Atomic: create deposit, update client balance, DECREMENT agent balance, create notifications for both parties
     await db.$transaction([
       db.deposit.create({
         data: {
@@ -95,6 +104,12 @@ export async function POST(request: NextRequest) {
         data: isFC
           ? { realBalanceFC: { increment: amount } }
           : { realBalance: { increment: amount } },
+      }),
+      db.user.update({
+        where: { id: agent.id },
+        data: isFC
+          ? { realBalanceFC: { decrement: amount } }
+          : { realBalance: { decrement: amount } },
       }),
       db.notification.create({
         data: {

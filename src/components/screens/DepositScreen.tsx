@@ -61,7 +61,7 @@ export default function DepositScreen() {
       case 'card':
         return cardNumber.length >= 16 && cardExpiry.length >= 4 && cardCvv.length >= 3 && cardHolder && numericAmount > 0
       case 'agent':
-        return agentNumber.length >= 8 && numericAmount > 0
+        return agentNumber.length >= 6 && numericAmount > 0
       default:
         return false
     }
@@ -90,7 +90,7 @@ export default function DepositScreen() {
         body.cardCvv = cardCvv
         body.cardHolder = cardHolder
       } else if (selectedMethod === 'agent') {
-        body.agentNumber = agentNumber
+        body.agentNumber = `AGT-${agentNumber}`
       }
 
       const res = await fetch('/api/transfer/deposit', {
@@ -174,7 +174,7 @@ export default function DepositScreen() {
             <p className="text-sm text-muted-foreground mb-8">
               {selectedMethod === 'mobile_money' ? `Via ${mobileOperator} (${mobilePhone})` :
                selectedMethod === 'bank_transfer' ? `Virement ${bankName}` :
-               selectedMethod === 'card' ? 'Carte bancaire' : `Agent ${agentNumber}`}
+               selectedMethod === 'card' ? 'Carte bancaire' : `Agent AGT-${agentNumber}`}
             </p>
             <Button
               onClick={() => { resetForm(); navigateTo('home') }}
@@ -231,7 +231,7 @@ export default function DepositScreen() {
                   {selectedMethod === 'agent' && (
                     <div className="flex justify-between">
                       <span className="text-sm text-muted-foreground">Agent N°</span>
-                      <span className="font-semibold">{agentNumber}</span>
+                      <span className="font-semibold font-mono">AGT-{agentNumber}</span>
                     </div>
                   )}
                 </div>
@@ -438,11 +438,13 @@ export default function DepositScreen() {
                       <label className="text-sm font-medium text-foreground block mb-1.5">Numéro de l&apos;agent Trait</label>
                       <input
                         type="tel"
-                        placeholder="Entrez le numéro de l'agent"
+                        placeholder="Numéro de l'agent"
                         value={agentNumber}
                         onChange={(e) => setAgentNumber(e.target.value.replace(/\D/g, '').slice(0, 15))}
-                        className="w-full h-12 px-4 bg-muted/30 border-2 border-gray-200 rounded-xl focus:border-[#0D5C63] outline-none text-base"
+                        inputMode="numeric"
+                        className="w-full h-12 pl-14 pr-4 bg-muted/30 border-2 border-gray-200 rounded-xl focus:border-[#0D5C63] outline-none text-base font-mono"
                       />
+                      <span className="absolute mt-[-34px] ml-4 text-sm font-mono font-bold text-muted-foreground pointer-events-none">AGT-</span>
                     </div>
                     <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
                       <p className="text-xs text-amber-800">

@@ -64,7 +64,6 @@ export async function GET(request: NextRequest) {
         validationRejectReason: true,
         agentCode: true,
         agentNumber: true,
-        systemPassword: true,
         systemPasswordSent: true,
         suspended: true,
         suspensionReason: true,
@@ -139,7 +138,7 @@ export async function POST(request: NextRequest) {
           hasCompletedOnboarding: true,
           agentCode,
           agentNumber,
-          systemPassword,
+          systemPassword: null,
           password: hashedPassword,
         },
       })
@@ -251,24 +250,26 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      if (!agent.systemPassword) {
+      if (!agent.agentCode || agent.validationStatus !== 'validated') {
         return NextResponse.json(
           { success: false, message: 'Identifiants non encore générés. Validez d\'abord l\'agent.' },
           { status: 400 }
         )
       }
 
+      const systemPassword = generateSystemPassword()
+      const hashedPassword = await hashPassword(systemPassword)
       const emailSent = await sendAgentCredentialsEmail(
         agent.email,
         agent.name || 'Agent',
         agent.agentCode || '',
-        agent.systemPassword
+        systemPassword
       )
 
       if (emailSent) {
         await db.user.update({
           where: { id: targetId },
-          data: { systemPasswordSent: true },
+          data: { password: hashedPassword, systemPassword: null, systemPasswordSent: true },
         })
       }
 

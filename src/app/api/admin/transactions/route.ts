@@ -79,6 +79,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (action === 'validate' || action === 'cancel') {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'La validation ou l’annulation financière doit être effectuée depuis le flux métier concerné afin de garantir les mouvements de solde.',
+        },
+        { status: 400 }
+      );
+    }
+
     if (action === 'block') {
       if (!reason) {
         return NextResponse.json(
@@ -87,57 +97,29 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      await db.transaction.update({
-        where: { id: transactionId },
-        data: { status: 'blocked', blockReason: reason },
-      });
+      if (transaction.status !== 'pending') {
+        return NextResponse.json(
+          { success: false, message: 'Seules les transactions en attente peuvent être bloquées.' },
+          { status: 400 }
+        );
+      }
 
-      await db.adminActivityLog.create({
-        data: {
-          adminId,
-          action: 'block_transaction',
-          target: transactionId,
-          details: `Transaction ${transactionId.substring(0, 8)}... bloquée. Motif: ${reason}. Montant: ${transaction.amount} ${transaction.currency}`,
-        },
-      });
+      await db.$transaction([
+        db.transaction.update({
+          where: { id: transactionId },
+          data: { status: 'blocked', blockReason: reason },
+        }),
+        db.adminActivityLog.create({
+          data: {
+            adminId,
+            action: 'block_transaction',
+            target: transactionId,
+            details: `Transaction ${transactionId.substring(0, 8)}... bloquée. Motif: ${reason}. Montant: ${transaction.amount} ${transaction.currency}`,
+          },
+        }),
+      ]);
 
       return NextResponse.json({ success: true, message: 'Transaction bloquée' });
-    }
-
-    if (action === 'validate') {
-      await db.transaction.update({
-        where: { id: transactionId },
-        data: { status: 'completed' },
-      });
-
-      await db.adminActivityLog.create({
-        data: {
-          adminId,
-          action: 'validate_transaction',
-          target: transactionId,
-          details: `Transaction ${transactionId.substring(0, 8)}... validée. Montant: ${transaction.amount} ${transaction.currency}`,
-        },
-      });
-
-      return NextResponse.json({ success: true, message: 'Transaction validée' });
-    }
-
-    if (action === 'cancel') {
-      await db.transaction.update({
-        where: { id: transactionId },
-        data: { status: 'failed' },
-      });
-
-      await db.adminActivityLog.create({
-        data: {
-          adminId,
-          action: 'cancel_transaction',
-          target: transactionId,
-          details: `Transaction ${transactionId.substring(0, 8)}... annulée. Montant: ${transaction.amount} ${transaction.currency}`,
-        },
-      });
-
-      return NextResponse.json({ success: true, message: 'Transaction annulée' });
     }
 
     return NextResponse.json(

@@ -39,6 +39,11 @@ export default function GoogleAuthButton({
         }),
       });
 
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        throw new Error('invalid-response');
+      }
+
       const data = await res.json();
 
       if (res.status === 206) {
@@ -134,7 +139,11 @@ function handleGoogleError(err: any) {
     toast.info('Connexion annulée');
   } else if (code === 'auth/account-exists-with-different-credential') {
     toast.error('Ce compte existe déjà avec une autre méthode.');
+  } else if (err?.message === 'invalid-response') {
+    toast.error('Problème de connexion. Veuillez réessayer.');
+    console.error('Google auth: non-JSON response from /api/auth/google');
   } else {
     toast.error('Problème de connexion. Veuillez réessayer.');
+    if (code) console.error('Google auth error:', code, err);
   }
 }

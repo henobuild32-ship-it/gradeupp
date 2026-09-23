@@ -17,9 +17,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (newPassword.length < 4) {
+    if (
+      typeof newPassword !== 'string' ||
+      newPassword.length < 12 ||
+      !/[a-z]/.test(newPassword) ||
+      !/[A-Z]/.test(newPassword) ||
+      !/\d/.test(newPassword)
+    ) {
       return NextResponse.json(
-        { success: false, message: 'Le mot de passe doit contenir au moins 4 caractères' },
+        { success: false, message: 'Le mot de passe doit contenir au moins 12 caractères, une minuscule, une majuscule et un chiffre' },
         { status: 400 }
       );
     }

@@ -9,10 +9,15 @@ const seed = async () => {
   const hash = async (pwd: string) => bcrypt.hash(pwd, 10);
 
   // ── Admin ──────────────────────────────────────────────────────────
-  const hashedAdminPwd = await hash('admin1234');
+  const adminPassword = process.env.ADMIN_BOOTSTRAP_PASSWORD;
+  if (!adminPassword || adminPassword.length < 12) {
+    throw new Error('ADMIN_BOOTSTRAP_PASSWORD doit contenir au moins 12 caractères dans .env');
+  }
+  const hashedAdminPwd = await hash(adminPassword);
   const admin = await db.admin.upsert({
     where: { username: 'admin' },
-    update: { password: hashedAdminPwd },
+    // ponytail: seed ne remplace jamais un mot de passe admin existant; utilisez l’API authentifiée.
+    update: {},
     create: {
       username: 'admin',
       password: hashedAdminPwd,

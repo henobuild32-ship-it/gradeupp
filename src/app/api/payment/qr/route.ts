@@ -29,6 +29,10 @@ export async function POST(request: NextRequest) {
 
     const { sellerId, qrCode, amount: payAmount, currency, pin } = validation.data
 
+    if (auth.userId !== sellerId) {
+      return NextResponse.json({ success: false, message: 'Non autorisé' }, { status: 403 })
+    }
+
     // Verify Seller
     const seller = await db.user.findUnique({ where: { id: sellerId } })
     if (!seller || seller.role !== 'seller' || seller.validationStatus !== 'validated') {

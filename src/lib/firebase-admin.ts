@@ -1,33 +1,11 @@
-import { initializeApp, getApps, getApp, cert, App } from 'firebase-admin/app';
-import { getAuth, Auth } from 'firebase-admin/auth';
+import { createRemoteJWKSet, jwtVerify } from 'jose';
 
-let adminAuth: Auth | null = null;
+const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
-function getFirebaseAdmin(): Auth {
-  if (adminAuth) return adminAuth;
-
-  let app: App;
-  if (getApps().length) {
-    app = getApp();
-  } else {
-    // Use project ID + default credentials (Vercel provides them)
-    // Or service account JSON in FIREBASE_SERVICE_ACCOUNT_KEY
-    const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-    if (serviceAccount) {
-      app = initializeApp({
-        credential: cert(JSON.parse(serviceAccount)),
-        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-      });
-    } else {
-      app = initializeApp({
-        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-      });
-    }
-  }
-
-  adminAuth = getAuth(app);
-  return adminAuth;
-}
+// Firebase/Google public JWKS — no service account required for ID token verification
+const jwks = createRemoteJWKSet(
+  new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com')
+);
 
 export async function verifyFirebaseIdToken(idToken: string): Promise<{
   uid: string;
@@ -37,14 +15,22 @@ export async function verifyFirebaseIdToken(idToken: string): Promise<{
   emailVerified: boolean;
 } | null> {
   try {
-    const auth = getFirebaseAdmin();
-    const decoded = await auth.verifyIdToken(idToken);
+    if (!projectId || !idToken) return null;
+
+    const { payload } = await jwtVerify(idToken, jwks, {
+      issuer: `https://securetoken.google.com/${projectId}`,
+      audience: projectId,
+    });
+
+    const uid = payload.sub;
+    if (!uid) return null;
+
     return {
-      uid: decoded.uid,
-      email: decoded.email ?? null,
-      displayName: decoded.name ?? null,
-      photoURL: decoded.picture ?? null,
-      emailVerified: decoded.email_verified ?? false,
+      uid,
+      email: typeof payload.email === 'string' ? payload.email : null,
+      displayName: typeof payload.name === 'string' ? payload.name : null,
+      photoURL: typeof payload.picture === 'string' ? payload.picture : null,
+      emailVerified: payload.email_verified === true,
     };
   } catch {
     return null;

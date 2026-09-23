@@ -227,18 +227,27 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      await db.user.delete({ where: { id: agentId } });
+      // Financial records must remain immutable for audit purposes.
+      await db.user.update({
+        where: { id: agentId },
+        data: {
+          suspended: true,
+          validationStatus: 'rejected',
+          agentCode: null,
+          agentNumber: null,
+        },
+      });
 
       await db.adminActivityLog.create({
         data: {
           adminId,
-          action: 'delete_agent',
+          action: 'deactivate_agent',
           target: agentId,
-          details: `Agent ${agent.name} (${agent.agentCode}) supprimé définitivement`,
+          details: `Agent ${agent.name} (${agent.agentCode}) désactivé définitivement`,
         },
       });
 
-      return NextResponse.json({ success: true, message: 'Agent supprimé' });
+      return NextResponse.json({ success: true, message: 'Agent désactivé' });
     }
 
     if (action === 'update') {
@@ -252,7 +261,16 @@ export async function POST(request: NextRequest) {
 
       const updateData: any = {};
       if (name) updateData.name = name;
-      if (phone) updateData.phone = phone;
+      if (phone) {
+        const existing = await db.user.findUnique({ where: { phone } });
+        if (existing && existing.id !== agentId) {
+          return NextResponse.json(
+            { success: false, message: 'Ce numéro de téléphone est déjà utilisé' },
+            { status: 409 }
+          );
+        }
+        updateData.phone = phone;
+      }
       if (country) updateData.country = country;
 
       const updated = await db.user.update({

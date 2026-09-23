@@ -88,6 +88,11 @@ export default function GoogleSignupModal({
         }),
       });
 
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        throw new Error('invalid-response');
+      }
+
       const data = await res.json();
 
       if (!data.success) {

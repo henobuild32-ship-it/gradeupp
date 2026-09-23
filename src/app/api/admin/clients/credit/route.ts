@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}))
     const { amount = 30 } = body as { amount?: number }
 
-    if (typeof amount !== 'number' || amount <= 0) {
+    if (!Number.isFinite(amount) || amount <= 0 || amount > 10000) {
       return NextResponse.json(
         { success: false, message: 'Montant invalide' },
         { status: 400 }
@@ -31,25 +31,32 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    let credited = 0
     const batchSize = 50
 
     for (let i = 0; i < clients.length; i += batchSize) {
       const batch = clients.slice(i, i + batchSize)
-      await Promise.all(
-        batch.map(async (client) => {
-          try {
-            await db.user.update({
-              where: { id: client.id },
-              data: { realBalance: { increment: amount } },
-            })
-            credited++
-          } catch (err) {
-            console.error(`Failed to credit user ${client.id}:`, err)
-          }
-        })
+      await db.$transaction(
+        batch.flatMap((client) => [
+          db.user.update({
+            where: { id: client.id },
+            data: { realBalance: { increment: amount } },
+          }),
+          db.transaction.create({
+            data: {
+              type: 'admin_credit',
+              amount,
+              currency: 'USD',
+              status: 'completed',
+              senderId: client.id,
+              receiverId: client.id,
+              description: 'Crédit administrateur - bonus de bienvenue',
+            },
+          }),
+        ])
       )
     }
+
+    const credited = clients.length
 
     await db.adminActivityLog.create({
       data: {

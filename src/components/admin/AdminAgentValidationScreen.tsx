@@ -1050,17 +1050,6 @@ export default function AdminAgentValidationScreen() {
                           {detailAgent.agentNumber}
                         </p>
                       </div>
-                      {detailAgent.systemPassword && (
-                        <div>
-                          <p className="text-xs text-emerald-700 dark:text-emerald-400 mb-1 font-medium flex items-center gap-1">
-                            <Key className="h-3.5 w-3.5" />
-                            Mot de passe système
-                          </p>
-                          <p className="text-base font-mono font-bold text-emerald-800 dark:text-emerald-300">
-                            {detailAgent.systemPassword}
-                          </p>
-                        </div>
-                      )}
                     </div>
                     {detailAgent.email && (
                       <Button

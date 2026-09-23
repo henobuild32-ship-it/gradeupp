@@ -54,15 +54,9 @@ export async function POST(request: NextRequest) {
           fee,
           currency: cur,
           method: 'ussd_agent',
-          status: 'completed',
+          status: 'pending',
           agentId: agent.id,
         },
-      });
-      await tx.user.update({
-        where: { id: agent.id },
-        data: isFC
-          ? { realBalanceFC: { increment: amount } }
-          : { realBalance: { increment: amount } },
       });
       await tx.transaction.create({
         data: {
@@ -70,7 +64,7 @@ export async function POST(request: NextRequest) {
           amount,
           fee,
           currency: cur,
-          status: 'completed',
+          status: 'pending',
           senderId: userId,
           receiverId: agent.id,
           agentId: agent.id,
@@ -80,9 +74,18 @@ export async function POST(request: NextRequest) {
       await tx.notification.create({
         data: {
           userId,
-          title: 'Retrait effectué',
-          message: `Votre retrait de ${amount.toFixed(2)} ${cur} (frais: ${fee.toFixed(2)} ${cur}) a été effectué via l'agent ${agent.agentCode}.`,
+          title: 'Retrait en cours de validation',
+          message: `Votre demande de retrait de ${amount.toFixed(2)} ${cur} (frais: ${fee.toFixed(2)} ${cur}) via l'agent ${agent.agentCode} est en attente de validation.`,
           type: 'withdrawal_validated',
+        },
+      });
+      // Notify Agent
+      await tx.notification.create({
+        data: {
+          userId: agent.id,
+          title: 'Nouvelle demande de retrait',
+          message: `Le client ${user.phone} demande un retrait de ${amount.toFixed(2)} ${cur}.`,
+          type: 'general',
         },
       });
       return withdrawal;
@@ -93,14 +96,14 @@ export async function POST(request: NextRequest) {
     if (sendPushToUser) {
       const amt = isFC ? amount.toLocaleString('fr-FR') : '$' + amount.toFixed(2)
       sendPushToUser(userId, {
-        title: 'Retrait effectué',
-        body: `Retrait de ${amt} ${cur} (frais: ${fee.toFixed(2)} ${cur}) effectué via l'agent ${agent.businessName || agent.name || 'TRAIT'}.`,
-        url: '/home',
+        title: 'Retrait en attente',
+        body: `Demande de retrait de ${amt} ${cur} envoyée à l'agent ${agent.businessName || agent.name || 'TRAIT'}.`,
+        url: '/history',
       }).catch(() => {})
       sendPushToUser(agent.id, {
-        title: 'Retrait pour client',
-        body: `Retrait de ${amt} ${cur} effectué pour ${user.name || user.pseudo || user.phone}.`,
-        url: '/home',
+        title: 'Nouvelle demande de retrait (USSD)',
+        body: `Le client ${user.phone} souhaite retirer ${amt} ${cur}.`,
+        url: '/agent-pending',
       }).catch(() => {})
     }
 

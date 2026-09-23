@@ -35,11 +35,12 @@ export default function WithdrawScreen() {
   const { user, navigateTo, setUser, setPendingPinAction } = useAppStore();
   const { t } = useTranslation();
   const [amount, setAmount] = useState('');
-  const [agentCode, setAgentCode] = useState('');
+  const [agentNumber, setAgentNumber] = useState('');
   const [currency, setCurrency] = useState('USD');
   const [method, setMethod] = useState('agent');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
 
   // -- Agent Name Resolution --
@@ -48,10 +49,10 @@ export default function WithdrawScreen() {
 
   useEffect(() => {
     let active = true;
-    const code = agentCode.trim().toUpperCase().replace(/\s+/g, '');
+    const code = agentNumber.trim();
     if (code.length >= 6) {
       setResolvingAgent(true);
-      fetch(`/api/ussd/agent-lookup?code=${encodeURIComponent(code)}`)
+      fetch(`/api/ussd/agent-lookup?code=${encodeURIComponent(`AGT-${code}`)}`)
         .then((res) => res.json())
         .then((data) => {
           if (active) {
@@ -75,7 +76,7 @@ export default function WithdrawScreen() {
     return () => {
       active = false;
     };
-  }, [agentCode]);
+  }, [agentNumber]);
 
   const isFC = currency === 'FC';
   const numericAmount = parseFloat(amount) || 0;
@@ -91,7 +92,7 @@ export default function WithdrawScreen() {
       toast.error(t('send.amount_required'));
       return;
     }
-    if (!agentCode.trim()) {
+    if (!agentNumber) {
       toast.error(t('withdraw.agent_required'));
       return;
     }
@@ -106,7 +107,7 @@ export default function WithdrawScreen() {
     if (!user?.id) return;
     setShowConfirm(false);
 
-    setPendingPinAction(async () => {
+    setPendingPinAction(() => async () => {
       setLoading(true);
       try {
         const res = await fetch('/api/transfer/withdraw', {
@@ -117,7 +118,7 @@ export default function WithdrawScreen() {
             amount: numericAmount,
             currency,
             method,
-            agentCode: agentCode.trim(),
+            agentCode: `AGT-${agentNumber}`,
           }),
         });
         const data = await res.json();
@@ -133,7 +134,7 @@ export default function WithdrawScreen() {
           }
           toast.success(t('withdraw.success'));
           setAmount('');
-          setAgentCode('');
+          setAgentNumber('');
           navigateTo('home');
         } else {
           toast.error(data.message || t('withdraw.error'));
@@ -230,17 +231,12 @@ export default function WithdrawScreen() {
                 id="agentCode"
                 type="text"
                 placeholder="Numéro de l'agent (ex: 202601)"
-                value={agentCode}
-                onChange={(e) => {
-                  let val = e.target.value.toUpperCase()
-                  // If user types just digits, auto-add AGT- prefix
-                  if (/^\d+$/.test(val)) {
-                    val = `AGT-${val}`
-                  }
-                  setAgentCode(val)
-                }}
-                className="h-11 font-mono"
+                value={agentNumber}
+                onChange={(e) => setAgentNumber(e.target.value.replace(/\D/g, '').slice(0, 15))}
+                inputMode="numeric"
+                className="h-11 font-mono pl-14"
               />
+              <span className="absolute mt-[-34px] ml-3 text-sm font-mono font-bold text-muted-foreground pointer-events-none">AGT-</span>
               {resolvingAgent ? (
                 <p className="text-xs text-blue-500 animate-pulse">Recherche de l&apos;agent...</p>
               ) : agentName ? (
@@ -277,7 +273,7 @@ export default function WithdrawScreen() {
             <Button
               className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-base cursor-pointer"
               onClick={handleSubmit}
-              disabled={loading || !agentCode.trim() || (numericAmount > 0 && total > realBalance)}
+              disabled={loading || !agentNumber || !agentName || (numericAmount > 0 && total > realBalance)}
             >
               {loading ? (
                 <span className="flex items-center gap-2">
@@ -304,7 +300,7 @@ export default function WithdrawScreen() {
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Code agent</span>
-              <span className="font-medium font-mono">{agentCode}</span>
+              <span className="font-medium font-mono">AGT-{agentNumber}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Frais</span>
