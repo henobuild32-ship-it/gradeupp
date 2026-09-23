@@ -21,6 +21,8 @@ import {
   AlertTriangle,
   Eye,
   EyeOff,
+  UserCheck,
+  Mail,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -52,10 +54,12 @@ interface Agent {
   id: string;
   name: string;
   phone: string;
-  agentCode: string;
+  email?: string | null;
+  agentCode: string | null;
   country: string;
   location: string | null;
   suspended: boolean;
+  validationStatus: string;
   realBalance: number;
   bonusBalance: number;
   createdAt: string;
@@ -96,6 +100,11 @@ function formatBalance(amount: number): string {
 export default function AdminAgentsScreen() {
   const { admin, goBack } = useAppStore();
 
+  const adminHeaders = {
+    'Content-Type': 'application/json',
+    ...(admin?.token ? { Authorization: `Bearer ${admin.token}` } : {}),
+  };
+
   // Data
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,6 +114,15 @@ export default function AdminAgentsScreen() {
 
   // Search
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Approve dialog
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  const [approveTarget, setApproveTarget] = useState<Agent | null>(null);
+  const [approveLoading, setApproveLoading] = useState(false);
+  const [sendEmailOnApprove, setSendEmailOnApprove] = useState(true);
+  const [approvedCode, setApprovedCode] = useState<string | null>(null);
+  const [approveResultOpen, setApproveResultOpen] = useState(false);
+  const [approveEmailSent, setApproveEmailSent] = useState(false);
 
   // Create agent dialog
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -146,7 +164,9 @@ export default function AdminAgentsScreen() {
         params.set('search', searchQuery.trim());
       }
 
-      const res = await fetch(`/api/admin/agents?${params.toString()}`);
+      const res = await fetch(`/api/admin/agents?${params.toString()}`, {
+        headers: adminHeaders,
+      });
       const data = await res.json();
 
       if (data.success) {
@@ -159,7 +179,7 @@ export default function AdminAgentsScreen() {
         setHasMore(fetched.length >= 10);
         setPage(p);
       } else {
-        toast.error(data.error || 'Erreur lors du chargement');
+        toast.error(data.message || 'Erreur lors du chargement');
       }
     } catch (err) {
       console.error('Failed to fetch agents:', err);
@@ -168,7 +188,7 @@ export default function AdminAgentsScreen() {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [searchQuery]);
+  }, [searchQuery, admin?.token]);
 
   useEffect(() => {
     setPage(1);
@@ -183,6 +203,56 @@ export default function AdminAgentsScreen() {
 
   function handleLoadMore() {
     fetchAgents(page + 1, true);
+  }
+
+  // ─── Approve pending agent ─────────────────────────────────────
+
+  function openApproveDialog(agent: Agent) {
+    setApproveTarget(agent);
+    setSendEmailOnApprove(true);
+    setApproveDialogOpen(true);
+  }
+
+  async function handleApproveConfirm() {
+    if (!approveTarget || !admin?.id) {
+      toast.error('Données manquantes');
+      return;
+    }
+
+    setApproveLoading(true);
+    try {
+      const res = await fetch('/api/admin/agent-validation', {
+        method: 'POST',
+        headers: adminHeaders,
+        body: JSON.stringify({
+          adminId: admin.id,
+          action: 'accept',
+          agentId: approveTarget.id,
+          sendEmail: sendEmailOnApprove,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setApprovedCode(data.agentCode ?? null);
+        setApproveEmailSent(!!data.emailSent);
+        setApproveDialogOpen(false);
+        setApproveResultOpen(true);
+        toast.success(`${approveTarget.name} validé — code ${data.agentCode}`);
+        if (data.emailSent) {
+          toast.info('Email prédéfini envoyé à l\'agent');
+        }
+        fetchAgents(1, false);
+      } else {
+        toast.error(data.message || 'Échec de la validation');
+      }
+    } catch (err) {
+      console.error('Approve error:', err);
+      toast.error('Erreur lors de la validation');
+    } finally {
+      setApproveLoading(false);
+    }
   }
 
   // ─── Create Agent ──────────────────────────────────────────────
@@ -207,7 +277,7 @@ export default function AdminAgentsScreen() {
     try {
       const res = await fetch('/api/admin/agents', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: adminHeaders,
         body: JSON.stringify({
           adminId: admin.id,
           action: 'create',
@@ -222,11 +292,11 @@ export default function AdminAgentsScreen() {
       const data = await res.json();
 
       if (data.success) {
-        toast.success(`Agent créé avec succès ! Code: ${data.agentCode}`);
+        toast.success(`Agent créé avec succès ! Code: ${data.agentCode || data.agent?.agentCode}`);
         setCreateDialogOpen(false);
         fetchAgents(1, false);
       } else {
-        toast.error(data.error || 'Échec de la création');
+        toast.error(data.message || 'Échec de la création');
       }
     } catch (err) {
       console.error('Create agent error:', err);
@@ -258,7 +328,7 @@ export default function AdminAgentsScreen() {
     try {
       const res = await fetch('/api/admin/agents', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: adminHeaders,
         body: JSON.stringify({
           agentId: suspendTarget.id,
           adminId: admin.id,
@@ -279,7 +349,7 @@ export default function AdminAgentsScreen() {
         setSuspendTarget(null);
         fetchAgents(1, false);
       } else {
-        toast.error(data.error || 'Action échouée');
+        toast.error(data.message || 'Action échouée');
       }
     } catch (err) {
       console.error('Suspend error:', err);
@@ -306,7 +376,7 @@ export default function AdminAgentsScreen() {
     try {
       const res = await fetch('/api/admin/agents', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: adminHeaders,
         body: JSON.stringify({
           agentId: deleteTarget.id,
           adminId: admin.id,
@@ -317,12 +387,12 @@ export default function AdminAgentsScreen() {
       const data = await res.json();
 
       if (data.success) {
-        toast.success(`${deleteTarget.name} a été supprimé`);
+        toast.success(`${deleteTarget.name} a été désactivé`);
         setDeleteDialogOpen(false);
         setDeleteTarget(null);
         fetchAgents(1, false);
       } else {
-        toast.error(data.error || 'Échec de la suppression');
+        toast.error(data.message || 'Échec de la désactivation');
       }
     } catch (err) {
       console.error('Delete error:', err);
@@ -463,21 +533,42 @@ export default function AdminAgentsScreen() {
                           <h3 className="text-sm font-semibold text-foreground truncate">
                             {agent.name}
                           </h3>
-                          <Badge className="font-mono text-xs bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 dark:border-emerald-800/40">
-                            {agent.agentCode}
-                          </Badge>
+                          {agent.validationStatus === 'pending' ? (
+                            <Badge className="text-xs bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/40 dark:text-amber-400 dark:border-amber-800/40">
+                              En attente
+                            </Badge>
+                          ) : agent.validationStatus === 'rejected' ? (
+                            <Badge variant="destructive" className="text-xs">
+                              Refusé
+                            </Badge>
+                          ) : agent.agentCode ? (
+                            <Badge className="font-mono text-xs bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 dark:border-emerald-800/40">
+                              {agent.agentCode}
+                            </Badge>
+                          ) : null}
                           {agent.suspended && (
                             <Badge variant="destructive" className="text-xs">
                               Suspendu
                             </Badge>
                           )}
-                          {!agent.suspended && (
+                          {!agent.suspended && agent.validationStatus === 'validated' && (
                             <Badge className="text-xs bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 dark:border-emerald-800/40">
                               Actif
                             </Badge>
                           )}
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
+                          {agent.validationStatus === 'pending' && (
+                            <Button
+                              size="icon"
+                              className="h-8 w-8 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white"
+                              onClick={() => openApproveDialog(agent)}
+                              title="Valider l'agent"
+                            >
+                              <UserCheck className="h-4 w-4" />
+                              <span className="sr-only">Valider</span>
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
@@ -501,10 +592,10 @@ export default function AdminAgentsScreen() {
                             size="icon"
                             className="h-8 w-8 rounded-md text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                             onClick={() => openDeleteDialog(agent)}
-                            title="Supprimer"
+                            title="Désactiver"
                           >
                             <Trash2 className="h-4 w-4" />
-                            <span className="sr-only">Supprimer</span>
+                            <span className="sr-only">Désactiver</span>
                           </Button>
                         </div>
                       </div>
@@ -771,9 +862,12 @@ export default function AdminAgentsScreen() {
             <DialogDescription asChild>
               <div>
                 <p className="mb-2">
-                  Cette action est <strong>irréversible</strong>. Toutes les données associées à{' '}
-                  <strong>{deleteTarget?.name}</strong> (code: <code className="font-mono">{deleteTarget?.agentCode}</code>)
-                  seront définitivement supprimées.
+                  Cette action <strong>désactive définitivement</strong> l&apos;agent{' '}
+                  <strong>{deleteTarget?.name}</strong>
+                  {deleteTarget?.agentCode && (
+                    <> (code: <code className="font-mono">{deleteTarget.agentCode}</code>)</>
+                  )}
+                  . L&apos;historique financier est conservé pour audit.
                 </p>
               </div>
             </DialogDescription>
@@ -791,14 +885,128 @@ export default function AdminAgentsScreen() {
               {deleteLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Suppression...
+                  Désactivation...
                 </>
               ) : (
                 <>
                   <Trash2 className="h-4 w-4 mr-2" />
-                  Supprimer définitivement
+                  Désactiver l&apos;agent
                 </>
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Approve Pending Agent Dialog ──────────────────────────── */}
+      <Dialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-emerald-600">
+              <UserCheck className="h-5 w-5" />
+              Valider l&apos;agent
+            </DialogTitle>
+            <DialogDescription>
+              Valider <strong>{approveTarget?.name}</strong> ({approveTarget?.phone}).
+              Un code agent unique sera généré automatiquement.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <label className="flex items-start gap-3 rounded-lg border border-border p-3 cursor-pointer hover:bg-muted/50">
+              <input
+                type="checkbox"
+                checked={sendEmailOnApprove}
+                onChange={(e) => setSendEmailOnApprove(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-emerald-600"
+              />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                  <Mail className="h-3.5 w-3.5 text-emerald-600" />
+                  Envoyer les identifiants par email
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Message prédéfini avec le code agent. L&apos;agent se connecte avec son
+                  mot de passe d&apos;inscription.
+                </p>
+                {!approveTarget?.email && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    Cet agent n&apos;a pas d&apos;email — l&apos;envoi sera ignoré.
+                  </p>
+                )}
+              </div>
+            </label>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setApproveDialogOpen(false)} disabled={approveLoading}>
+              Annuler
+            </Button>
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
+              onClick={handleApproveConfirm}
+              disabled={approveLoading}
+            >
+              {approveLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Validation...
+                </>
+              ) : (
+                <>
+                  <UserCheck className="h-4 w-4 mr-2" />
+                  Valider
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Approve Result Dialog ─────────────────────────────────── */}
+      <Dialog open={approveResultOpen} onOpenChange={setApproveResultOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-emerald-600">
+              <UserCheck className="h-5 w-5" />
+              Agent validé
+            </DialogTitle>
+            <DialogDescription>
+              Le compte est actif. L&apos;agent peut se connecter immédiatement.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            <div className="rounded-lg border border-emerald-200 dark:border-emerald-800/40 bg-emerald-50/50 dark:bg-emerald-950/20 p-4 text-center">
+              <p className="text-xs text-muted-foreground mb-1">Code agent généré</p>
+              <p className="font-mono text-2xl font-bold text-emerald-700 dark:text-emerald-400 tracking-widest">
+                {approvedCode}
+              </p>
+            </div>
+            <div className="text-sm text-muted-foreground space-y-1">
+              <p>
+                <strong className="text-foreground">Connexion :</strong> numéro de téléphone +
+                mot de passe d&apos;inscription.
+              </p>
+              {approveEmailSent ? (
+                <p className="text-emerald-600">
+                  Email prédéfini envoyé avec le code et les instructions.
+                </p>
+              ) : (
+                <p className="text-amber-600">
+                  Email non envoyé (pas d&apos;adresse ou échec SMTP). Transmettez le code
+                  manuellement.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
+              onClick={() => setApproveResultOpen(false)}
+            >
+              Compris
             </Button>
           </DialogFooter>
         </DialogContent>

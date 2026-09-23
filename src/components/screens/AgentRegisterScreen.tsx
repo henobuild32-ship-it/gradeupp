@@ -678,9 +678,9 @@ export default function AgentRegisterScreen() {
                     <div className="text-[11px] text-blue-800 dark:text-blue-300 leading-relaxed">
                       <p className="font-semibold mb-0.5">Sécurité de votre compte</p>
                       <ul className="space-y-0.5">
-                        <li>• Ce mot de passe vous servira pour vous connecter</li>
-                        <li>• Un <strong>mot de passe système</strong> sera généré automatiquement après validation</li>
-                        <li>• Les deux mots de passe sont différents et séparés</li>
+                        <li>• Ce mot de passe vous servira pour vous connecter après validation</li>
+                        <li>• Un <strong>code agent unique</strong> vous sera envoyé par email après validation</li>
+                        <li>• Connexion : votre numéro + ce mot de passe</li>
                       </ul>
                     </div>
                   </CardContent>

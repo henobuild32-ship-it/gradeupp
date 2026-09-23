@@ -225,7 +225,7 @@ export default function AdminAgentValidationScreen() {
           }
           const res = await fetch(`/api/admin/agent-validation?${params.toString()}`, { headers: adminHeaders });
           const data = await res.json();
-          if (!res.ok) throw new Error(data.error || 'Erreur');
+          if (!res.ok) throw new Error(data.message || 'Erreur');
           return { status, agents: (data.agents ?? []) as ValidationAgent[] };
         })
       );
@@ -340,17 +340,17 @@ export default function AdminAgentValidationScreen() {
 
       if (data.success) {
         setGeneratedAgentNumber(data.agentNumber ?? data.agentCode ?? null);
-        setGeneratedSystemPassword(data.systemPassword ?? null);
+        setGeneratedSystemPassword(null);
         toast.success(`${validateTarget.name} a été validé`);
         if (data.emailSent) {
-          toast.info('Email avec identifiants envoyé à l\'agent');
+          toast.info('Email prédéfini envoyé à l\'agent');
         }
         // Refresh data after a short delay so user sees the dialog
         setTimeout(() => {
           fetchAgents(debouncedSearch);
         }, 800);
       } else {
-        toast.error(data.error || 'Échec de la validation');
+        toast.error(data.message || 'Échec de la validation');
         setValidateDialogOpen(false);
       }
     } catch (err) {
@@ -395,7 +395,7 @@ export default function AdminAgentValidationScreen() {
         setRejectTarget(null);
         fetchAgents(debouncedSearch);
       } else {
-        toast.error(data.error || 'Échec du refus');
+        toast.error(data.message || 'Échec du refus');
       }
     } catch (err) {
       console.error('Reject error:', err);
@@ -433,7 +433,7 @@ export default function AdminAgentValidationScreen() {
         setSuspendTarget(null);
         fetchAgents(debouncedSearch);
       } else {
-        toast.error(data.error || 'Échec de la suspension');
+        toast.error(data.message || 'Échec de la suspension');
       }
     } catch (err) {
       console.error('Suspend error:', err);
@@ -471,7 +471,7 @@ export default function AdminAgentValidationScreen() {
         setReconsiderTarget(null);
         fetchAgents(debouncedSearch);
       } else {
-        toast.error(data.error || 'Échec de la reconsideration');
+        toast.error(data.message || 'Échec de la reconsideration');
       }
     } catch (err) {
       console.error('Reconsider error:', err);
@@ -1285,19 +1285,8 @@ export default function AdminAgentValidationScreen() {
                     {generatedAgentNumber}
                   </p>
                 </div>
-                {generatedSystemPassword && (
-                  <div>
-                    <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium flex items-center justify-center gap-1">
-                      <Key className="h-3.5 w-3.5" />
-                      Mot de passe système
-                    </p>
-                    <p className="text-lg font-mono font-bold text-emerald-800 dark:text-emerald-300 mt-1">
-                      {generatedSystemPassword}
-                    </p>
-                  </div>
-                )}
                 <p className="text-[10px] text-emerald-600/70 dark:text-emerald-400/60">
-                  Ces identifiants sont également envoyés à l&apos;agent par email
+                  L&apos;agent se connecte avec son numéro et son mot de passe d&apos;inscription.
                 </p>
               </div>
 

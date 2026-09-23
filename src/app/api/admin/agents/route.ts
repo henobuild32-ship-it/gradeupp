@@ -38,8 +38,11 @@ export async function GET(request: NextRequest) {
           phone: true,
           name: true,
           pseudo: true,
+          email: true,
           country: true,
+          location: true,
           agentCode: true,
+          validationStatus: true,
           realBalance: true,
           bonusBalance: true,
           isVerified: true,
@@ -145,6 +148,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: 'Agent créé avec succès',
+        agentCode: agent.agentCode,
         agent: {
           id: agent.id,
           name: agent.name,
@@ -152,6 +156,20 @@ export async function POST(request: NextRequest) {
           agentCode: agent.agentCode,
         },
       });
+    }
+
+    if (action === 'approve' || action === 'accept') {
+      const { agentId } = body;
+      const approveRes = await fetch(new URL('/api/admin/agent-validation', request.url), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: request.headers.get('authorization') || '',
+          cookie: request.headers.get('cookie') || '',
+        },
+        body: JSON.stringify({ action: 'accept', agentId }),
+      })
+      return approveRes
     }
 
     if (action === 'suspend') {
@@ -188,7 +206,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, message: 'Agent suspendu' });
     }
 
-    if (action === 'unsuspend') {
+    if (action === 'unsuspend' || action === 'reactivate') {
       const { agentId } = body;
       const agent = await db.user.findUnique({ where: { id: agentId } });
       if (!agent) {

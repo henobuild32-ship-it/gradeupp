@@ -1,19 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { requireAdmin, hashPassword } from '@/lib/auth'
+import { requireAdmin } from '@/lib/auth'
 import { sendAgentCredentialsEmail } from '@/lib/email/service'
 
 function generateAgentCode(): string {
   return `AGT-${Math.floor(100000 + Math.random() * 900000)}`
-}
-
-function generateSystemPassword(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
-  let pw = ''
-  for (let i = 0; i < 12; i++) {
-    pw += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
-  return pw
 }
 
 export async function GET(request: NextRequest) {
@@ -117,17 +108,31 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      let agentCode = generateAgentCode()
-      let codeExists = await db.user.findUnique({ where: { agentCode } })
-      while (codeExists) {
-        agentCode = generateAgentCode()
-        codeExists = await db.user.findUnique({ where: { agentCode } })
+      if (agent.role !== 'agent') {
+        return NextResponse.json(
+          { success: false, message: 'Cet utilisateur n\'est pas un agent' },
+          { status: 400 }
+        )
       }
 
-      const systemPassword = generateSystemPassword()
-      const hashedPassword = await hashPassword(systemPassword)
-      const agentNumber = agentCode
+      if (agent.validationStatus === 'validated' && agent.agentCode) {
+        return NextResponse.json(
+          { success: false, message: 'Cet agent est déjà validé' },
+          { status: 409 }
+        )
+      }
 
+      let agentCode = agent.agentCode
+      if (!agentCode || !/^AGT-\d{6}$/.test(agentCode)) {
+        agentCode = generateAgentCode()
+        let codeExists = await db.user.findUnique({ where: { agentCode } })
+        while (codeExists) {
+          agentCode = generateAgentCode()
+          codeExists = await db.user.findUnique({ where: { agentCode } })
+        }
+      }
+
+      // Keep original registration password so the agent can login directly
       await db.user.update({
         where: { id: targetId },
         data: {
@@ -135,9 +140,8 @@ export async function POST(request: NextRequest) {
           isVerified: true,
           hasCompletedOnboarding: true,
           agentCode,
-          agentNumber,
+          agentNumber: agentCode,
           systemPassword: null,
-          password: hashedPassword,
         },
       })
 
@@ -147,7 +151,7 @@ export async function POST(request: NextRequest) {
           agent.email,
           agent.name || 'Agent',
           agentCode,
-          systemPassword
+          agent.phone
         )
         if (emailSent) {
           await db.user.update({
@@ -169,9 +173,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         agentCode,
-        agentNumber,
-        systemPassword,
+        agentNumber: agentCode,
         emailSent,
+        message: emailSent
+          ? 'Agent validé. Code généré et identifiants envoyés par email.'
+          : 'Agent validé. Code généré. L\'agent se connecte avec son mot de passe d\'inscription.',
       })
     }
 
@@ -255,19 +261,17 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      const systemPassword = generateSystemPassword()
-      const hashedPassword = await hashPassword(systemPassword)
       const emailSent = await sendAgentCredentialsEmail(
         agent.email,
         agent.name || 'Agent',
         agent.agentCode || '',
-        systemPassword
+        agent.phone
       )
 
       if (emailSent) {
         await db.user.update({
           where: { id: targetId },
-          data: { password: hashedPassword, systemPassword: null, systemPasswordSent: true },
+          data: { systemPasswordSent: true },
         })
       }
 
@@ -280,7 +284,11 @@ export async function POST(request: NextRequest) {
         },
       })
 
-      return NextResponse.json({ success: true, emailSent })
+      return NextResponse.json({
+        success: true,
+        emailSent,
+        message: emailSent ? 'Email renvoyé à l\'agent' : 'Échec de l\'envoi de l\'email',
+      })
     }
 
     return NextResponse.json(

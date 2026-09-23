@@ -182,14 +182,28 @@ async function main() {
         { action: 'approve', userId: agentUser.id },
         adminToken,
       )
-      if (valAgent.status === 200 && valAgent.json?.success) pass('admin-approve-agent')
-      else fail('admin-approve-agent', `${valAgent.status} ${JSON.stringify(valAgent.json)?.slice(0, 150)}`)
+      if (valAgent.status === 200 && valAgent.json?.success && valAgent.json?.agentCode?.startsWith('AGT-')) {
+        pass('admin-approve-agent', valAgent.json.agentCode)
+      } else {
+        fail('admin-approve-agent', `${valAgent.status} ${JSON.stringify(valAgent.json)?.slice(0, 150)}`)
+      }
 
       const agentAfter = await db.user.findUnique({ where: { id: agentUser.id } })
       if (agentAfter?.validationStatus === 'validated' && agentAfter.agentCode?.startsWith('AGT-')) {
         pass('agent-code-generated', agentAfter.agentCode)
       } else {
         fail('agent-code-generated', `${agentAfter?.validationStatus} ${agentAfter?.agentCode}`)
+      }
+
+      // Agent must login with ORIGINAL registration password after approval
+      const loginAgent = await api('POST', '/api/auth/login', {
+        phone: agentPhone,
+        password: 'testpass123',
+      })
+      if (loginAgent.status === 200 && loginAgent.json?.token) {
+        pass('agent-login-original-password')
+      } else {
+        fail('agent-login-original-password', `${loginAgent.status} ${JSON.stringify(loginAgent.json)?.slice(0, 150)}`)
       }
     }
 

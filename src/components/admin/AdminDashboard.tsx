@@ -62,16 +62,16 @@ interface StatCard {
   bgColor: string;
 }
 
-const statsConfig: StatCard[] = [
+const statsConfig: (StatCard & { page?: PageName })[] = [
   { label: 'Total Utilisateurs', key: 'totalUsers', icon: Users, color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-100 dark:bg-blue-900/40' },
-  { label: 'Total Agents', key: 'totalAgents', icon: Bot, color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-100 dark:bg-amber-900/40' },
+  { label: 'Total Agents', key: 'totalAgents', icon: Bot, color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-100 dark:bg-amber-900/40', page: 'admin-agents' },
   { label: 'Transactions', key: 'totalTransactions', icon: ArrowLeftRight, color: 'text-purple-600 dark:text-purple-400', bgColor: 'bg-purple-100 dark:bg-purple-900/40' },
   { label: 'Volume Total', key: 'totalVolume', icon: DollarSign, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-900/40' },
   { label: 'Produits Market', key: 'totalProducts', icon: ShoppingBag, color: 'text-pink-600 dark:text-pink-400', bgColor: 'bg-pink-100 dark:bg-pink-900/40' },
   { label: 'Offres Troc', key: 'totalBarterOffers', icon: Handshake, color: 'text-teal-600 dark:text-teal-400', bgColor: 'bg-teal-100 dark:bg-teal-900/40' },
   { label: 'Comptes Suspendus', key: 'suspendedUsers', icon: Ban, color: 'text-red-600 dark:text-red-400', bgColor: 'bg-red-100 dark:bg-red-900/40' },
   { label: 'Utilisateurs Aujourd\'hui', key: 'todayUsers', icon: UserCheck, color: 'text-green-600 dark:text-green-400', bgColor: 'bg-green-100 dark:bg-green-900/40' },
-  { label: 'Agents en attente', key: 'pendingAgents', icon: Clock, color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-100 dark:bg-amber-900/40' },
+  { label: 'Agents en attente', key: 'pendingAgents', icon: Clock, color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-100 dark:bg-amber-900/40', page: 'admin-agents' },
   { label: 'Développeurs', key: 'approvedDevelopers', icon: Code, color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-100 dark:bg-violet-900/40' },
   { label: 'Revenus API', key: 'totalApiCommission', icon: DollarSign, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-900/40' },
 ];
@@ -233,6 +233,7 @@ export default function AdminDashboard() {
               {statsConfig.map((stat, index) => {
                 const Icon = stat.icon;
                 const value = stats?.[stat.key] ?? 0;
+                const isClickable = !!stat.page;
                 return (
                   <motion.div
                     key={stat.key}
@@ -240,7 +241,12 @@ export default function AdminDashboard() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: index * 0.05, ease: 'easeOut' as const }}
                   >
-                    <Card className="border-border hover:shadow-md transition-shadow">
+                    <Card
+                      className={`border-border hover:shadow-md transition-shadow ${
+                        isClickable ? 'cursor-pointer hover:border-amber-300 dark:hover:border-amber-700' : ''
+                      }`}
+                      onClick={isClickable && stat.page ? () => navigateTo(stat.page!) : undefined}
+                    >
                       <CardContent className="p-4">
                         <div className={`w-8 h-8 rounded-lg ${stat.bgColor} flex items-center justify-center mb-3`}>
                           <Icon className={`h-4 w-4 ${stat.color}`} />
@@ -250,6 +256,9 @@ export default function AdminDashboard() {
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
                           {stat.label}
+                          {isClickable && (
+                            <span className="text-amber-600 dark:text-amber-400 ml-1">→</span>
+                          )}
                         </p>
                       </CardContent>
                     </Card>
