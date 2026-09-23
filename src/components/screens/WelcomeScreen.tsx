@@ -340,7 +340,7 @@ export default function WelcomeScreen() {
               initial={{ opacity: 0, x: -20 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
-              onClick={() => navigateTo('agent-register')}
+              onClick={() => navigateTo('auth', { mode: 'register', role: 'agent' })}
               className="w-full flex items-center justify-between p-5 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/10 border border-amber-200/60 dark:border-amber-800/30 text-amber-800 dark:text-amber-300 font-semibold text-sm hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300 cursor-pointer group"
             >
               <span className="flex items-center gap-3">
