@@ -69,6 +69,10 @@ interface SellersStats {
 
 export default function AdminSellersScreen() {
   const { admin, goBack } = useAppStore();
+  const adminToken = admin?.token;
+  const adminHeaders: Record<string, string> = adminToken
+    ? { Authorization: `Bearer ${adminToken}` }
+    : {};
   const [sellers, setSellers] = useState<Seller[]>([]);
   const [stats, setStats] = useState<SellersStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -97,11 +101,13 @@ export default function AdminSellersScreen() {
         params.set('status', filter);
       }
 
-      const res = await fetch(`/api/admin/sellers?${params.toString()}`);
+      const res = await fetch(`/api/admin/sellers?${params.toString()}`, {
+        headers: adminToken ? { Authorization: `Bearer ${adminToken}` } : undefined,
+      });
       const data = await res.json();
       if (data.success) {
-        setSellers(data.sellers);
-        setStats(data.stats);
+        setSellers(Array.isArray(data.sellers) ? data.sellers : []);
+        setStats(data.stats ?? null);
         setTotalPages(data.totalPages || 1);
       } else {
         toast.error(data.message || 'Erreur lors du chargement des services');
@@ -112,7 +118,7 @@ export default function AdminSellersScreen() {
     } finally {
       setLoading(false);
     }
-  }, [filter, searchQuery, page]);
+  }, [filter, searchQuery, page, adminToken]);
 
   useEffect(() => {
     fetchSellers();
@@ -132,7 +138,7 @@ export default function AdminSellersScreen() {
   };
 
   const handleModalSubmit = async () => {
-    if (!selectedSeller || !admin?.id) return;
+    if (!selectedSeller) return;
     if (!justificationMessage.trim()) {
       toast.error('Un message de justification est requis.');
       return;
@@ -142,9 +148,9 @@ export default function AdminSellersScreen() {
     try {
       const res = await fetch('/api/admin/sellers', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...adminHeaders },
         body: JSON.stringify({
-          adminId: admin.id,
+          adminId: admin?.id,
           action: actionType,
           sellerId: selectedSeller.id,
           reason: justificationMessage.trim(),
@@ -355,7 +361,7 @@ export default function AdminSellersScreen() {
                             </div>
                             <div>
                               <h3 className="text-base font-bold text-gray-850 dark:text-white flex items-center gap-2">
-                                {seller.businessName}
+                                {seller.businessName || seller.name || 'Service'}
                                 {seller.suspended ? (
                                   <Badge variant="destructive" className="text-[10px] font-bold py-0.5 px-2">
                                     Suspendu
@@ -371,7 +377,8 @@ export default function AdminSellersScreen() {
                                 )}
                               </h3>
                               <p className="text-xs text-gray-500">
-                                Gérant : <span className="font-medium">{seller.name}</span> (@{seller.pseudo})
+                                Gérant : <span className="font-medium">{seller.name || '—'}</span>
+                                {seller.pseudo ? ` (@${seller.pseudo})` : ''}
                               </p>
                             </div>
                           </div>
@@ -379,15 +386,15 @@ export default function AdminSellersScreen() {
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-400 pt-2 border-t">
                             <div className="flex items-center gap-2">
                               <Phone className="w-4 h-4 text-gray-400 shrink-0" />
-                              <span>{seller.phone}</span>
+                              <span>{seller.phone || '—'}</span>
                             </div>
                             <div className="flex items-center gap-2">
                               <Tag className="w-4 h-4 text-gray-400 shrink-0" />
-                              <span>{translateBusinessType(seller.businessType)}</span>
+                              <span>{translateBusinessType(seller.businessType || '')}</span>
                             </div>
                             <div className="flex items-center gap-2">
                               <MapPin className="w-4 h-4 text-gray-400 shrink-0" />
-                              <span>{seller.location}</span>
+                              <span>{seller.location || '—'}</span>
                             </div>
                             <div className="flex items-center gap-2">
                               <Calendar className="w-4 h-4 text-gray-400 shrink-0" />
@@ -414,7 +421,7 @@ export default function AdminSellersScreen() {
                             <div className="flex items-center gap-1 mt-0.5">
                               <Wallet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                               <span className="text-base font-extrabold text-gray-800 dark:text-white">
-                                ${seller.realBalance.toFixed(2)}
+                                ${(Number(seller.realBalance) || 0).toFixed(2)}
                               </span>
                             </div>
                           </div>

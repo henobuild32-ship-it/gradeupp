@@ -38,6 +38,7 @@ const countryCodes = [
 export default function AuthLoginScreen() {
   const navigateTo = useAppStore((s) => s.navigateTo);
   const setUser = useAppStore((s) => s.setUser);
+  const setToken = useAppStore((s) => s.setToken);
   const { t } = useTranslation();
 
   const [selectedRole, setSelectedRole] = useState<'client' | 'agent' | 'seller'>('client');
@@ -101,6 +102,7 @@ export default function AuthLoginScreen() {
       }
 
       setUser(user);
+      if (data.token) setToken(data.token);
 
       // Route based on role and onboarding status
       if (!user.hasCompletedOnboarding && user.role !== 'seller') {

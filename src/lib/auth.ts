@@ -20,7 +20,7 @@ export async function signToken(payload: { userId: string; role: string }) {
   const enc = getSecret()
   return new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
-    .setExpirationTime('2h')
+    .setExpirationTime('30d')
     .setIssuedAt()
     .sign(enc);
 }
@@ -39,9 +39,9 @@ export function setTokenCookie(response: NextResponse, token: string, isAdmin = 
   response.cookies.set(isAdmin ? ADMIN_TOKEN_COOKIE : TOKEN_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: 'lax',
     path: '/',
-    maxAge: 2 * 60 * 60,
+    maxAge: 30 * 24 * 60 * 60,
   });
 }
 
@@ -49,7 +49,7 @@ export function clearTokenCookie(response: NextResponse, isAdmin = false) {
   response.cookies.set(isAdmin ? ADMIN_TOKEN_COOKIE : TOKEN_COOKIE, '', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: 'lax',
     path: '/',
     maxAge: 0,
   });
@@ -107,43 +107,58 @@ export async function verifyAndMigratePin(
   return false;
 }
 
+async function resolveAuthFromRequest(request: NextRequest, cookieName: string) {
+  const cookieToken = request.cookies.get(cookieName)?.value
+  const headerToken = request.headers.get('Authorization')?.replace('Bearer ', '') || null
+
+  if (cookieToken) {
+    const payload = await verifyToken(cookieToken)
+    if (payload) return payload
+  }
+  if (headerToken) {
+    const payload = await verifyToken(headerToken)
+    if (payload) return payload
+  }
+  return null
+}
+
 export async function requireUser(request: NextRequest) {
   try {
-    const token = request.cookies.get(TOKEN_COOKIE)?.value || request.headers.get('Authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return NextResponse.json({ success: false, message: 'Non authentifié' }, { status: 401 });
+    const cookieToken = request.cookies.get(TOKEN_COOKIE)?.value
+    const headerToken = request.headers.get('Authorization')?.replace('Bearer ', '')
+    if (!cookieToken && !headerToken) {
+      return NextResponse.json({ success: false, message: 'Non authentifié' }, { status: 401 })
     }
-    const payload = await verifyToken(token);
+    const payload = await resolveAuthFromRequest(request, TOKEN_COOKIE)
     if (!payload) {
-      return NextResponse.json({ success: false, message: 'Session invalide' }, { status: 401 });
+      return NextResponse.json({ success: false, message: 'Session invalide' }, { status: 401 })
     }
-    return payload;
+    return payload
   } catch (error) {
-    return NextResponse.json({ success: false, message: 'Erreur d\'authentification' }, { status: 500 });
+    return NextResponse.json({ success: false, message: 'Erreur d\'authentification' }, { status: 500 })
   }
 }
 
 export async function requireAdmin(request: NextRequest) {
   try {
-    const token = request.cookies.get(ADMIN_TOKEN_COOKIE)?.value || request.headers.get('Authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return NextResponse.json({ success: false, message: 'Non autorisé' }, { status: 401 });
+    const cookieToken = request.cookies.get(ADMIN_TOKEN_COOKIE)?.value
+    const headerToken = request.headers.get('Authorization')?.replace('Bearer ', '')
+    if (!cookieToken && !headerToken) {
+      return NextResponse.json({ success: false, message: 'Non autorisé' }, { status: 401 })
     }
-    const payload = await verifyToken(token);
+    const payload = await resolveAuthFromRequest(request, ADMIN_TOKEN_COOKIE)
     if (!payload || payload.role !== 'admin') {
-      return NextResponse.json({ success: false, message: 'Non autorisé' }, { status: 401 });
+      return NextResponse.json({ success: false, message: 'Non autorisé' }, { status: 401 })
     }
-    return payload;
+    return payload
   } catch (error) {
-    return NextResponse.json({ success: false, message: 'Erreur d\'authentification' }, { status: 500 });
+    return NextResponse.json({ success: false, message: 'Erreur d\'authentification' }, { status: 500 })
   }
 }
 
 export async function getAuthUser(request: NextRequest) {
   try {
-    const token = request.cookies.get(TOKEN_COOKIE)?.value || request.headers.get('Authorization')?.replace('Bearer ', '')
-    if (!token) return null
-    const payload = await verifyToken(token)
+    const payload = await resolveAuthFromRequest(request, TOKEN_COOKIE)
     return payload || null
   } catch {
     return null

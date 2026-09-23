@@ -86,12 +86,14 @@ export default function PaymentLinksScreen() {
   const [formMethods, setFormMethods] = useState<string[]>(['wallet', 'mpesa', 'orange', 'airtel', 'afrimoney']);
   const [creating, setCreating] = useState(false);
 
-  useEffect(() => { fetchLinks(); }, []);
+  useEffect(() => {
+    if (user?.id) fetchLinks();
+    else setLoading(false);
+  }, [user?.id]);
 
   async function fetchLinks() {
-    if (!user?.id) { setLoading(false); return; }
     try {
-      const res = await fetch('/api/payments/links');
+      const res = await fetch('/api/payments/links', { credentials: 'include' });
       const data = await res.json();
       if (data.success) {
         setLinks(data.links ?? []);

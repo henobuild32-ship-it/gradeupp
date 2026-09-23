@@ -110,7 +110,7 @@ export default function AdminChildrenScreen() {
       });
       const data = await res.json();
       if (data.success) {
-        toast.success(data.message);
+        toast.success(data.message || 'Action réussie');
         await fetchChildren(); // refresh
       } else {
         toast.error(data.message || 'Action échouée');

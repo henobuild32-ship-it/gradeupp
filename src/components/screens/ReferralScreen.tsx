@@ -41,12 +41,14 @@ export default function ReferralScreen() {
   const [stats, setStats] = useState({ totalReferrals: 0, totalRewards: 0, pendingRewards: 0 });
   const [rewards, setRewards] = useState<ReferralReward[]>([]);
 
-  useEffect(() => { fetchReferralData(); }, []);
+  useEffect(() => {
+    if (user?.id) fetchReferralData();
+    else setLoading(false);
+  }, [user?.id]);
 
   async function fetchReferralData() {
-    if (!user?.id) { setLoading(false); return; }
     try {
-      const res = await fetch(`/api/referral?userId=${user.id}`);
+      const res = await fetch(`/api/referral?userId=${user.id}`, { credentials: 'include' });
       const data = await res.json();
       if (data.success) {
         setReferralCode(data.code || '');

@@ -79,12 +79,14 @@ export default function RecurringPaymentsScreen() {
   const [formStartDate, setFormStartDate] = useState('');
   const [lookingUp, setLookingUp] = useState(false);
 
-  useEffect(() => { fetchPayments(); }, []);
+  useEffect(() => {
+    if (user?.id) fetchPayments();
+    else setLoading(false);
+  }, [user?.id]);
 
   async function fetchPayments() {
-    if (!user?.id) { setLoading(false); return; }
     try {
-      const res = await fetch(`/api/payments/recurring`);
+      const res = await fetch(`/api/payments/recurring`, { credentials: 'include' });
       const data = await res.json();
       if (data.success) setPayments(data.payments ?? []);
     } catch { toast.error('Erreur de chargement'); }

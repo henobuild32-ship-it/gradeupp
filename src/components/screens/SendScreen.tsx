@@ -51,9 +51,7 @@ export default function SendScreen() {
     }
     const timer = setTimeout(() => {
       setLookingUp(true);
-      fetch(`/api/users/phone-lookup?phone=${encodeURIComponent(receiverPhone.trim())}`, {
-        headers: user?.id ? { 'Authorization': `Bearer ${localStorage.getItem('trait-token') || ''}` } : {},
-      })
+      fetch(`/api/users/phone-lookup?phone=${encodeURIComponent(receiverPhone.trim())}`)
         .then(r => r.json())
         .then(data => {
           if (data.success && data.found && data.user) {

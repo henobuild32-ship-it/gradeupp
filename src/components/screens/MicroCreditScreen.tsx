@@ -74,22 +74,25 @@ export default function MicroCreditScreen() {
   const [repayAmount, setRepayAmount] = useState('');
 
   useEffect(() => {
-    fetchKycStatus();
-    fetchCredits();
-  }, []);
+    if (user?.id) {
+      fetchKycStatus();
+      fetchCredits();
+    } else {
+      setLoading(false);
+    }
+  }, [user?.id]);
 
   async function fetchKycStatus() {
     try {
-      const res = await fetch(`/api/kyc?userId=${user?.id}`);
+      const res = await fetch(`/api/kyc?userId=${user?.id}`, { credentials: 'include' });
       const data = await res.json();
       if (data.success && data.kyc) setKycStatus(data.kyc.status);
     } catch {}
   }
 
   async function fetchCredits() {
-    if (!user?.id) { setLoading(false); return; }
     try {
-      const res = await fetch(`/api/microcredit`);
+      const res = await fetch(`/api/microcredit`, { credentials: 'include' });
       const data = await res.json();
       if (data.success) {
         setCredits(data.credits ?? []);

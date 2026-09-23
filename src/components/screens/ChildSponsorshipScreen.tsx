@@ -197,7 +197,7 @@ export default function ChildSponsorshipScreen() {
 
       const data = await res.json();
       if (data.success) {
-        toast.success(data.message);
+        toast.success(data.message || 'Recharge effectuée');
         setRechargeAmount('');
         setParentConfirmCode('');
         await fetchData(); // Refresh

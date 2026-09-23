@@ -254,7 +254,10 @@ export const useAppStore = create<AppStore>()(
       setSelectedRole: (role) => set({ selectedRole: role }),
       setToken: (token) => set({ token }),
 
-      logout: () =>
+      logout: () => {
+        if (typeof document !== 'undefined') {
+          document.cookie = 'trait_token=; Path=/; Max-Age=0; SameSite=Lax';
+        }
         set({
           user: null,
           selectedRole: 'client',
@@ -263,15 +266,21 @@ export const useAppStore = create<AppStore>()(
           pageParams: {},
           navigationStack: [],
           pendingPinAction: null,
-        }),
+        });
+      },
 
-      adminLogout: () =>
+      adminLogout: () => {
+        if (typeof document !== 'undefined') {
+          document.cookie = 'trait_admin_token=; Path=/; Max-Age=0; SameSite=Lax';
+        }
         set({
           admin: null,
+          token: null,
           currentPage: 'admin-login',
           pageParams: {},
           navigationStack: [],
-        }),
+        });
+      },
 
       phoneNumber: '',
       registrationPassword: '',
@@ -344,6 +353,7 @@ export const useAppStore = create<AppStore>()(
       },
       partialize: (state) => ({
         user: state.user,
+        admin: state.admin,
         token: state.token,
         isDarkMode: state.isDarkMode,
         selectedRole: state.selectedRole,

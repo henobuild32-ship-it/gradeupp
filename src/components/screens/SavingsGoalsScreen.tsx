@@ -66,12 +66,14 @@ export default function SavingsGoalsScreen() {
   const [contributing, setContributing] = useState<SavingsGoal | null>(null);
   const [contributeAmount, setContributeAmount] = useState('');
 
-  useEffect(() => { fetchGoals(); }, []);
+  useEffect(() => {
+    if (user?.id) fetchGoals();
+    else setLoading(false);
+  }, [user?.id]);
 
   async function fetchGoals() {
-    if (!user?.id) { setLoading(false); return; }
     try {
-      const res = await fetch(`/api/savings`);
+      const res = await fetch(`/api/savings`, { credentials: 'include' });
       const data = await res.json();
       if (data.success) setGoals(data.goals ?? []);
     } catch { toast.error('Erreur de chargement'); }

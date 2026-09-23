@@ -30,10 +30,16 @@ export const RegisterSchema = z.object({
   phone: z.string().min(8).max(20),
   name: z.string().min(1).max(100),
   pseudo: z.string().min(1).max(50),
-  country: z.string().min(2).max(5),
+  country: z.string().min(2).max(50),
   role: z.enum(['client', 'seller', 'agent']),
-  pin: z.string().min(4).max(6).optional(),
-  password: z.string().min(6).max(128),
+  pin: z
+    .string()
+    .optional()
+    .transform((v) => (v === '' ? undefined : v))
+    .refine((v) => v === undefined || (v.length >= 4 && v.length <= 6), {
+      message: 'PIN invalide',
+    }),
+  password: z.string().min(4).max(128),
   email: z.string().email().optional(),
   gender: z.string().optional(),
   city: z.string().optional(),

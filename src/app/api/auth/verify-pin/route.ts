@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json(
         { success: false, message: `Code PIN incorrect. ${5 - newAttempts} tentative(s) restante(s).` },
-        { status: 401 }
+        { status: 400 }
       )
     }
 

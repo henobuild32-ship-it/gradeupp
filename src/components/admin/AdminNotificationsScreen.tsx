@@ -125,7 +125,7 @@ export default function AdminNotificationsScreen() {
 
       const data = await res.json();
       if (data.success) {
-        toast.success(data.message);
+        toast.success(data.message || 'Notification envoyée');
         setShowCreateDialog(false);
         setFormData({ title: '', message: '', type: 'announcement' });
         fetchNotifications();

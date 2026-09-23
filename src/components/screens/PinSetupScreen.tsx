@@ -52,7 +52,13 @@ export default function PinSetupScreen() {
                   navigateTo('onboarding');
                 }, 1500);
               } else {
-                setError(data.message || 'Erreur lors de la sauvegarde');
+                const msg = data.message || 'Erreur lors de la sauvegarde';
+                if (msg.includes('Session expirée') || msg === 'Session invalide' || msg === 'Non authentifié') {
+                  toast.error('Session expirée. Veuillez vous reconnecter.');
+                  navigateTo('welcome');
+                  return;
+                }
+                setError(msg);
                 setStep('confirm');
                 setConfirmPin('');
               }

@@ -1,5 +1,5 @@
 // TRAIT Service Worker — Push Notifications
-const CACHE_NAME = 'trait-v3';
+const CACHE_NAME = 'trait-v4';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -27,6 +27,11 @@ self.addEventListener('message', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
+
+  // Never intercept cross-origin (Google, Firebase, identitytoolkit, etc.)
+  if (url.origin !== self.location.origin) {
+    return;
+  }
 
   // Network-first for HTML navigations
   if (request.mode === 'navigate') {

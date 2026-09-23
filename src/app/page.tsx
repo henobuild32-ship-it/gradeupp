@@ -7,6 +7,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { OfflineBanner } from '@/components/layout/OfflineBanner';
 import { PushPermissionBanner } from '@/components/layout/PushPermissionBanner';
 import { useRealtime } from '@/hooks/useRealtime';
+import { toast } from 'sonner';
+import { resetSessionExpiredFlag } from '@/lib/api';
 
 // Auth screens
 const WelcomeScreen = lazy(() => import('@/components/screens/WelcomeScreen'));
@@ -245,6 +247,39 @@ export default function TraitApp() {
     }
   }, [user, admin, currentPage, navigateTo]);
 
+  // Session expired → friendly message + re-auth (not raw "Non authentifié")
+  useEffect(() => {
+    const onSessionExpired = () => {
+      toast.error('Session expirée. Veuillez vous reconnecter.');
+      navigateTo('welcome');
+    };
+    window.addEventListener('trait:session-expired', onSessionExpired);
+    return () => window.removeEventListener('trait:session-expired', onSessionExpired);
+  }, [navigateTo]);
+
+  // Re-sync user profile when session is restored after reload
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    const syncProfile = async () => {
+      try {
+        const res = await fetch('/api/auth/profile', { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && data.success && data.user) {
+          useAppStore.getState().setUser({ ...user, ...data.user });
+        }
+      } catch {}
+    };
+    const t = setTimeout(syncProfile, 500);
+    return () => { cancelled = true; clearTimeout(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  useEffect(() => {
+    resetSessionExpiredFlag();
+  }, [user?.id]);
+
   // Handle ?pay=userId from QR code scan
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -284,7 +319,7 @@ export default function TraitApp() {
 
         let reg: ServiceWorkerRegistration
         try {
-          reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
+          reg = await navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' })
         } catch { return }
 
         await navigator.serviceWorker.ready

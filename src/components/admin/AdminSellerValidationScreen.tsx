@@ -51,6 +51,10 @@ interface SellerRequest {
 
 export default function AdminSellerValidationScreen() {
   const { admin, goBack } = useAppStore();
+  const adminToken = admin?.token;
+  const adminHeaders: Record<string, string> = adminToken
+    ? { Authorization: `Bearer ${adminToken}` }
+    : {};
   const [sellers, setSellers] = useState<SellerRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -66,10 +70,13 @@ export default function AdminSellerValidationScreen() {
   const fetchSellers = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/seller-validation?status=${filter === 'all' ? '' : filter}&search=${searchQuery}`);
+      const res = await fetch(
+        `/api/admin/seller-validation?status=${filter === 'all' ? '' : filter}&search=${encodeURIComponent(searchQuery)}`,
+        { headers: adminToken ? { Authorization: `Bearer ${adminToken}` } : undefined }
+      );
       const data = await res.json();
       if (data.success) {
-        setSellers(data.sellers);
+        setSellers(Array.isArray(data.sellers) ? data.sellers : []);
       } else {
         toast.error(data.message || 'Erreur lors du chargement des demandes');
       }
@@ -79,7 +86,7 @@ export default function AdminSellerValidationScreen() {
     } finally {
       setLoading(false);
     }
-  }, [filter, searchQuery]);
+  }, [filter, searchQuery, adminToken]);
 
   useEffect(() => {
     fetchSellers();
@@ -99,7 +106,7 @@ export default function AdminSellerValidationScreen() {
   };
 
   const handleModalSubmit = async () => {
-    if (!selectedSeller || !admin?.id) return;
+    if (!selectedSeller) return;
     if (!justificationMessage.trim()) {
       toast.error('Un message de justification est obligatoire.');
       return;
@@ -109,9 +116,9 @@ export default function AdminSellerValidationScreen() {
     try {
       const res = await fetch('/api/admin/seller-validation', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...adminHeaders },
         body: JSON.stringify({
-          adminId: admin.id,
+          adminId: admin?.id,
           action: actionType,
           sellerId: selectedSeller.id,
           reason: justificationMessage.trim(),

@@ -68,7 +68,7 @@ export function usePWAInstall(): PWAInstallState {
 
     // Register service worker
     if ('serviceWorker' in navigator && !isStandalone) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {
+      navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).catch(() => {
         // Service worker registration failed - non-critical
       });
     }

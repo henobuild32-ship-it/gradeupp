@@ -62,12 +62,12 @@ export default function AdminKycScreen() {
       })
       const data = await res.json()
       if (data.success) {
-        toast.success(data.message)
+        toast.success(data.message || 'Action réussie')
         setSelectedUser(null)
         setRejectReason('')
         fetchKycUsers()
       } else {
-        toast.error(data.message)
+        toast.error(data.message || 'Action échouée')
       }
     } catch {
       toast.error('Erreur serveur')

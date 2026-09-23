@@ -74,12 +74,14 @@ export default function PaymentRequestScreen() {
   const [lookingUp, setLookingUp] = useState(false);
   const [creating, setCreating] = useState(false);
 
-  useEffect(() => { fetchRequests(); }, []);
+  useEffect(() => {
+    if (user?.id) fetchRequests();
+    else setLoading(false);
+  }, [user?.id]);
 
   async function fetchRequests() {
-    if (!user?.id) { setLoading(false); return; }
     try {
-      const res = await fetch(`/api/payments/request`);
+      const res = await fetch(`/api/payments/request`, { credentials: 'include' });
       const data = await res.json();
       if (data.success) setRequests(data.requests ?? []);
     } catch { toast.error('Erreur de chargement'); }

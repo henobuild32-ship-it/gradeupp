@@ -95,13 +95,13 @@ export default function BillsScreen() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchHistory();
-  }, []);
+    if (user?.id) fetchHistory();
+    else setLoading(false);
+  }, [user?.id]);
 
   async function fetchHistory() {
-    if (!user?.id) { setLoading(false); return; }
     try {
-      const res = await fetch(`/api/bills/history`);
+      const res = await fetch(`/api/bills/history`, { credentials: 'include' });
       const data = await res.json();
       if (data.success) setHistory(data.history ?? []);
     } catch {}

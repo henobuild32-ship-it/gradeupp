@@ -125,7 +125,6 @@ export default function AuthProfileScreen() {
           name: name.trim(),
           pseudo: pseudo.trim(),
           country,
-          pin: '', // PIN will be set in next step
           email: email.trim() || undefined,
           ...(isAgent && { gender, city: city.trim() }),
         }),

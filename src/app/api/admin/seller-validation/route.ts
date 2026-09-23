@@ -7,18 +7,44 @@ export async function GET(request: NextRequest) {
     const auth = await requireAdmin(request)
     if (auth instanceof NextResponse) return auth
 
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get('status') || '';
+    const search = searchParams.get('search') || '';
+
+    const where: any = { role: 'seller' };
+
+    if (status === 'pending') where.validationStatus = 'pending';
+    else if (status === 'rejected') where.validationStatus = 'rejected';
+    else if (status === 'validated') where.validationStatus = 'validated';
+
+    if (search.trim()) {
+      where.OR = [
+        { name: { contains: search.trim(), mode: 'insensitive' } },
+        { phone: { contains: search.trim(), mode: 'insensitive' } },
+        { pseudo: { contains: search.trim(), mode: 'insensitive' } },
+        { businessName: { contains: search.trim(), mode: 'insensitive' } },
+        { businessType: { contains: search.trim(), mode: 'insensitive' } },
+        { location: { contains: search.trim(), mode: 'insensitive' } },
+        { email: { contains: search.trim(), mode: 'insensitive' } },
+      ];
+    }
+
     const sellers = await db.user.findMany({
-      where: { role: 'seller', validationStatus: 'pending' },
+      where,
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
         phone: true,
         name: true,
+        pseudo: true,
         businessName: true,
         businessType: true,
         location: true,
         email: true,
+        photoId: true,
         country: true,
+        validationStatus: true,
+        validationRejectReason: true,
         createdAt: true,
       },
     });
@@ -39,9 +65,22 @@ export async function POST(request: NextRequest) {
     if (auth instanceof NextResponse) return auth
     const adminId = auth.userId
 
-    const { userId, action, rejectReason } = await request.json();
+    const body = await request.json();
+    const rawAction = String(body.action || '').toLowerCase();
+    const userId = body.userId || body.sellerId;
+    const reason = body.reason || body.rejectReason || '';
 
-    if (!userId || !action || !['approve', 'reject'].includes(action)) {
+    const actionMap: Record<string, 'approve' | 'reject' | 'hold'> = {
+      approve: 'approve',
+      validate: 'approve',
+      accept: 'approve',
+      reject: 'reject',
+      hold: 'hold',
+      pending: 'hold',
+    };
+
+    const action = actionMap[rawAction];
+    if (!userId || !action) {
       return NextResponse.json(
         { success: false, message: 'Paramètres manquants ou invalides' },
         { status: 400 }
@@ -55,6 +94,37 @@ export async function POST(request: NextRequest) {
     if (!seller || seller.role !== 'seller') {
       return NextResponse.json({ success: false, message: 'Fournisseur introuvable' }, { status: 404 });
     }
+
+    if (action === 'hold') {
+      await db.$transaction([
+        db.user.update({
+          where: { id: userId },
+          data: {
+            validationStatus: 'pending',
+            validationRejectReason: reason ? String(reason) : null,
+          },
+        }),
+        db.notification.create({
+          data: {
+            userId,
+            title: 'Dossier fournisseur en attente',
+            message: reason ? String(reason) : 'Votre dossier est mis en attente.',
+            type: 'security',
+          },
+        }),
+        db.adminActivityLog.create({
+          data: {
+            adminId,
+            action: 'hold_seller',
+            target: userId,
+            details: `Dossier fournisseur ${seller.businessName || userId} mis en attente`,
+          },
+        }),
+      ]);
+
+      return NextResponse.json({ success: true });
+    }
+
     if (seller.validationStatus !== 'pending') {
       return NextResponse.json({ success: false, message: 'Cette demande a déjà été traitée' }, { status: 400 });
     }
@@ -62,14 +132,14 @@ export async function POST(request: NextRequest) {
     const approved = action === 'approve';
     const message = approved
       ? 'Votre compte fournisseur a été validé. Vous pouvez désormais recevoir des paiements TRAIT.'
-      : `Votre demande fournisseur a été refusée. Motif : ${rejectReason || 'Non conforme'}.`;
+      : `Votre demande fournisseur a été refusée. Motif : ${reason || 'Non conforme'}.`;
 
     await db.$transaction([
       db.user.update({
         where: { id: userId },
         data: approved
           ? { validationStatus: 'validated', isVerified: true, validationRejectReason: null }
-          : { validationStatus: 'rejected', validationRejectReason: rejectReason || 'Non conforme' },
+          : { validationStatus: 'rejected', validationRejectReason: reason || 'Non conforme' },
       }),
       db.notification.create({
         data: {
@@ -82,7 +152,7 @@ export async function POST(request: NextRequest) {
       db.adminActivityLog.create({
         data: {
           adminId,
-          action: `${action}_seller`,
+          action: `${approved ? 'approve' : 'reject'}_seller`,
           target: userId,
           details: `${approved ? 'Validation' : 'Refus'} du fournisseur ${seller.businessName || userId}`,
         },

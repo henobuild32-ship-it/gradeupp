@@ -268,7 +268,7 @@ export default function AdminUsersScreen() {
 
       const data = await res.json();
       if (data.success) {
-        toast.success(data.message);
+        toast.success(data.message || 'Action réussie');
         fetchUsers(1, false);
       } else {
         toast.error(data.message || 'Action échouée');
@@ -802,7 +802,7 @@ export default function AdminUsersScreen() {
                   });
                   const data = await res.json();
                   if (data.success) {
-                    toast.success(data.message);
+        toast.success(data.message || 'Action réussie');
                     setResetPwdOpen(false);
                   } else {
                     toast.error(data.message || 'Erreur');

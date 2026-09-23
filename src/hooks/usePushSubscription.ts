@@ -25,7 +25,7 @@ export function usePushSubscription() {
 
     if (!user || !('serviceWorker' in navigator) || !('PushManager' in window)) return
 
-    navigator.serviceWorker.register('/sw.js').then(() => {
+    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(() => {
       navigator.serviceWorker.ready.then((reg) => {
         reg.pushManager.getSubscription().then((sub) => {
           setIsSubscribed(!!sub)

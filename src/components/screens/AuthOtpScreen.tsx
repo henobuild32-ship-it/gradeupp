@@ -151,7 +151,7 @@ export default function AuthOtpScreen() {
     } finally {
       setLoading(false);
     }
-  }, [email, hasEmail, mode, navigateTo, phoneNumber, setOtpCode, setOtpVerified, setUser]);
+  }, [email, hasEmail, mode, navigateTo, phoneNumber, setOtpCode, setOtpVerified, setUser, setToken]);
 
   // Auto-submit when all 6 digits filled
   useEffect(() => {

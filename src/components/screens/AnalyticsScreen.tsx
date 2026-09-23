@@ -48,13 +48,15 @@ export default function AnalyticsScreen() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { fetchData(); }, [period]);
+  useEffect(() => {
+    if (user?.id) fetchData();
+    else setLoading(false);
+  }, [user?.id, period]);
 
   async function fetchData() {
-    if (!user?.id) { setLoading(false); return; }
     setLoading(true);
     try {
-      const res = await fetch(`/api/analytics?userId=${user.id}&period=${period}`);
+      const res = await fetch(`/api/analytics?userId=${user.id}&period=${period}`, { credentials: 'include' });
       const result = await res.json();
       if (result.success) setData(result.data);
     } catch { toast.error('Erreur de chargement'); }

@@ -66,11 +66,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (user.tempBlocked) {
-      return NextResponse.json(
-        { success: false, message: 'Votre compte est temporairement bloqué. Contactez le support TRAIT.' },
-        { status: 403 }
-      )
+    if (user.pinAttempts > 0 || user.tempBlocked) {
+      await db.user.update({
+        where: { id: user.id },
+        data: { pinAttempts: 0, tempBlocked: false },
+      }).catch(() => {})
+      user.pinAttempts = 0
+      user.tempBlocked = false
     }
 
     if (user.role === 'agent') {

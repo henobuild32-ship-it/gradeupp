@@ -47,7 +47,13 @@ export default function ChangePinScreen() {
       const verifyData = await verifyRes.json()
 
       if (!verifyData.success) {
-        setError('Code PIN actuel incorrect')
+        const vMsg = verifyData.message || 'Code PIN actuel incorrect'
+        if (vMsg.includes('Session expirée') || vMsg === 'Session invalide' || vMsg === 'Non authentifié') {
+          toast.error('Session expirée. Veuillez vous reconnecter.')
+          goBack()
+          return
+        }
+        setError(vMsg)
         setLoading(false)
         return
       }
@@ -63,7 +69,13 @@ export default function ChangePinScreen() {
         toast.success('Code PIN modifié avec succès')
         goBack()
       } else {
-        setError(data.message || 'Erreur lors du changement de code PIN')
+        const sMsg = data.message || 'Erreur lors du changement de code PIN'
+        if (sMsg.includes('Session expirée') || sMsg === 'Session invalide' || sMsg === 'Non authentifié') {
+          toast.error('Session expirée. Veuillez vous reconnecter.')
+          goBack()
+          return
+        }
+        setError(sMsg)
       }
     } catch {
       setError('Erreur de connexion')

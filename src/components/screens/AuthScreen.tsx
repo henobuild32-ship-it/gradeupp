@@ -199,6 +199,8 @@ export default function AuthScreen() {
     }
 
     const fullPhone = `${regCountryCode}${cleanedPhone}`;
+    const countryEntry = countryCodes.find((c) => c.code === regCountryCode);
+    const country = countryEntry?.country || 'Togo';
     setRegisterLoading(true);
     try {
       const res = await fetch('/api/auth/register', {
@@ -211,6 +213,7 @@ export default function AuthScreen() {
           name: regName.trim(),
           email: regEmail.trim(),
           pseudo: regName.trim().split(' ')[0] || regName.trim(),
+          country,
           referralCode: regReferralCode.trim() || undefined,
         }),
       });

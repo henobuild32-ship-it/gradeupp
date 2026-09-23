@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ShieldAlert } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
@@ -11,41 +11,78 @@ export default function PinVerifyScreen() {
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [shaking, setShaking] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const submitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pinRef = useRef('');
 
-  const handleDigit = useCallback(async (digit: string) => {
-    if (pin.length >= 4) return;
-    const newPin = pin + digit;
+  const submitPin = useCallback(async (value: string) => {
+    if (submitting || !value || value.length < 4) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch('/api/auth/verify-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user?.id, pin: value }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        clearPendingPinAction?.();
+        pendingPinAction?.();
+        setPin('');
+        pinRef.current = '';
+      } else {
+        throw new Error(data.message || 'Code PIN incorrect');
+      }
+    } catch (err: any) {
+      const msg = err.message || 'Code PIN incorrect';
+      if (msg.includes('Session expirée') || msg === 'Session invalide' || msg === 'Non authentifié') {
+        useAppStore.getState().logout();
+        toast.error('Session expirée. Veuillez vous reconnecter.');
+        navigateTo('welcome');
+        return;
+      }
+      setError(msg);
+      setShaking(true);
+      setTimeout(() => {
+        setPin('');
+        pinRef.current = '';
+        setError('');
+        setShaking(false);
+      }, 1000);
+    } finally {
+      setSubmitting(false);
+    }
+  }, [user, pendingPinAction, clearPendingPinAction, navigateTo, submitting]);
+
+  const handleDigit = useCallback((digit: string) => {
+    if (submitting) return;
+    if (pinRef.current.length >= 8) return;
+    const newPin = pinRef.current + digit;
+    pinRef.current = newPin;
     setPin(newPin);
 
-    if (newPin.length === 4) {
-      setTimeout(async () => {
-        try {
-          const res = await fetch('/api/auth/verify-pin', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: user?.id, pin: newPin }),
-          });
-          const data = await res.json();
-          if (data.success) {
-            clearPendingPinAction?.();
-            pendingPinAction?.();
-          } else {
-            throw new Error(data.message || 'Code PIN incorrect');
-          }
-        } catch (err: any) {
-          setError(err.message || 'Code PIN incorrect');
-          setShaking(true);
-          setTimeout(() => {
-            setPin('');
-            setError('');
-            setShaking(false);
-          }, 1000);
-        }
-      }, 300);
+    if (submitTimer.current) clearTimeout(submitTimer.current);
+    if (newPin.length >= 4) {
+      submitTimer.current = setTimeout(() => {
+        submitPin(pinRef.current);
+      }, 1000);
     }
-  }, [pin, user, pendingPinAction, clearPendingPinAction]);
+  }, [submitPin, submitting]);
 
-  const handleDelete = () => setPin(prev => prev.slice(0, -1));
+  const handleDelete = () => {
+    if (submitTimer.current) clearTimeout(submitTimer.current);
+    const next = pinRef.current.slice(0, -1);
+    pinRef.current = next;
+    setPin(next);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (submitTimer.current) clearTimeout(submitTimer.current);
+    };
+  }, []);
+
+  const dotCount = Math.max(4, Math.min(8, pin.length || 4));
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -82,7 +119,7 @@ export default function PinVerifyScreen() {
           transition={{ duration: 0.4 }}
           className="flex gap-4 mb-8"
         >
-          {[0, 1, 2, 3].map(i => (
+          {Array.from({ length: Math.max(4, pin.length || 4) }).map((_, i) => (
             <motion.div
               key={i}
               animate={{

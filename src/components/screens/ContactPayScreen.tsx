@@ -51,13 +51,13 @@ export default function ContactPayScreen() {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    fetchContacts();
-  }, []);
+    if (user?.id) fetchContacts();
+    else setLoading(false);
+  }, [user?.id]);
 
   async function fetchContacts() {
-    if (!user?.id) { setLoading(false); return; }
     try {
-      const res = await fetch(`/api/contacts/recent?userId=${user.id}`);
+      const res = await fetch(`/api/contacts/recent?userId=${user.id}`, { credentials: 'include' });
       const data = await res.json();
       if (data.success) setContacts(data.contacts ?? []);
     } catch { toast.error('Erreur de chargement'); }
