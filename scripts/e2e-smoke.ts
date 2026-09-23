@@ -315,19 +315,7 @@ async function main() {
       const pinHash = await bcrypt.hash('1234', 10)
       await db.user.update({ where: { id: clientDb.id }, data: { pin: pinHash } })
 
-      // Receiver exists with balance 0
-      const regRecv = await api('POST', '/api/auth/register', {
-        phone: receiverPhone,
-        name: 'E2E Receiver',
-        pseudo: `e2er${stamp % 100000}`,
-        country: 'CD',
-        role: 'client',
-        password: 'testpass123',
-        email: `e2er${stamp}@example.com`,
-      })
-      if (regRecv.status === 200) pass('register-receiver')
-      else fail('register-receiver', String(regRecv.status))
-
+      // Receiver auto-created by transfer if missing
       const balBefore = (await db.user.findUnique({ where: { id: clientDb.id } }))?.realBalance ?? 0
       const recvBefore = (await db.user.findUnique({ where: { phone: receiverPhone } }))?.realBalance ?? 0
 
@@ -397,7 +385,7 @@ async function main() {
     const offerId = barterCreate.json?.offer?.id
     if (offerId) {
       // Owner cancel
-      const cancel = await api('PATCH', '/api/barter/offers', { id: offerId, action: 'cancel' }, clientToken)
+      const cancel = await api('PATCH', '/api/barter/offers', { offerId, action: 'cancel' }, clientToken)
       if (cancel.status === 200 && cancel.json?.success) pass('barter-cancel')
       else fail('barter-cancel', `${cancel.status} ${JSON.stringify(cancel.json)?.slice(0, 150)}`)
 
@@ -413,11 +401,11 @@ async function main() {
         const b2id = b2.json?.offer?.id
         if (b2id) {
           // Non-owner (client) reject should fail
-          const rej = await api('PATCH', '/api/barter/offers', { id: b2id, action: 'reject' }, clientToken)
+          const rej = await api('PATCH', '/api/barter/offers', { offerId: b2id, action: 'reject' }, clientToken)
           if (rej.status === 403 || rej.status === 400 || rej.status >= 400) pass('barter-non-owner-reject-blocked', String(rej.status))
           else fail('barter-non-owner-reject-blocked', String(rej.status))
 
-          const ownCancel = await api('PATCH', '/api/barter/offers', { id: b2id, action: 'cancel' }, sellerToken)
+          const ownCancel = await api('PATCH', '/api/barter/offers', { offerId: b2id, action: 'cancel' }, sellerToken)
           if (ownCancel.status === 200 && ownCancel.json?.success) pass('barter-seller-cancel')
           else fail('barter-seller-cancel', `${ownCancel.status}`)
         }
@@ -448,13 +436,23 @@ async function main() {
   } catch (e: any) {
     fail('suite-crash', String(e?.message || e))
   } finally {
-    await cleanupPhones(phones)
-    // Remove test products/orders/barter created
-    await db.marketplaceProduct.deleteMany({ where: { name: { startsWith: 'E2E' } } })
-    await db.order.deleteMany({ where: { product: { name: { startsWith: 'E2E' } } } } as any).catch(() => {})
-    await db.order.deleteMany({ where: { buyer: { phone: { in: phones } } } }).catch(() => {})
-    await db.order.deleteMany({ where: { seller: { phone: { in: phones } } } }).catch(() => {})
-    await db.barterOffer.deleteMany({ where: { title: { startsWith: 'E2E' } } })
+    try {
+      const users = await db.user.findMany({ where: { phone: { in: phones } }, select: { id: true } })
+      const ids = users.map((u) => u.id)
+      if (ids.length) {
+        await db.notification.deleteMany({ where: { userId: { in: ids } } }).catch(() => {})
+        await db.transaction.deleteMany({ where: { OR: [{ senderId: { in: ids } }, { receiverId: { in: ids } }] } }).catch(() => {})
+        await db.order.deleteMany({ where: { OR: [{ buyerId: { in: ids } }, { sellerId: { in: ids } }] } }).catch(() => {})
+        await db.barterOffer.deleteMany({ where: { offeredBy: { in: ids } } }).catch(() => {})
+        await db.purchase.deleteMany({ where: { userId: { in: ids } } }).catch(() => {})
+        await db.userSettings.deleteMany({ where: { userId: { in: ids } } }).catch(() => {})
+        await db.user.deleteMany({ where: { id: { in: ids } } }).catch(() => {})
+      }
+      await db.marketplaceProduct.deleteMany({ where: { name: { startsWith: 'E2E' } } }).catch(() => {})
+      await db.barterOffer.deleteMany({ where: { title: { startsWith: 'E2E' } } }).catch(() => {})
+    } catch (e) {
+      console.error('cleanup error', e)
+    }
     await db.$disconnect()
   }
 
