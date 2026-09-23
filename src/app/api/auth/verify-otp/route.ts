@@ -4,11 +4,17 @@ import { db } from '@/lib/db';
 import { otpStore } from '@/lib/otp-store';
 import { signToken, setTokenCookie } from '@/lib/auth';
 import { normalizeEmail } from '@/lib/email/service';
+import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { email, phone, code, mode } = body;
+
+    const identity = typeof email === 'string' ? email.trim().toLowerCase() : String(phone || '').trim();
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+    const rl = checkRateLimit({ windowMs: 15 * 60 * 1000, maxRequests: 8, key: `verify-otp:${ip}:${identity}` });
+    if (!rl.allowed) return rateLimitResponse(rl.resetIn);
 
     if (!code) {
       return NextResponse.json(

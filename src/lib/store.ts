@@ -21,6 +21,8 @@ export type PageName =
   | 'ussd'
   | 'marketplace'
   | 'marketplace-detail'
+  | 'marketplace-sell'
+  | 'orders'
   | 'barter'
   | 'barter-detail'
   | 'barter-create'

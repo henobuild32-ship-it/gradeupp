@@ -66,6 +66,9 @@ interface Product {
   category: string;
   imageUrl: string | null;
   active: boolean;
+  stock?: number;
+  condition?: string;
+  qrCode?: string | null;
   createdAt: string;
   seller: { id: string; name: string; pseudo: string } | null;
   bonus: ProductBonus;
@@ -81,7 +84,8 @@ interface PurchaseResult {
 
 export default function MarketplaceDetailScreen() {
   const { goBack, pageParams, user, setUser } = useAppStore();
-  const productId = pageParams.productId as string;
+  const productId = pageParams.productId as string | undefined;
+  const productQr = pageParams.productQr as string | undefined;
 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -91,13 +95,38 @@ export default function MarketplaceDetailScreen() {
   const [paymentMode, setPaymentMode] = useState<'bonus' | 'real'>('real');
 
   useEffect(() => {
-    if (!productId) {
+    if (!productId && !productQr) {
       goBack();
       return;
     }
 
     async function fetchProduct() {
       try {
+        // Prefer QR lookup when scanned
+        if (productQr && !productId) {
+          const res = await fetch(`/api/products/qr?code=${encodeURIComponent(productQr)}`, {
+            credentials: 'include',
+          });
+          const data = await res.json();
+          if (data.success && data.product) {
+            const p = data.product;
+            setProduct({
+              ...p,
+              bonus: {
+                enabled: false,
+                only: false,
+                bonusPrice: null,
+                maxQty: null,
+                expiryAt: null,
+              },
+            } as Product);
+          } else {
+            toast.error(data.message || 'Produit introuvable');
+            goBack();
+          }
+          return;
+        }
+
         const res = await fetch('/api/marketplace/products');
         const data = await res.json();
         if (data.success) {
@@ -123,7 +152,7 @@ export default function MarketplaceDetailScreen() {
     }
 
     fetchProduct();
-  }, [productId, goBack]);
+  }, [productId, productQr, goBack]);
 
   const isBonusProduct = product?.bonus.enabled || product?.bonus.only;
   const isBonusOnly = product?.bonus.only;
@@ -283,6 +312,29 @@ export default function MarketplaceDetailScreen() {
             <Badge className="bg-emerald-100 text-emerald-700 border-0 shrink-0">
               {product.category}
             </Badge>
+          </div>
+
+          {/* Stock & condition */}
+          <div className="flex flex-wrap items-center gap-2">
+            {product.stock !== undefined && (
+              <Badge
+                variant="outline"
+                className={
+                  product.stock <= 0
+                    ? 'text-red-600 border-red-200 bg-red-50'
+                    : product.stock <= 3
+                      ? 'text-amber-600 border-amber-200 bg-amber-50'
+                      : 'text-emerald-600 border-emerald-200 bg-emerald-50'
+                }
+              >
+                {product.stock <= 0 ? 'Rupture de stock' : `Stock: ${product.stock}`}
+              </Badge>
+            )}
+            {product.condition && (
+              <Badge variant="outline" className="text-muted-foreground">
+                {product.condition === 'used' ? 'Occasion' : product.condition === 'refurbished' ? 'Reconditionné' : 'Neuf'}
+              </Badge>
+            )}
           </div>
 
           {/* Price display */}
@@ -463,6 +515,7 @@ export default function MarketplaceDetailScreen() {
             onClick={handlePurchase}
             disabled={
               purchasing ||
+              (product.stock !== undefined && product.stock <= 0) ||
               (paymentMode === 'bonus' && !hasSufficientBonus) ||
               (paymentMode === 'real' && !hasSufficientReal)
             }
@@ -471,6 +524,11 @@ export default function MarketplaceDetailScreen() {
               <>
                 <Loader2 className="size-5 animate-spin" />
                 Traitement en cours...
+              </>
+            ) : product.stock !== undefined && product.stock <= 0 ? (
+              <>
+                <XCircle className="size-5" />
+                Rupture de stock
               </>
             ) : isBonusOnly || paymentMode === 'bonus' ? (
               <>

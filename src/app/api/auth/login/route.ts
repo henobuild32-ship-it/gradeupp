@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!user) {
+      // Try create-from-bootstrap path not applicable for users
       return NextResponse.json(
         { success: false, message: 'Numéro ou mot de passe incorrect' },
         { status: 404 }
@@ -126,27 +127,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Auto-migrate old agent codes to AGT-{6digits} format
-    if (user.role === 'agent' && user.phone) {
-      const phone = user.phone.replace(/\D/g, '')
-      const last6 = phone.slice(-6)
-      const expectedCode = `AGT-${last6}`
-      if (user.agentCode !== expectedCode || user.agentNumber !== expectedCode) {
-        try {
-          const existing = await db.user.findFirst({
-            where: { agentCode: expectedCode, id: { not: user.id } },
-          })
-          if (!existing) {
-            await db.user.update({
-              where: { id: user.id },
-              data: { agentCode: expectedCode, agentNumber: expectedCode },
-            })
-            user.agentCode = expectedCode
-            user.agentNumber = expectedCode
-          }
-        } catch {}
-      }
-    }
+    // Do NOT rewrite agent codes — codes are assigned at admin validation (AGT-XXXXXX)
 
     // Sign JWT
     const token = await signToken({ userId: user.id, role: user.role })

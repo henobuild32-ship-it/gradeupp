@@ -87,17 +87,39 @@ export default function QRPayScanModal({ open, onOpenChange }: Props) {
     stopCamera()
     let recipientId = ''
 
+    // Product QR: TRAIT-PROD-... → open marketplace product detail
+    if (raw.startsWith('TRAIT-PROD-') || raw.includes('TRAIT-PROD-')) {
+      const code = raw.trim()
+      toast.success('Produit scanné !', {
+        description: 'Chargement du produit...',
+      })
+      onOpenChange(false)
+      navigateTo('marketplace-detail', { productQr: code })
+      return
+    }
+
     try {
       const parsed = JSON.parse(raw)
       if (parsed.userId) recipientId = parsed.userId
       else if (parsed.card) recipientId = parsed.card
       else if (parsed.holder) recipientId = parsed.holder
+      else if (parsed.productId) {
+        onOpenChange(false)
+        navigateTo('marketplace-detail', { productId: parsed.productId })
+        return
+      }
     } catch {
       if (raw.startsWith('http')) {
         try {
           const url = new URL(raw)
           const payId = url.searchParams.get('pay')
           if (payId) recipientId = payId
+          const productId = url.searchParams.get('product')
+          if (productId) {
+            onOpenChange(false)
+            navigateTo('marketplace-detail', { productId })
+            return
+          }
         } catch {
           recipientId = raw
         }

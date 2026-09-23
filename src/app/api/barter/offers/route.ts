@@ -2,11 +2,20 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireUser } from '@/lib/auth'
 
-// GET: List all active barter offers
-export async function GET() {
+// GET: List barter offers
+export async function GET(request: NextRequest) {
   try {
+    const searchParams = request.nextUrl.searchParams
+    const status = searchParams.get('status')
+    const where: Record<string, unknown> = {}
+    if (status && ['active', 'accepted', 'rejected', 'cancelled'].includes(status)) {
+      where.status = status
+    } else {
+      where.status = { in: ['active', 'accepted'] }
+    }
+
     const offers = await db.barterOffer.findMany({
-      where: { status: 'active' },
+      where,
       include: {
         user: {
           select: { id: true, name: true, pseudo: true, phone: true },
@@ -68,7 +77,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verify user exists
     const user = await db.user.findUnique({
       where: { id: offeredBy },
     })
@@ -111,5 +119,64 @@ export async function POST(request: NextRequest) {
       { success: false, message: 'Internal server error' },
       { status: 500 }
     )
+  }
+}
+
+// PATCH: accept | reject | cancel an offer (owner only)
+export async function PATCH(request: NextRequest) {
+  try {
+    const auth = await requireUser(request)
+    if (auth instanceof NextResponse) return auth
+
+    const body = await request.json()
+    const { offerId, action } = body as { offerId?: string; action?: 'accept' | 'reject' | 'cancel' }
+
+    if (!offerId || !action || !['accept', 'reject', 'cancel'].includes(action)) {
+      return NextResponse.json({ success: false, message: 'Action invalide' }, { status: 400 })
+    }
+
+    const offer = await db.barterOffer.findUnique({ where: { id: offerId } })
+    if (!offer) {
+      return NextResponse.json({ success: false, message: 'Offre introuvable' }, { status: 404 })
+    }
+
+    if (offer.offeredBy !== auth.userId) {
+      return NextResponse.json({ success: false, message: 'Seul le propriétaire peut modifier cette offre' }, { status: 403 })
+    }
+
+    if (offer.status !== 'active') {
+      return NextResponse.json({ success: false, message: 'Offre déjà traitée' }, { status: 409 })
+    }
+
+    const newStatus = action === 'accept' ? 'accepted' : action === 'reject' ? 'rejected' : 'cancelled'
+    const updated = await db.barterOffer.update({
+      where: { id: offerId },
+      data: { status: newStatus },
+    })
+
+    if (action !== 'cancel') {
+      const chats = await db.barterChat.findMany({
+        where: { offerId },
+        include: { participants: true },
+      })
+      for (const chat of chats) {
+        for (const p of chat.participants) {
+          if (p.userId === auth.userId) continue
+          await db.notification.create({
+            data: {
+              userId: p.userId,
+              title: action === 'accept' ? 'Échange accepté' : 'Échange refusé',
+              message: `L'offre "${offer.title}" a été ${action === 'accept' ? 'acceptée' : 'refusée'}.`,
+              type: action === 'accept' ? 'barter_accepted' : 'barter_rejected',
+            },
+          }).catch(() => {})
+        }
+      }
+    }
+
+    return NextResponse.json({ success: true, offer: updated })
+  } catch (error) {
+    console.error('Barter status update error:', error)
+    return NextResponse.json({ success: false, message: 'Erreur serveur' }, { status: 500 })
   }
 }

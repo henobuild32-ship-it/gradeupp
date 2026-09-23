@@ -67,17 +67,25 @@ export default function AuthScreen() {
   const setPhoneNumber = useAppStore((s) => s.setPhoneNumber);
   const setRegistrationPassword = useAppStore((s) => s.setRegistrationPassword);
   const user = useAppStore((s) => s.user);
-  const pageParams = useAppStore((s) => s.pageParams) as { mode?: string };
+  const pageParams = useAppStore((s) => s.pageParams) as { mode?: string; role?: string };
   const { t } = useTranslation();
 
   const [mode, setMode] = useState<AuthMode>(pageParams?.mode === 'register' ? 'register' : 'login');
-  const [selectedRole, setSelectedRole] = useState<Role>('client');
+  const [selectedRole, setSelectedRole] = useState<Role>(
+    pageParams?.role === 'agent' || pageParams?.role === 'seller' || pageParams?.role === 'client'
+      ? (pageParams.role as Role)
+      : 'client'
+  );
 
   useEffect(() => {
     if (pageParams?.mode === 'register' || pageParams?.mode === 'login') {
       setMode(pageParams.mode);
     }
-  }, [pageParams?.mode]);
+    if (pageParams?.role === 'agent' || pageParams?.role === 'seller' || pageParams?.role === 'client') {
+      setSelectedRole(pageParams.role as Role);
+      setMode('register');
+    }
+  }, [pageParams?.mode, pageParams?.role]);
 
   // Login fields
   const [loginCountryCode, setLoginCountryCode] = useState('+228');
@@ -198,7 +206,7 @@ export default function AuthScreen() {
       return;
     }
 
-    // Seller → redirect to dedicated form
+    // Seller → redirect to dedicated form (same OTP workflow after)
     if (selectedRole === 'seller') {
       toast.success('Complétez le formulaire fournisseur ci-dessous.');
       navigateTo('seller-register');

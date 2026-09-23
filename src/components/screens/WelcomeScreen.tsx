@@ -236,7 +236,7 @@ export default function WelcomeScreen() {
           <div className="grid md:grid-cols-3 gap-3">
             {([
               ['welcome.profile_client', UserRound, () => navigateTo('auth', { mode: 'register' })],
-              ['welcome.profile_agent', Landmark, () => navigateTo('agent-register')],
+              ['welcome.profile_agent', Landmark, () => navigateTo('auth', { mode: 'register', role: 'agent' })],
               ['welcome.profile_seller', Store, () => navigateTo('auth', { mode: 'register' })],
             ] as const).map(([key, Icon, action]) => { const [title, desc] = t(key).split('|'); return <button key={key} onClick={action} className="text-left bg-white dark:bg-zinc-900 rounded-2xl border border-black/5 dark:border-white/5 p-5 hover:border-[#0D5C63]/30 hover:shadow-lg transition-all"><Icon className="w-5 h-5 text-[#0D5C63] mb-4" /><p className="font-bold text-foreground">{title}</p><p className="text-sm text-muted-foreground mt-1">{desc}</p><span className="inline-flex items-center gap-1 text-xs font-bold text-[#0D5C63] mt-4">{t('welcome.discover')} <ArrowRight className="w-3 h-3" /></span></button> })}
           </div>

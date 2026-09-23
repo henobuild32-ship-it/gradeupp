@@ -9,7 +9,7 @@ import {
   Copy, Check, ArrowUpRight, ArrowDownLeft, CreditCard, Clock, ChevronRight,
   QrCode, MessageCircle, Link, Handshake, Repeat, Radio, FileText, PiggyBank,
   Target, BarChart3, Contact, Gift, Search, User, Zap, TrendingUp, Eye, EyeOff,
-  ChevronDown, Sparkles, ArrowRight, Wifi, Lock, Star, BookOpen, ScanLine
+  ChevronDown, Sparkles, ArrowRight, Wifi, Lock, Star, BookOpen, ScanLine, ShoppingBag
 } from 'lucide-react';
 import QRPayScanModal from '@/components/trait/QRPayScanModal';
 import { Badge } from '@/components/ui/badge';
@@ -451,9 +451,9 @@ export default function HomeScreen() {
               <div className="grid grid-cols-4 gap-2 mt-2">
                 {[
                   { labelKey: 'action.history', icon: History, page: 'history' as const, color: '#D97706' },
-                  { labelKey: 'home.extra_request', icon: Handshake, page: 'payment-requests' as const, color: '#EA580C' },
+                  { labelKey: 'action.orders', icon: ShoppingBag, page: 'orders' as const, color: '#0D5C63' },
+                  { labelKey: 'action.barter', icon: Handshake, page: 'barter' as const, color: '#EA580C' },
                   { labelKey: 'home.extra_support', icon: MessageCircle, page: 'support' as const, color: '#0D9488' },
-                  { labelKey: 'home.seller_space', icon: Store, page: ('seller-dashboard' as const), color: '#DB2777' },
                 ].map((item) => {
                   const Icon = item.icon;
                   return (

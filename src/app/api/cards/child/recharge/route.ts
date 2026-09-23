@@ -3,7 +3,6 @@ import { db } from '@/lib/db';
 import { logSecurityEvent } from '@/lib/security';
 import { requireUser, verifyAndMigratePin, verifyAndMigratePassword } from '@/lib/auth';
 import { createNotification, updateBalanceAndNotify } from '@/lib/notifications';
-import { safeDeduct } from '@/lib/balance';
 
 export async function POST(request: NextRequest) {
   try {
@@ -90,24 +89,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Atomic balance check + deduction (race-condition safe)
-    const deductResult = await safeDeduct(parentId, amount, currency);
-    if (!deductResult.success) {
-      return NextResponse.json(
-        { success: false, message: deductResult.message },
-        { status: 400 }
-      );
+    const parentBalanceField = isFC ? 'realBalanceFC' : 'realBalance'
+    const debit = await db.user.updateMany({
+      where: { id: parentId, [parentBalanceField]: { gte: amount } },
+      data: { [parentBalanceField]: { decrement: amount } },
+    })
+    if (debit.count !== 1) {
+      return NextResponse.json({ success: false, message: `Solde ${currency} insuffisant` }, { status: 400 })
     }
 
-    // Perform transaction
-    const [updatedChild, transaction] = await db.$transaction([
-      db.user.update({
+    let updatedChild, transaction
+    try {
+      ;[updatedChild, transaction] = await db.$transaction([
+        db.user.update({
         where: { id: childId },
         data: isFC
           ? { realBalanceFC: { increment: amount } }
           : { realBalance: { increment: amount } },
       }),
-      db.transaction.create({
+        db.transaction.create({
         data: {
           type: 'child_recharge',
           amount,
@@ -118,8 +118,12 @@ export async function POST(request: NextRequest) {
           receiverId: childId,
           description: `Recharge de la carte de ${child.name || 'enfant'}`,
         },
-      }),
-    ]);
+        }),
+      ])
+    } catch (error) {
+      await db.user.update({ where: { id: parentId }, data: { [parentBalanceField]: { increment: amount } } }).catch(() => {})
+      throw error
+    }
 
     // Log the recharge activity
     await logSecurityEvent({

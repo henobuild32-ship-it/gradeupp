@@ -179,11 +179,11 @@ export async function POST(request: NextRequest) {
         photoUrl: photoURL || null,
         password: null, // No local password for Google-only accounts
         isVerified: emailVerified || false,
-        realBalance: isAgent ? 0 : 30,
+        realBalance: isAgent || role === 'seller' ? 0 : 30,
         realBalanceFC: 0,
         bonusBalance: 0,
         bonusBalanceFC: 0,
-        validationStatus: isAgent ? 'pending' : 'validated',
+        validationStatus: isAgent || role === 'seller' ? 'pending' : 'validated',
         referralCode: userReferralCode,
         referredBy: referrerCode,
       },

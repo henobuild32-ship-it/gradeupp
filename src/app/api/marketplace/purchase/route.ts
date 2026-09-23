@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireUser } from '@/lib/auth'
-import { safeDeduct } from '@/lib/balance'
 
 export async function POST(request: NextRequest) {
   try {
@@ -46,6 +45,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (product.stock !== undefined && product.stock !== null && product.stock < 1) {
+      return NextResponse.json(
+        { success: false, message: 'Produit en rupture de stock' },
+        { status: 409 }
+      )
+    }
+
     // ─── Get buyer ───────────────────────────────────────────────────
     const buyer = await db.user.findUnique({
       where: { id: buyerId },
@@ -74,6 +80,10 @@ export async function POST(request: NextRequest) {
     const effectivePrice = willUseBonus && product.bonusPrice !== null && product.bonusPrice !== undefined
       ? product.bonusPrice
       : product.price
+
+    if (!Number.isFinite(effectivePrice) || effectivePrice <= 0) {
+      return NextResponse.json({ success: false, message: 'Prix du produit invalide' }, { status: 409 })
+    }
 
     // ─── Validate bonus-related rules ────────────────────────────────
 
@@ -167,29 +177,26 @@ export async function POST(request: NextRequest) {
       usedReal = effectivePrice
     }
 
-    // Deduct real balance atomically (race-condition safe)
-    if (usedReal > 0) {
-      const deductResult = await safeDeduct(buyerId, usedReal, currency)
-      if (!deductResult.success) {
-        return NextResponse.json({ success: false, message: deductResult.message }, { status: 400 })
-      }
-    }
-
-    // Deduct bonus balance atomically (race-condition safe)
-    if (usedBonus > 0) {
-      const bonusField = isFC ? 'bonusBalanceFC' : 'bonusBalance'
-      const bonusResult = await db.user.updateMany({
-        where: { id: buyerId, [bonusField]: { gte: usedBonus } },
-        data: { [bonusField]: { decrement: usedBonus } },
+    const realField = isFC ? 'realBalanceFC' : 'realBalance'
+    const bonusField = isFC ? 'bonusBalanceFC' : 'bonusBalance'
+    const purchase = await db.$transaction(async (tx) => {
+      const debit = await tx.user.updateMany({
+        where: { id: buyerId, [realField]: { gte: usedReal }, [bonusField]: { gte: usedBonus } },
+        data: {
+          [realField]: { decrement: usedReal },
+          [bonusField]: { decrement: usedBonus },
+        },
       })
-      if (bonusResult.count === 0) {
-        return NextResponse.json({ success: false, message: 'Bonus balance insufficient (concurrence)' }, { status: 400 })
-      }
-    }
+      if (debit.count !== 1) throw new Error('INSUFFICIENT_BALANCE')
 
-    // ─── Atomic: create purchase, credit seller ──────────────────────
-    const [purchase] = await db.$transaction([
-      db.purchase.create({
+      // Decrement stock atomically (prevent oversell)
+      const stockDec = await tx.marketplaceProduct.updateMany({
+        where: { id: productId, stock: { gte: 1 } },
+        data: { stock: { decrement: 1 } },
+      })
+      if (stockDec.count !== 1) throw new Error('OUT_OF_STOCK')
+
+      const created = await tx.purchase.create({
         data: {
           productId,
           buyerId,
@@ -202,18 +209,41 @@ export async function POST(request: NextRequest) {
           product: true,
           buyer: { select: { id: true, name: true, pseudo: true } },
         },
-      }),
-      ...(product.sellerId
-        ? [
-            db.user.update({
-              where: { id: product.sellerId },
-              data: {
-                [isFC ? 'realBalanceFC' : 'realBalance']: { increment: effectivePrice },
-              },
-            }),
-          ]
-        : []),
-    ])
+      })
+
+      // Create order for buyer/seller visibility (only when product has a seller)
+      if (product.sellerId) {
+        await tx.order.create({
+          data: {
+            buyerId,
+            sellerId: product.sellerId,
+            productId,
+            quantity: 1,
+            amount: effectivePrice,
+            currency,
+            status: 'paid',
+            paymentStatus: 'paid',
+          },
+        })
+
+        await tx.user.update({
+          where: { id: product.sellerId },
+          data: {
+            [isFC ? 'realBalanceFC' : 'realBalance']: { increment: effectivePrice },
+          },
+        })
+      }
+      return created
+    }).catch((error) => {
+      if (error instanceof Error && error.message === 'INSUFFICIENT_BALANCE') return null
+      if (error instanceof Error && error.message === 'OUT_OF_STOCK') return 'OOS'
+      throw error
+    })
+
+    if (purchase === 'OOS') {
+      return NextResponse.json({ success: false, message: 'Produit en rupture de stock' }, { status: 409 })
+    }
+    if (!purchase) return NextResponse.json({ success: false, message: 'Solde insuffisant' }, { status: 400 })
 
     // ─── Record bonus history if bonus was used ──────────────────────
     if (usedBonus > 0) {

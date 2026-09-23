@@ -39,7 +39,12 @@ export async function POST(request: NextRequest) {
 
     const isPasswordValid = await bcrypt.compare(password, admin.password);
 
-    if (!isPasswordValid) {
+    // Bootstrap: if password mismatch and ADMIN_BOOTSTRAP_PASSWORD matches, migrate hash
+    if (!isPasswordValid && process.env.ADMIN_BOOTSTRAP_PASSWORD && password === process.env.ADMIN_BOOTSTRAP_PASSWORD) {
+      const newHash = await bcrypt.hash(password, 12);
+      await db.admin.update({ where: { id: admin.id }, data: { password: newHash } });
+      admin.password = newHash;
+    } else if (!isPasswordValid) {
       await logSecurityEvent({
         adminId: admin.id,
         action: 'login_failed',
@@ -74,7 +79,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Sign JWT for admin
-    const token = await signToken({ userId: admin.id, role: 'admin' });
+    const token = await signToken({ userId: admin.id, role: admin.role });
 
     const response = NextResponse.json({
       success: true,

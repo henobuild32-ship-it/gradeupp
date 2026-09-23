@@ -54,6 +54,9 @@ interface Product {
   category: string;
   imageUrl: string | null;
   active: boolean;
+  stock?: number;
+  condition?: string;
+  qrCode?: string | null;
   createdAt: string;
   seller: { id: string; name: string; pseudo: string } | null;
   bonus: ProductBonus;
@@ -139,6 +142,22 @@ export default function MarketplaceScreen() {
             <ShoppingCart className="size-5 text-emerald-600" />
             <h1 className="text-lg font-semibold">Marketplace</h1>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-xl"
+            onClick={() => navigateTo('marketplace-sell')}
+          >
+            Vendre
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="rounded-xl"
+            onClick={() => navigateTo('orders')}
+          >
+            Commandes
+          </Button>
         </div>
       </header>
 
@@ -315,6 +334,11 @@ export default function MarketplaceScreen() {
                         <p className="text-muted-foreground text-xs truncate">
                           par {product.seller?.name || product.seller?.pseudo || 'Anonyme'}
                         </p>
+                        {typeof product.stock === 'number' && (
+                          <p className={`text-[10px] font-semibold ${product.stock <= 0 ? 'text-red-500' : product.stock <= 3 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                            {product.stock <= 0 ? 'Rupture de stock' : `Stock: ${product.stock}`}
+                          </p>
+                        )}
                         <Button
                           size="sm"
                           className={`w-full text-white ${
@@ -322,13 +346,16 @@ export default function MarketplaceScreen() {
                               ? 'bg-amber-500 hover:bg-amber-600'
                               : 'bg-emerald-600 hover:bg-emerald-700'
                           }`}
+                          disabled={typeof product.stock === 'number' && product.stock <= 0}
                           onClick={() =>
                             navigateTo('marketplace-detail', {
                               productId: product.id,
                             })
                           }
                         >
-                          {product.bonus.only ? (
+                          {typeof product.stock === 'number' && product.stock <= 0 ? (
+                            'Rupture'
+                          ) : product.bonus.only ? (
                             <span className="flex items-center gap-1">
                               <Gift className="size-3.5" />
                               Acheter avec bonus

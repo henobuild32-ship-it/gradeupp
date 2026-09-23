@@ -57,8 +57,39 @@ export default function BarterDetailScreen() {
   const [messages, setMessages] = useState<BarterMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [updatingOffer, setUpdatingOffer] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const updateOfferStatus = async (action: 'accept' | 'reject' | 'cancel') => {
+    if (!offerId) return;
+    setUpdatingOffer(action);
+    try {
+      const res = await fetch('/api/barter/offers', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ offerId, action }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(
+          action === 'accept'
+            ? 'Échange accepté'
+            : action === 'reject'
+              ? 'Échange refusé'
+              : 'Offre annulée'
+        );
+        setOffer((prev) => (prev ? { ...prev, status: data.offer.status } : prev));
+      } else {
+        toast.error(data.message || 'Erreur');
+      }
+    } catch {
+      toast.error('Erreur réseau');
+    } finally {
+      setUpdatingOffer(null);
+    }
+  };
 
   // Fetch offer details
   useEffect(() => {
@@ -262,9 +293,71 @@ export default function BarterDetailScreen() {
             </div>
           )}
 
+          <div className="flex items-center gap-2">
+            <Badge
+              variant="outline"
+              className={
+                offer.status === 'accepted'
+                  ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                  : offer.status === 'rejected' || offer.status === 'cancelled'
+                    ? 'bg-red-100 text-red-700 border-red-200'
+                    : 'bg-amber-100 text-amber-700 border-amber-200'
+              }
+            >
+              {offer.status === 'active'
+                ? 'Active'
+                : offer.status === 'accepted'
+                  ? 'Acceptée'
+                  : offer.status === 'rejected'
+                    ? 'Refusée'
+                    : 'Annulée'}
+            </Badge>
+          </div>
+
+          {user?.id === offer.offeredBy && offer.status === 'active' && (
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+                onClick={() => updateOfferStatus('accept')}
+                disabled={updatingOffer}
+              >
+                {updatingOffer === 'accept' ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  'Accepter'
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1 text-red-600 border-red-200 hover:bg-red-50"
+                onClick={() => updateOfferStatus('reject')}
+                disabled={updatingOffer}
+              >
+                {updatingOffer === 'reject' ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  'Refuser'
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1 text-muted-foreground"
+                onClick={() => updateOfferStatus('cancel')}
+                disabled={updatingOffer}
+              >
+                {updatingOffer === 'cancel' ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  'Annuler'
+                )}
+              </Button>
+            </div>
+          )}
+
           <Separator />
 
-          {!chatId && (
+          {!chatId && offer.status === 'active' && (
             <Button
               className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
               onClick={startChat}

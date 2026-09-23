@@ -3,10 +3,8 @@ import { db } from '@/lib/db';
 import { requireAdmin } from '@/lib/auth';
 import { hashPassword } from '@/lib/auth';
 
-function generateAgentCode(phone: string): string {
-  const cleaned = phone.replace(/\D/g, '');
-  const last6 = cleaned.slice(-6);
-  return `AGT-${last6}`;
+function generateAgentCode(): string {
+  return `AGT-${Math.floor(100000 + Math.random() * 900000)}`
 }
 
 export async function GET(request: NextRequest) {
@@ -110,10 +108,10 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      let agentCode = generateAgentCode(phone);
+      let agentCode = generateAgentCode();
       let codeExists = await db.user.findUnique({ where: { agentCode } });
       while (codeExists) {
-        agentCode = generateAgentCode(phone) + '-' + Math.floor(Math.random() * 100);
+        agentCode = generateAgentCode();
         codeExists = await db.user.findUnique({ where: { agentCode } });
       }
 

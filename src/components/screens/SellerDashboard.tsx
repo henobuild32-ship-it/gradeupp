@@ -166,6 +166,20 @@ export default function SellerDashboard() {
           </div>
           <span className="font-semibold">Mes Produits</span>
         </Button>
+
+        <Button onClick={() => navigateTo('orders')} className="h-24 flex flex-col items-center justify-center bg-white text-gray-800 border hover:border-emerald-500 hover:bg-emerald-50 transition-all rounded-2xl shadow-sm">
+          <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-2">
+            <History className="w-5 h-5" />
+          </div>
+          <span className="font-semibold">Commandes</span>
+        </Button>
+
+        <Button onClick={() => navigateTo('marketplace')} className="h-24 flex flex-col items-center justify-center bg-white text-gray-800 border hover:border-pink-500 hover:bg-pink-50 transition-all rounded-2xl shadow-sm">
+          <div className="w-10 h-10 bg-pink-100 text-pink-600 rounded-full flex items-center justify-center mb-2">
+            <CreditCard className="w-5 h-5" />
+          </div>
+          <span className="font-semibold">Marketplace</span>
+        </Button>
       </div>
 
       {/* Recent Activity Placeholder */}

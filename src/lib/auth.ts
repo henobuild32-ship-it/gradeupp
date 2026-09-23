@@ -147,7 +147,7 @@ export async function requireAdmin(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Non autorisé' }, { status: 401 })
     }
     const payload = await resolveAuthFromRequest(request, ADMIN_TOKEN_COOKIE)
-    if (!payload || payload.role !== 'admin') {
+    if (!payload || !['admin', 'super_admin'].includes(payload.role)) {
       return NextResponse.json({ success: false, message: 'Non autorisé' }, { status: 401 })
     }
     return payload

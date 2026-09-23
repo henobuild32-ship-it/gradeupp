@@ -111,6 +111,7 @@ const ReferralScreen = lazy(() => import('@/components/screens/ReferralScreen'))
 const AnalyticsScreen = lazy(() => import('@/components/screens/AnalyticsScreen'));
 const ReceiptScreen = lazy(() => import('@/components/screens/ReceiptScreen'));
 const ContactPayScreen = lazy(() => import('@/components/screens/ContactPayScreen'));
+const OrdersScreen = lazy(() => import('@/components/screens/OrdersScreen'));
 
 const BottomNavigation = lazy(() => import('@/components/layout/BottomNavigation'));
 const PWAInstallBanner = lazy(() => import('@/components/layout/PWAInstallBanner').then(m => ({ default: m.PWAInstallBanner })));
@@ -147,6 +148,8 @@ const screenMap: Record<PageName, React.LazyExoticComponent<React.ComponentType>
   ussd: USSDScreen,
   marketplace: MarketplaceScreen,
   'marketplace-detail': MarketplaceDetailScreen,
+  'marketplace-sell': SellerProductsScreen,
+  orders: OrdersScreen,
   barter: BarterScreen,
   'barter-detail': BarterDetailScreen,
   'barter-create': BarterCreateScreen,
@@ -221,7 +224,7 @@ const screenMap: Record<PageName, React.LazyExoticComponent<React.ComponentType>
   'trait-ai-welcome': TraitAIScreen,
 };
 
-const pagesWithNav: PageName[] = ['home', 'send', 'withdraw', 'deposit', 'history', 'ussd', 'marketplace', 'marketplace-detail', 'barter', 'barter-detail', 'barter-create', 'notifications', 'settings', 'profile', 'agent-dashboard', 'agent-deposit', 'agent-withdraw-validate', 'agent-activity', 'agent-messages', 'card-request', 'card-payment', 'card', 'kyc-verification', 'seller-dashboard', 'child-sponsorship'];
+const pagesWithNav: PageName[] = ['home', 'send', 'withdraw', 'deposit', 'history', 'ussd', 'marketplace', 'marketplace-detail', 'marketplace-sell', 'orders', 'barter', 'barter-detail', 'barter-create', 'notifications', 'settings', 'profile', 'agent-dashboard', 'agent-deposit', 'agent-withdraw-validate', 'agent-activity', 'agent-messages', 'card-request', 'card-payment', 'card', 'kyc-verification', 'seller-dashboard', 'seller-products', 'child-sponsorship'];
 
 const adminPages: PageName[] = ['admin-login', 'admin-dashboard', 'admin-users', 'admin-agents', 'admin-transactions', 'admin-market', 'admin-barter', 'admin-notifications', 'admin-activity-log', 'admin-bonus', 'admin-bonus-adjust', 'admin-bonus-history', 'admin-bonus-campaigns', 'admin-agent-validation', 'admin-messages', 'admin-developers', 'admin-card-requests', 'admin-cards', 'admin-client-messages', 'admin-seller-validation', 'admin-sellers', 'admin-children', 'admin-kyc', 'admin-support', 'agent-register', 'agent-pending'];
 

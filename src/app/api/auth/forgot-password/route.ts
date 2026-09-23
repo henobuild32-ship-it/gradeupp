@@ -49,10 +49,9 @@ export async function POST(request: NextRequest) {
       success: true,
       message: emailSent
         ? 'Code de réinitialisation envoyé par email'
-        : 'Code de réinitialisation généré.',
-      demoOtp: code,
+        : 'Impossible d’envoyer le code de réinitialisation. Vérifiez la configuration SMTP.',
       emailSent,
-    });
+    }, { status: emailSent ? 200 : 502 });
   } catch (error) {
     console.error('Forgot password error:', error);
     return NextResponse.json(

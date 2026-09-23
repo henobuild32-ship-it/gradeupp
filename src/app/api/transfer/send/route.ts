@@ -3,7 +3,6 @@ import { db } from '@/lib/db'
 import { checkChildBalanceLimit } from '@/lib/security'
 import { requireUser } from '@/lib/auth'
 import { SendMoneySchema, validateRequest } from '@/lib/validations'
-import { safeDeductWithFee } from '@/lib/balance'
 import { updateBalanceAndNotify } from '@/lib/notifications'
 
 export async function POST(request: NextRequest) {
@@ -17,7 +16,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: validation.error }, { status: 400 })
     }
 
-    const { receiverPhone, amount, currency } = validation.data
+    const { receiverPhone, amount, currency, pin } = validation.data
     const senderId = auth.userId
 
     const sender = await db.user.findUnique({
@@ -42,16 +41,19 @@ export async function POST(request: NextRequest) {
     const isFC = currency === 'FC'
     const cur = isFC ? 'FC' : (currency || 'USD')
 
-    const fee = Math.round(amount * 0.007 * 100) / 100
-
-    // Atomic balance check + deduction (race-condition safe)
-    const deductResult = await safeDeductWithFee(senderId, amount, fee, cur)
-    if (!deductResult.success) {
-      return NextResponse.json(
-        { success: false, message: deductResult.message },
-        { status: 400 }
-      )
+    if (receiverPhone.trim() === sender.phone.trim()) {
+      return NextResponse.json({ success: false, message: 'Un transfert vers soi-même est interdit' }, { status: 400 })
     }
+
+    if (!sender.pin || !pin) {
+      return NextResponse.json({ success: false, message: 'PIN requis pour effectuer un transfert' }, { status: 400 })
+    }
+    const { verifyAndMigratePin } = await import('@/lib/auth')
+    if (!(await verifyAndMigratePin(sender.id, pin, sender.pin))) {
+      return NextResponse.json({ success: false, message: 'PIN incorrect' }, { status: 401 })
+    }
+
+    const fee = Math.round(amount * 0.007 * 100) / 100
 
     // Find or create receiver atomically
     let receiver = await db.user.findUnique({
@@ -81,43 +83,64 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Atomic transaction: credit receiver, create tx record, notify both parties
-    const [transaction] = await db.$transaction([
-      db.transaction.create({
-        data: {
-          type: 'send',
-          amount,
-          fee,
-          currency: cur,
-          status: 'completed',
-          senderId,
-          receiverId: receiver.id,
-          description: `Transfert de ${amount.toFixed(2)} ${cur} vers ${receiver.phone}`,
-        },
-      }),
-      db.user.update({
-        where: { id: receiver.id },
-        data: isFC
-          ? { realBalanceFC: { increment: amount } }
-          : { realBalance: { increment: amount } },
-      }),
-      db.notification.create({
-        data: {
-          userId: receiver.id,
-          title: 'Transfert reçu',
-          message: `Vous avez reçu ${amount.toFixed(2)} ${cur} de ${sender.phone || sender.name || 'Inconnu'}`,
-          type: 'transfer_received',
-        },
-      }),
-      db.notification.create({
-        data: {
-          userId: senderId,
-          title: 'Transfert envoyé',
-          message: `Vous avez envoyé ${amount.toFixed(2)} ${cur} à ${receiver.phone || receiver.name || 'Inconnu'}`,
-          type: 'transfer_sent',
-        },
-      }),
-    ])
+    const senderBalanceField = isFC ? 'realBalanceFC' : 'realBalance'
+    const receiverBalanceField = isFC ? 'realBalanceFC' : 'realBalance'
+
+    // Fully atomic: debit + credit + transaction record in a single $transaction
+    let transaction
+    try {
+      const result = await db.$transaction(async (tx) => {
+        const debit = await tx.user.updateMany({
+          where: { id: senderId, [senderBalanceField]: { gte: amount + fee } },
+          data: { [senderBalanceField]: { decrement: amount + fee } },
+        })
+        if (debit.count !== 1) throw new Error('INSUFFICIENT_BALANCE')
+
+        const credit = await tx.user.updateMany({
+          where: { id: receiver.id },
+          data: { [receiverBalanceField]: { increment: amount } },
+        })
+        if (credit.count !== 1) throw new Error('RECEIVER_UPDATE_FAILED')
+
+        const txRecord = await tx.transaction.create({
+          data: {
+            type: 'send',
+            amount,
+            fee,
+            currency: cur,
+            status: 'completed',
+            senderId,
+            receiverId: receiver.id,
+            description: `Transfert de ${amount.toFixed(2)} ${cur} vers ${receiver.phone}`,
+          },
+        })
+
+        await tx.notification.create({
+          data: {
+            userId: receiver.id,
+            title: 'Transfert reçu',
+            message: `Vous avez reçu ${amount.toFixed(2)} ${cur} de ${sender.phone || sender.name || 'Inconnu'}`,
+            type: 'transfer_received',
+          },
+        })
+        await tx.notification.create({
+          data: {
+            userId: senderId,
+            title: 'Transfert envoyé',
+            message: `Vous avez envoyé ${amount.toFixed(2)} ${cur} à ${receiver.phone || receiver.name || 'Inconnu'}`,
+            type: 'transfer_sent',
+          },
+        })
+
+        return txRecord
+      })
+      transaction = result
+    } catch (error) {
+      if (error instanceof Error && error.message === 'INSUFFICIENT_BALANCE') {
+        return NextResponse.json({ success: false, message: `Solde ${cur} insuffisant` }, { status: 400 })
+      }
+      throw error
+    }
 
     // Send push notification to receiver
     try {

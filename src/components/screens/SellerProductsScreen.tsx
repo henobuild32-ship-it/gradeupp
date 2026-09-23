@@ -19,7 +19,9 @@ export default function SellerProductsScreen() {
     description: '',
     price: '',
     category: 'vetements',
-    imageUrl: ''
+    imageUrl: '',
+    stock: '1',
+    condition: 'new'
   })
   const [submitting, setSubmitting] = useState(false)
 
@@ -60,7 +62,7 @@ export default function SellerProductsScreen() {
         toast('Succès', { description: 'Produit ajouté' })
         setShowAdd(false)
         fetchProducts()
-        setNewProduct({ name: '', description: '', price: '', category: 'vetements', imageUrl: '' })
+        setNewProduct({ name: '', description: '', price: '', category: 'vetements', imageUrl: '', stock: '1', condition: 'new' })
       } else {
         toast.error('Erreur', { description: data.message })
       }
@@ -113,15 +115,31 @@ export default function SellerProductsScreen() {
                 <Label>Description</Label>
                 <Input required value={newProduct.description} onChange={e => setNewProduct({...newProduct, description: e.target.value})} />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-1">
                   <Label>Prix (USD)</Label>
                   <Input type="number" required value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} />
                 </div>
                 <div className="space-y-1">
-                  <Label>Image URL (optionnel)</Label>
-                  <Input value={newProduct.imageUrl} onChange={e => setNewProduct({...newProduct, imageUrl: e.target.value})} />
+                  <Label>Stock</Label>
+                  <Input type="number" min="1" required value={newProduct.stock} onChange={e => setNewProduct({...newProduct, stock: e.target.value})} />
                 </div>
+                <div className="space-y-1">
+                  <Label>État</Label>
+                  <select
+                    className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                    value={newProduct.condition}
+                    onChange={e => setNewProduct({...newProduct, condition: e.target.value})}
+                  >
+                    <option value="new">Neuf</option>
+                    <option value="used">Occasion</option>
+                    <option value="refurbished">Reconditionné</option>
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label>Image URL (optionnel)</Label>
+                <Input value={newProduct.imageUrl} onChange={e => setNewProduct({...newProduct, imageUrl: e.target.value})} />
               </div>
               <Button type="submit" disabled={submitting} className="w-full bg-indigo-600">
                 {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Enregistrer le produit'}
@@ -149,6 +167,14 @@ export default function SellerProductsScreen() {
                     <h4 className="font-bold text-gray-800">{p.name}</h4>
                     <p className="text-sm text-gray-500 line-clamp-1">{p.description}</p>
                     <p className="font-bold text-indigo-600">${p.price.toFixed(2)}</p>
+                    <p className="text-[10px] text-gray-400">
+                      Stock: {p.stock ?? 1} · {p.condition === 'used' ? 'Occasion' : p.condition === 'refurbished' ? 'Reconditionné' : 'Neuf'}
+                    </p>
+                    {p.qrCode && (
+                      <p className="text-[9px] text-emerald-600 font-mono truncate" title={p.qrCode}>
+                        QR: {p.qrCode}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <Button variant="ghost" size="icon" onClick={() => handleDelete(p.id)} className="text-red-500 hover:text-red-700 hover:bg-red-50">

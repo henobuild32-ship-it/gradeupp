@@ -26,8 +26,7 @@ export async function POST(request: NextRequest) {
       otpStore.set(phone.trim(), { code, expires: Date.now() + 5 * 60 * 1000 });
       return NextResponse.json({
         success: true,
-        message: 'Code OTP généré',
-        demoOtp: code,
+        message: 'Code OTP envoyé. Vérifiez votre téléphone.',
       });
     }
 
@@ -53,10 +52,9 @@ export async function POST(request: NextRequest) {
       success: true,
       message: emailSent
         ? 'Code OTP envoyé par email. Vérifiez votre boîte de réception.'
-        : 'Code OTP généré.',
-      demoOtp: code,
+        : 'Impossible d’envoyer le code OTP. Vérifiez la configuration SMTP.',
       emailSent,
-    });
+    }, { status: emailSent ? 200 : 502 });
   } catch (error) {
     console.error('Send OTP error:', error);
     return NextResponse.json(

@@ -96,6 +96,8 @@ model User {
   recurringPayments      RecurringPayment[]
   savingsGoals           SavingsGoal[]
   referralRewards        ReferralReward[]
+  orderBuying            Order[]              @relation("OrderBuyer")
+  orderSelling           Order[]              @relation("OrderSeller")
 }
 
 model Admin {
@@ -203,6 +205,9 @@ model MarketplaceProduct {
   imageUrl      String?
   sellerId      String?
   active        Boolean    @default(true)
+  stock         Int        @default(1)
+  condition     String     @default("new")
+  qrCode        String?    @unique
   bonusEnabled  Boolean    @default(false)
   bonusOnly     Boolean    @default(false)
   bonusPrice    Float?
@@ -212,19 +217,43 @@ model MarketplaceProduct {
   updatedAt     DateTime   @updatedAt
   seller        User?      @relation(fields: [sellerId], references: [id])
   purchases     Purchase[]
+  orders        Order[]
 }
 
 model Purchase {
-  id        String             @id @default(cuid())
-  productId String
-  buyerId   String
-  amount    Float
-  usedBonus Float              @default(0)
-  usedReal  Float              @default(0)
-  status    String             @default("completed")
-  createdAt DateTime           @default(now())
-  buyer     User               @relation(fields: [buyerId], references: [id])
-  product   MarketplaceProduct @relation(fields: [productId], references: [id])
+  id            String             @id @default(cuid())
+  productId     String
+  buyerId       String
+  amount        Float
+  usedBonus     Float              @default(0)
+  usedReal      Float              @default(0)
+  status        String             @default("completed")
+  createdAt     DateTime           @default(now())
+  buyer         User               @relation(fields: [buyerId], references: [id])
+  product       MarketplaceProduct @relation(fields: [productId], references: [id])
+}
+
+model Order {
+  id            String             @id @default(cuid())
+  buyerId       String
+  sellerId      String
+  productId     String
+  quantity      Int                @default(1)
+  amount        Float
+  currency      String             @default("USD")
+  status        String             @default("pending")
+  paymentStatus String             @default("paid")
+  note          String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  buyer         User               @relation("OrderBuyer", fields: [buyerId], references: [id])
+  seller        User               @relation("OrderSeller", fields: [sellerId], references: [id])
+  product       MarketplaceProduct @relation(fields: [productId], references: [id])
+
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model BarterOffer {

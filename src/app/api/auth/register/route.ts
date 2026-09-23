@@ -91,9 +91,9 @@ export async function POST(request: NextRequest) {
     } while (exists)
 
     const isAgent = role === 'agent'
-    const validationStatus = isAgent ? 'pending' : 'validated'
-    const bonusBalance = isAgent ? 0 : 0
-    const realBalanceCredit = isAgent ? 0 : 30
+    const isSeller = role === 'seller'
+    const validationStatus = isAgent || isSeller ? 'pending' : 'validated'
+    const realBalanceCredit = isAgent || isSeller ? 0 : 30
 
     // Hash password
     const hashedPassword = await hashPassword(password)
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
         photoId: photoId || null,
         realBalance: realBalanceCredit,
         realBalanceFC: 0,
-        bonusBalance,
+        bonusBalance: 0,
         bonusBalanceFC: 0,
         validationStatus,
         referralCode: userReferralCode,
@@ -131,7 +131,12 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json({
       success: true,
-      message: 'Compte créé. Vérifiez votre code OTP.',
+      requiresValidation: isAgent || isSeller,
+      message: isAgent
+        ? 'Compte Agent créé. En attente de validation administrateur.'
+        : isSeller
+          ? 'Compte fournisseur créé. En attente de validation administrateur.'
+          : 'Compte créé. Vérifiez votre code OTP.',
       user: {
         id: user.id,
         phone: user.phone,
