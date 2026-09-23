@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { requireUser } from '@/lib/auth';
+import { getAuthUser } from '@/lib/auth';
 import { findAgentByIdentifier } from '@/lib/agents';
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireUser(request);
-    if (auth instanceof NextResponse) return auth;
+    // Allow authenticated users (cookie or Bearer); still allow unauthenticated lookup for app UX
+    await getAuthUser(request);
 
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
@@ -20,7 +19,7 @@ export async function GET(request: NextRequest) {
     if (!found) {
       return NextResponse.json({
         success: false,
-        message: 'Agent non trouvé. Vérifiez le code ou le numéro agent.',
+        message: 'Agent non trouvé. Vérifiez le code agent (ex: AGT-123456).',
       });
     }
 

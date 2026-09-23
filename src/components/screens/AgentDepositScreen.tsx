@@ -72,10 +72,13 @@ export default function AgentDepositScreen() {
 
   const quickAmounts = [5, 10, 25, 50];
   const rawCode = user?.agentCode || user?.agentNumber || '';
+  const digitsOnly = rawCode.replace(/\D/g, '');
   const agentIdentifier = rawCode
-    ? rawCode.startsWith('AGT-')
-      ? rawCode
-      : `AGT-${rawCode}`
+    ? /^AGT-/i.test(rawCode)
+      ? rawCode.toUpperCase().replace(/\s+/g, '')
+      : digitsOnly
+        ? `AGT-${digitsOnly.slice(-6)}`
+        : rawCode
     : 'N/A';
 
   return (

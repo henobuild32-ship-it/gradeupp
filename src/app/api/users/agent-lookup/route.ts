@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { requireUser } from '@/lib/auth'
+import { getAuthUser } from '@/lib/auth'
 import { findAgentByIdentifier } from '@/lib/agents'
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireUser(request)
-    if (auth instanceof NextResponse) return auth
+    await getAuthUser(request)
 
     const { searchParams } = new URL(request.url)
     const code = searchParams.get('code')
@@ -24,7 +22,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         success: false,
         found: false,
-        message: 'Agent non trouvé. Vérifiez le code.',
+        message: 'Agent non trouvé. Vérifiez le code (ex: AGT-123456).',
       })
     }
 

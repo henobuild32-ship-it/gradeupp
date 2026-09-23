@@ -2,6 +2,10 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
+function generateAgentCode(): string {
+  return `AGT-${Math.floor(100000 + Math.random() * 900000)}`
+}
+
 async function migrateAgentCodes() {
   const agents = await prisma.user.findMany({
     where: { role: 'agent' },
@@ -10,22 +14,38 @@ async function migrateAgentCodes() {
 
   let updated = 0
   for (const agent of agents) {
-    const phone = agent.phone.replace(/\D/g, '')
-    const expectedCode = `AGT-${phone}`
+    const isValid = /^AGT-\d{6}$/.test(agent.agentCode || '')
+    const isSynced = agent.agentCode && agent.agentCode === agent.agentNumber
 
-    if (agent.agentCode === expectedCode && agent.agentNumber === expectedCode) {
-      continue
+    if (isValid && isSynced) continue
+
+    let agentCode = isValid ? agent.agentCode! : ''
+    if (!agentCode) {
+      for (let i = 0; i < 30; i++) {
+        const candidate = generateAgentCode()
+        const existing = await prisma.user.findUnique({ where: { agentCode: candidate } })
+        if (!existing) {
+          agentCode = candidate
+          break
+        }
+      }
     }
+    if (!agentCode) continue
+
+    const clash = await prisma.user.findFirst({
+      where: { agentCode, id: { not: agent.id } },
+    })
+    if (clash) continue
 
     await prisma.user.update({
       where: { id: agent.id },
       data: {
-        agentCode: expectedCode,
-        agentNumber: expectedCode,
+        agentCode,
+        agentNumber: agentCode,
       },
     })
 
-    console.log(`Migrated: ${agent.phone} -> ${expectedCode} (was: ${agent.agentCode})`)
+    console.log(`Migrated: ${agent.phone} -> ${agentCode} (was: ${agent.agentCode})`)
     updated++
   }
 

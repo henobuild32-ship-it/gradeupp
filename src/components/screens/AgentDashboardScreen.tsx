@@ -281,7 +281,13 @@ export default function AgentDashboardScreen() {
             <CardContent className="p-5">
               <p className="text-sm text-amber-100">{t('agent.agent_code')}</p>
               <p className="text-3xl font-bold font-mono tracking-wider mt-1">
-                {(() => { const c = user?.agentCode || user?.agentNumber; return c ? (c.startsWith('AGT-') ? c : `AGT-${c}`) : 'N/A'; })()}
+                {(() => {
+                  const c = user?.agentCode || user?.agentNumber;
+                  if (!c) return 'N/A';
+                  if (/^AGT-\d{6}$/.test(c)) return c;
+                  const d = c.replace(/\D/g, '');
+                  return d.length >= 6 ? `AGT-${d.slice(-6)}` : c.startsWith('AGT-') ? c : `AGT-${d || c}`;
+                })()}
               </p>
               <p className="text-sm text-amber-200 mt-2">
                 {user?.name || 'Agent'}

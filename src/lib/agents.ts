@@ -11,19 +11,27 @@ export function agentIdentifierCandidates(identifier: string): string[] {
   const digits = raw.replace(/\D/g, '');
   const candidates = new Set<string>([raw]);
 
+  // AGT-XXXXXX forms
   if (raw.startsWith('AGT-')) {
     const bare = raw.slice(4);
     candidates.add(bare);
     if (bare) candidates.add(`AGT-${bare}`);
+  } else if (digits) {
+    // Bare 6-digit code → AGT-XXXXXX
+    if (digits.length === 6) {
+      candidates.add(`AGT-${digits}`);
+      candidates.add(digits);
+    }
+    // Longer digit strings: also try last 6 as AGT code
+    if (digits.length > 6 && digits.length <= 15) {
+      candidates.add(`AGT-${digits.slice(-6)}`);
+      candidates.add(digits.slice(-6));
+    }
   }
 
   if (digits) {
     candidates.add(`AGT-${digits}`);
     candidates.add(digits);
-    if (digits.length >= 6) {
-      candidates.add(`AGT-${digits.slice(-6)}`);
-      candidates.add(digits.slice(-6));
-    }
     if (digits.startsWith('228') && digits.length >= 11) {
       candidates.add(`+228${digits.slice(3)}`);
       candidates.add(digits.slice(3));
@@ -46,6 +54,8 @@ const agentWhereFromIdentifier = (identifier: string) => {
       { agentCode: { in: candidates } },
       { agentNumber: { in: candidates } },
       { phone: { in: candidates } },
+      // Case-insensitive exact match on agentCode
+      ...candidates.map((c) => ({ agentCode: { equals: c, mode: 'insensitive' as const } })),
       ...(digit.length >= 6
         ? [
             { phone: { endsWith: digit.slice(-9) } },
@@ -64,8 +74,11 @@ export async function findAgentByIdentifier(identifier: string) {
   if (agent) return agent;
 
   const digit = identifier.replace(/\D/g, '');
+  const raw = normalizeAgentIdentifier(identifier);
+
+  // Fallback: contains match on code digits
   if (digit.length >= 6) {
-    return db.user.findFirst({
+    const fallback = await db.user.findFirst({
       where: {
         role: 'agent',
         OR: [
@@ -74,6 +87,23 @@ export async function findAgentByIdentifier(identifier: string) {
         ],
       },
     });
+    if (fallback) return fallback;
+  }
+
+  // Fallback: AGT- with any suffix match
+  if (raw.startsWith('AGT-')) {
+    const bare = raw.slice(4);
+    if (bare) {
+      return db.user.findFirst({
+        where: {
+          role: 'agent',
+          OR: [
+            { agentCode: { endsWith: bare } },
+            { agentNumber: { endsWith: bare } },
+          ],
+        },
+      });
+    }
   }
 
   return null;

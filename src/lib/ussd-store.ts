@@ -93,7 +93,13 @@ export async function resolveAgentName(agentCode: string): Promise<string | null
 
   try {
     const normalized = agentCode.trim().toUpperCase().replace(/\s+/g, '');
-    const res = await fetch(`/api/ussd/agent-lookup?code=${encodeURIComponent(normalized)}`);
+    const headers: Record<string, string> = {};
+    try {
+      const { useAppStore } = await import('@/lib/store');
+      const token = useAppStore.getState().token;
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+    } catch {}
+    const res = await fetch(`/api/ussd/agent-lookup?code=${encodeURIComponent(normalized)}`, { headers });
     const data = await res.json();
     if (data.success && data.agent) {
       const agents = readCache()?.agentNames || {};

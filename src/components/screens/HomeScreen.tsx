@@ -166,7 +166,14 @@ export default function HomeScreen() {
   }, []);
 
   const agentCode = user?.agentCode || user?.agentNumber;
-  const displayAgentCode = agentCode ? (agentCode.startsWith('AGT-') ? agentCode : `AGT-${agentCode}`) : null;
+  const displayAgentCode = (() => {
+    if (!agentCode) return null;
+    if (/^AGT-\d{6}$/.test(agentCode)) return agentCode;
+    const digits = agentCode.replace(/\D/g, '');
+    if (digits.length >= 6) return `AGT-${digits.slice(-6)}`;
+    if (digits) return `AGT-${digits}`;
+    return agentCode;
+  })();
   const { subscribe } = usePushSubscription();
 
   useEffect(() => {

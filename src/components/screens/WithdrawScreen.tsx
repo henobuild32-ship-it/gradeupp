@@ -57,15 +57,25 @@ export default function WithdrawScreen() {
       setAgentLookupError(null);
       const digits = raw.replace(/\D/g, '');
       const candidates = new Set<string>();
-      if (digits) {
-        candidates.add(digits);
-        if (digits.length >= 6) {
-          candidates.add(`AGT-${digits.slice(-6)}`);
-          candidates.add(`AGT-${digits}`);
-        }
-        if (digits.length >= 8) candidates.add(digits);
+      const normalized = raw.toUpperCase().replace(/\s+/g, '');
+
+      if (/^AGT-/i.test(raw)) {
+        candidates.add(normalized);
+        const bare = normalized.replace(/^AGT-/, '');
+        if (bare) candidates.add(`AGT-${bare}`);
       }
-      if (/^AGT-/i.test(raw)) candidates.add(raw.toUpperCase().replace(/\s+/g, ''));
+      if (digits) {
+        if (digits.length === 6) {
+          candidates.add(`AGT-${digits}`);
+          candidates.add(digits);
+        } else if (digits.length > 6 && digits.length <= 15) {
+          candidates.add(`AGT-${digits.slice(-6)}`);
+          candidates.add(digits.slice(-6));
+          candidates.add(digits);
+        } else if (digits.length >= 8) {
+          candidates.add(digits);
+        }
+      }
       if (raw.startsWith('+') || digits.length >= 8) candidates.add(raw);
 
       const codes = [...candidates];
@@ -76,9 +86,13 @@ export default function WithdrawScreen() {
         return;
       }
 
+      const token = useAppStore.getState().token;
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       Promise.all(
         codes.map((c) =>
-          fetch(`/api/ussd/agent-lookup?code=${encodeURIComponent(c)}`)
+          fetch(`/api/ussd/agent-lookup?code=${encodeURIComponent(c)}`, { headers })
             .then((r) => r.json())
             .catch(() => null)
         )
@@ -90,8 +104,8 @@ export default function WithdrawScreen() {
           setAgentLookupError(null);
         } else {
           setAgentName(null);
-          const msg = results.find((d) => d && d.message && /non trouv|valid|suspend/i.test(d.message));
-          setAgentLookupError(msg?.message || 'Agent non trouvé. Vérifiez le code ou le numéro.');
+          const msg = results.find((d) => d && d.message && /non trouv|valid|suspend|authent/i.test(d.message));
+          setAgentLookupError(msg?.message || 'Agent non trouvé. Vérifiez le code agent (ex: AGT-123456).');
         }
         setResolvingAgent(false);
       }).catch(() => {
@@ -121,8 +135,12 @@ export default function WithdrawScreen() {
   function buildAgentCode(): string {
     const raw = agentInput.trim();
     const digits = raw.replace(/\D/g, '');
-    if (/^AGT-/i.test(raw)) return raw.toUpperCase().replace(/\s+/g, '');
-    if (digits.length >= 6 && digits.length <= 8) return `AGT-${digits.slice(-6)}`;
+    const normalized = raw.toUpperCase().replace(/\s+/g, '');
+    if (/^AGT-/i.test(raw)) return normalized;
+    // Exact 6-digit agent code
+    if (digits.length === 6) return `AGT-${digits}`;
+    // Longer digits: last 6 as AGT code (common when pasting partial)
+    if (digits.length > 6 && digits.length <= 15) return `AGT-${digits.slice(-6)}`;
     if (digits) return digits;
     return raw;
   }
@@ -138,7 +156,7 @@ export default function WithdrawScreen() {
       return;
     }
     if (!agentName) {
-      toast.error(agentLookupError || 'Agent non trouvé ou non validé. Vérifiez le code agent.');
+      toast.error(agentLookupError || 'Agent non trouvé ou non validé. Vérifiez le code agent (ex: AGT-123456).');
       return;
     }
     if (total > realBalance) {
@@ -153,13 +171,16 @@ export default function WithdrawScreen() {
     setShowConfirm(false);
 
     const agentCode = buildAgentCode();
+    const token = useAppStore.getState().token;
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
 
     setPendingPinAction(() => async () => {
       setLoading(true);
       try {
         const res = await fetch('/api/transfer/withdraw', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({
             userId: user.id,
             amount: numericAmount,

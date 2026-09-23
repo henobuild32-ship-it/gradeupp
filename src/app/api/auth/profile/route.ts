@@ -70,23 +70,39 @@ export async function GET(request: NextRequest) {
       } catch {}
     }
 
-    // Auto-migrate legacy agent codes (not AGT-XXXXXX) to phone-based format
-    if (user.role === 'agent' && user.phone && !/^AGT-\d{6}$/.test(user.agentCode || '')) {
-      const phone = user.phone.replace(/\D/g, '')
-      const last6 = phone.slice(-6)
-      const expectedCode = `AGT-${last6}`
-      if (user.agentCode !== expectedCode || user.agentNumber !== expectedCode) {
+    // Ensure agent code is always AGT-XXXXXX (unique, never phone-based)
+    if (user.role === 'agent') {
+      const isValidFormat = /^AGT-\d{6}$/.test(user.agentCode || '')
+      const isSynced = user.agentCode && user.agentCode === user.agentNumber
+
+      if (!isValidFormat || !isSynced) {
         try {
-          const existing = await db.user.findFirst({
-            where: { agentCode: expectedCode, id: { not: user.id } },
-          })
-          if (!existing) {
-            await db.user.update({
-              where: { id: user.id },
-              data: { agentCode: expectedCode, agentNumber: expectedCode },
+          let agentCode = isValidFormat ? user.agentCode! : ''
+          if (!agentCode) {
+            for (let i = 0; i < 20; i++) {
+              const candidate = `AGT-${Math.floor(100000 + Math.random() * 900000)}`
+              const existing = await db.user.findFirst({
+                where: { agentCode: candidate, id: { not: user.id } },
+              })
+              if (!existing) {
+                agentCode = candidate
+                break
+              }
+            }
+          }
+
+          if (agentCode && (user.agentCode !== agentCode || user.agentNumber !== agentCode)) {
+            const clash = await db.user.findFirst({
+              where: { agentCode, id: { not: user.id } },
             })
-            user.agentCode = expectedCode
-            user.agentNumber = expectedCode
+            if (!clash) {
+              await db.user.update({
+                where: { id: user.id },
+                data: { agentCode, agentNumber: agentCode },
+              })
+              user.agentCode = agentCode
+              user.agentNumber = agentCode
+            }
           }
         } catch {}
       }

@@ -95,11 +95,17 @@ export default function DepositScreen() {
       } else if (selectedMethod === 'agent') {
         const raw = agentNumber.trim()
         const digits = raw.replace(/\D/g, '')
-        const code = /^AGT-/i.test(raw)
-          ? raw.toUpperCase().replace(/\s+/g, '')
-          : digits
-            ? `AGT-${digits.slice(-6)}`
-            : raw
+        const normalized = raw.toUpperCase().replace(/\s+/g, '')
+        let code: string
+        if (/^AGT-/i.test(raw)) {
+          code = normalized
+        } else if (digits.length === 6) {
+          code = `AGT-${digits}`
+        } else if (digits.length > 6 && digits.length <= 15) {
+          code = `AGT-${digits.slice(-6)}`
+        } else {
+          code = digits || raw
+        }
         body.agentNumber = code
         body.agentCode = code
       }

@@ -412,7 +412,13 @@ export default function SettingsScreen() {
                   <BadgeCheck className="size-4 text-amber-600 shrink-0" />
                   <span className="text-sm text-amber-700">Code Agent :</span>
                   <span className="text-sm font-bold font-mono text-amber-800 tracking-wider">
-                    {(() => { const c = user?.agentCode || user?.agentNumber; return c ? (c.startsWith('AGT-') ? c : `AGT-${c}`) : ''; })()}
+                    {(() => {
+                      const c = user?.agentCode || user?.agentNumber;
+                      if (!c) return '';
+                      if (/^AGT-\d{6}$/.test(c)) return c;
+                      const d = c.replace(/\D/g, '');
+                      return d.length >= 6 ? `AGT-${d.slice(-6)}` : c.startsWith('AGT-') ? c : `AGT-${d || c}`;
+                    })()}
                   </span>
                 </div>
               )}
