@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { isValidEmail, normalizeEmail, sendOTPEmail } from '@/lib/email/service';
 import { generateOTP } from '@/lib/otp';
+import { otpStore } from '@/lib/otp-store';
 import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
@@ -11,16 +12,26 @@ export async function POST(request: NextRequest) {
     if (!rl.allowed) return rateLimitResponse(rl.resetIn)
 
     const body = await request.json();
-    const { email } = body;
+    const { email, phone } = body;
 
-    if (!email) {
+    if (!email && !phone) {
       return NextResponse.json(
-        { success: false, message: 'Email requis' },
+        { success: false, message: 'Email ou téléphone requis' },
         { status: 400 }
       );
     }
 
-    const normalizedEmail = normalizeEmail(email);
+    if (!email && typeof phone === 'string' && phone.trim()) {
+      const code = generateOTP();
+      otpStore.set(phone.trim(), { code, expires: Date.now() + 5 * 60 * 1000 });
+      return NextResponse.json({
+        success: true,
+        message: 'Code OTP généré',
+        demoOtp: code,
+      });
+    }
+
+    const normalizedEmail = normalizeEmail(String(email));
 
     if (!normalizedEmail || !isValidEmail(normalizedEmail)) {
       return NextResponse.json(
@@ -34,15 +45,21 @@ export async function POST(request: NextRequest) {
 
     await db.verificationCode.create({
       data: { email: normalizedEmail, code, expiresAt },
-    }).catch(() => {});
+    });
 
     const emailSent = await sendOTPEmail(normalizedEmail, code);
 
+    if (!emailSent) {
+      return NextResponse.json({
+        success: true,
+        message: 'Code OTP généré. Email non envoyé.',
+        demoOtp: code,
+      });
+    }
+
     return NextResponse.json({
       success: true,
-      message: emailSent
-        ? 'Code OTP envoyé par email. Vérifiez votre boîte de réception.'
-        : 'Code OTP généré. Vérifiez votre boîte email.',
+      message: 'Code OTP envoyé par email. Vérifiez votre boîte de réception.',
     });
   } catch (error) {
     console.error('Send OTP error:', error);

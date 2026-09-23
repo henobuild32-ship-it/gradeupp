@@ -43,7 +43,15 @@ export async function POST(request: NextRequest) {
       data: { email: normalizedEmail, code, expiresAt },
     });
 
-    await sendOTPEmail(normalizedEmail, code);
+    const emailSent = await sendOTPEmail(normalizedEmail, code);
+
+    if (!emailSent) {
+      return NextResponse.json({
+        success: true,
+        message: 'Code de réinitialisation généré. Email non envoyé.',
+        demoOtp: code,
+      });
+    }
 
     return NextResponse.json({
       success: true,

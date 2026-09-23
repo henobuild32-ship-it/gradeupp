@@ -229,7 +229,7 @@ export default function AuthScreen() {
         navigateTo('agent-pending');
       } else {
         toast.success('Compte créé avec succès ! Vérifiez votre code OTP.');
-        navigateTo('auth-otp');
+        navigateTo('auth-otp', { email: regEmail.trim(), mode: 'verify' });
       }
     } catch {
       toast.error(t('validation.connection_error'));

@@ -54,6 +54,7 @@ export default function ForgotPasswordScreen() {
   const [otp, setOtp] = useState('');
   const [otpLoading, setOtpLoading] = useState(false);
   const [countdown, setCountdown] = useState(60);
+  const [demoOtp, setDemoOtp] = useState('');
 
   // Step 3 state
   const [password, setPassword] = useState('');
@@ -102,9 +103,10 @@ export default function ForgotPasswordScreen() {
         toast.error(data.message || 'Erreur lors de la demande');
         return;
       }
+      setDemoOtp(data.demoOtp || '');
       setStep('otp');
       setCountdown(60);
-      toast.success('Code envoyé à votre adresse email');
+      toast.success(data.demoOtp ? 'Code généré (email non envoyé)' : 'Code envoyé à votre adresse email');
     } catch {
       toast.error('Erreur de connexion');
     } finally {
@@ -145,8 +147,9 @@ export default function ForgotPasswordScreen() {
         body: JSON.stringify({ email: email.trim() }),
       });
       const data = await res.json();
+      if (data.demoOtp) setDemoOtp(data.demoOtp);
       if (data.success) {
-        toast.success('Code renvoyé avec succès');
+        toast.success(data.demoOtp ? 'Code renvoyé (email non envoyé)' : 'Code renvoyé avec succès');
       } else {
         toast.error(data.message || 'Erreur lors du renvoi');
       }
@@ -364,6 +367,20 @@ export default function ForgotPasswordScreen() {
                   <div className="flex items-center justify-center gap-2 text-emerald-600">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <span className="text-sm font-medium">Vérification...</span>
+                  </div>
+                )}
+
+                {demoOtp && !otpLoading && otp.length === 0 && (
+                  <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 rounded-xl p-4 text-center w-full">
+                    <p className="text-xs text-amber-700 dark:text-amber-400 font-medium mb-1">
+                      Code de test (non envoyé par email)
+                    </p>
+                    <p className="text-2xl font-mono font-bold text-amber-800 dark:text-amber-300 tracking-widest">
+                      {demoOtp}
+                    </p>
+                    <p className="text-[10px] text-amber-600 dark:text-amber-500 mt-1">
+                      Utilisez ce code pour continuer.
+                    </p>
                   </div>
                 )}
               </div>

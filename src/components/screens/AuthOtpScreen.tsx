@@ -95,8 +95,11 @@ export default function AuthOtpScreen() {
         body: JSON.stringify(body),
       });
       const data = await res.json();
+      if (data.demoOtp) {
+        setDemoOtp(data.demoOtp);
+      }
       if (data.success) {
-        toast.success('Code renvoyé avec succès');
+        toast.success(data.demoOtp ? 'Code renvoyé (email non envoyé)' : 'Code renvoyé avec succès');
       } else {
         toast.error(data.message || 'Erreur lors du renvoi');
       }

@@ -140,18 +140,7 @@ export default function AuthProfileScreen() {
       const user = data.user as User;
       setUser(user);
 
-      // Send OTP via email
-      try {
-        await fetch('/api/auth/send-otp', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: email.trim() }),
-        });
-      } catch {
-        // OTP send failed but account is created - continue anyway
-      }
-
-      toast.success('Compte créé ! Un code OTP de 6 chiffres a été envoyé à votre email.');
+      toast.success('Compte créé ! Un code OTP de 6 chiffres sera envoyé à votre email.');
       navigateTo('auth-otp', { email: email.trim(), mode: 'verify' });
     } catch {
       toast.error(t('validation.connection_error'));

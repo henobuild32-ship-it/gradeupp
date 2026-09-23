@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
         role,
         pin: hashedPin,
         password: hashedPassword,
-        email: isAgent ? (email?.trim().toLowerCase() || null) : (email?.trim() || null),
+        email: email?.trim().toLowerCase() || null,
         gender: gender || null,
         city: city?.trim() || null,
         address: address?.trim() || null,
