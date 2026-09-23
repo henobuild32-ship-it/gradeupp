@@ -32,11 +32,14 @@ export default function AgentDepositScreen() {
     setLoading(true);
 
     try {
+      const token = useAppStore.getState().token;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const res = await fetch('/api/agent/deposit', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
-          agentId: user?.id,
           clientPhone: clientPhone.trim(),
           amount: parseFloat(amount),
           currency,
@@ -46,11 +49,17 @@ export default function AgentDepositScreen() {
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        toast.error(data.message || 'Erreur lors du dépôt');
+        if (res.status === 403 && /validé|suspendu|bloqué/i.test(data.message || '')) {
+          toast.error(data.message || 'Votre compte agent n\'est pas actif pour les dépôts');
+        } else {
+          toast.error(data.message || 'Erreur lors du dépôt');
+        }
         return;
       }
 
-      toast.success(`Dépôt de ${amount} ${currency} effectué avec succès !`);
+      toast.success(
+        data.deposit?.description || `Dépôt de ${amount} ${currency} effectué avec succès !`
+      );
       setClientPhone('');
       setAmount('');
       navigateTo('agent-dashboard');
@@ -62,7 +71,12 @@ export default function AgentDepositScreen() {
   };
 
   const quickAmounts = [5, 10, 25, 50];
-  const agentIdentifier = user?.agentNumber || user?.agentCode || 'N/A';
+  const rawCode = user?.agentCode || user?.agentNumber || '';
+  const agentIdentifier = rawCode
+    ? rawCode.startsWith('AGT-')
+      ? rawCode
+      : `AGT-${rawCode}`
+    : 'N/A';
 
   return (
     <div className="min-h-screen bg-background flex flex-col">

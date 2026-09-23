@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireUser } from '@/lib/auth';
+import { findAgentByIdentifier } from '@/lib/agents';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,37 +15,35 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Code agent requis' }, { status: 400 });
     }
 
-    const normalized = code.trim().toUpperCase().replace(/\s+/g, '');
+    const found = await findAgentByIdentifier(code);
 
-    const agent = await db.user.findFirst({
-      where: {
-        role: 'agent',
-        suspended: false,
-        validationStatus: 'validated',
-        OR: [
-          { agentCode: normalized },
-          { agentNumber: normalized },
-        ],
-      },
-      select: {
-        name: true,
-        pseudo: true,
-        businessName: true,
-        agentCode: true,
-        phone: true,
-      },
-    });
+    if (!found) {
+      return NextResponse.json({
+        success: false,
+        message: 'Agent non trouvé. Vérifiez le code ou le numéro agent.',
+      });
+    }
 
-    if (!agent) {
-      return NextResponse.json({ success: false, message: 'Agent non trouvé' });
+    if (found.suspended) {
+      return NextResponse.json({
+        success: false,
+        message: 'Cet agent est suspendu.',
+      });
+    }
+
+    if (found.validationStatus !== 'validated') {
+      return NextResponse.json({
+        success: false,
+        message: "Cet agent n'est pas encore validé. Validez-le dans Gestion Agents.",
+      });
     }
 
     return NextResponse.json({
       success: true,
       agent: {
-        name: agent.businessName || agent.name || agent.pseudo || 'Agent',
-        code: agent.agentCode,
-        phone: agent.phone,
+        name: found.businessName || found.name || found.pseudo || 'Agent',
+        code: found.agentCode || found.agentNumber,
+        phone: found.phone,
       },
     });
   } catch (error) {

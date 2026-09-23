@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
           status: 'completed',
           senderId: parentId,
           receiverId: childId,
-          description: `Recharge de la carte de ${child.name || 'enfant'}`,
+          description: `Recharge de ${amount.toFixed(2)} ${currency} sur la carte de ${child.name || 'enfant'}`,
         },
         }),
       ])

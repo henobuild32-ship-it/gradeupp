@@ -43,40 +43,72 @@ export default function WithdrawScreen() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
 
-  // -- Agent Name Resolution --
+  // -- Agent resolution: accepts AGT-code digits OR agent phone --
   const [agentName, setAgentName] = useState<string | null>(null);
   const [resolvingAgent, setResolvingAgent] = useState(false);
+  const [agentLookupError, setAgentLookupError] = useState<string | null>(null);
+  const [agentInput, setAgentInput] = useState('');
 
   useEffect(() => {
     let active = true;
-    const code = agentNumber.trim();
-    if (code.length >= 6) {
+    const raw = agentInput.trim();
+    if (raw.length >= 4) {
       setResolvingAgent(true);
-      fetch(`/api/ussd/agent-lookup?code=${encodeURIComponent(`AGT-${code}`)}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (active) {
-            if (data.success && data.agent) {
-              setAgentName(data.agent.name);
-            } else {
-              setAgentName(null);
-            }
-            setResolvingAgent(false);
-          }
-        })
-        .catch(() => {
-          if (active) {
-            setAgentName(null);
-            setResolvingAgent(false);
-          }
-        });
+      setAgentLookupError(null);
+      const digits = raw.replace(/\D/g, '');
+      const candidates = new Set<string>();
+      if (digits) {
+        candidates.add(digits);
+        if (digits.length >= 6) {
+          candidates.add(`AGT-${digits.slice(-6)}`);
+          candidates.add(`AGT-${digits}`);
+        }
+        if (digits.length >= 8) candidates.add(digits);
+      }
+      if (/^AGT-/i.test(raw)) candidates.add(raw.toUpperCase().replace(/\s+/g, ''));
+      if (raw.startsWith('+') || digits.length >= 8) candidates.add(raw);
+
+      const codes = [...candidates];
+      if (codes.length === 0) {
+        setAgentName(null);
+        setResolvingAgent(false);
+        setAgentLookupError(null);
+        return;
+      }
+
+      Promise.all(
+        codes.map((c) =>
+          fetch(`/api/ussd/agent-lookup?code=${encodeURIComponent(c)}`)
+            .then((r) => r.json())
+            .catch(() => null)
+        )
+      ).then((results) => {
+        if (!active) return;
+        const ok = results.find((d) => d && d.success && d.agent);
+        if (ok?.agent) {
+          setAgentName(ok.agent.name);
+          setAgentLookupError(null);
+        } else {
+          setAgentName(null);
+          const msg = results.find((d) => d && d.message && /non trouv|valid|suspend/i.test(d.message));
+          setAgentLookupError(msg?.message || 'Agent non trouvé. Vérifiez le code ou le numéro.');
+        }
+        setResolvingAgent(false);
+      }).catch(() => {
+        if (active) {
+          setAgentName(null);
+          setAgentLookupError('Erreur de recherche agent');
+          setResolvingAgent(false);
+        }
+      });
     } else {
       setAgentName(null);
+      setAgentLookupError(null);
     }
     return () => {
       active = false;
     };
-  }, [agentNumber]);
+  }, [agentInput]);
 
   const isFC = currency === 'FC';
   const numericAmount = parseFloat(amount) || 0;
@@ -86,14 +118,27 @@ export default function WithdrawScreen() {
     ? (user?.realBalanceFC ?? 0)
     : (user?.realBalance ?? 0);
 
+  function buildAgentCode(): string {
+    const raw = agentInput.trim();
+    const digits = raw.replace(/\D/g, '');
+    if (/^AGT-/i.test(raw)) return raw.toUpperCase().replace(/\s+/g, '');
+    if (digits.length >= 6 && digits.length <= 8) return `AGT-${digits.slice(-6)}`;
+    if (digits) return digits;
+    return raw;
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (numericAmount <= 0) {
       toast.error(t('send.amount_required'));
       return;
     }
-    if (!agentNumber) {
+    if (!agentInput.trim()) {
       toast.error(t('withdraw.agent_required'));
+      return;
+    }
+    if (!agentName) {
+      toast.error(agentLookupError || 'Agent non trouvé ou non validé. Vérifiez le code agent.');
       return;
     }
     if (total > realBalance) {
@@ -107,6 +152,8 @@ export default function WithdrawScreen() {
     if (!user?.id) return;
     setShowConfirm(false);
 
+    const agentCode = buildAgentCode();
+
     setPendingPinAction(() => async () => {
       setLoading(true);
       try {
@@ -118,7 +165,7 @@ export default function WithdrawScreen() {
             amount: numericAmount,
             currency,
             method,
-            agentCode: `AGT-${agentNumber}`,
+            agentCode,
           }),
         });
         const data = await res.json();
@@ -134,6 +181,7 @@ export default function WithdrawScreen() {
           }
           toast.success(t('withdraw.success'));
           setAmount('');
+          setAgentInput('');
           setAgentNumber('');
           navigateTo('home');
         } else {
@@ -222,27 +270,32 @@ export default function WithdrawScreen() {
               </div>
             </div>
 
-            {/* Agent Code (required) */}
+            {/* Agent Code / Phone (required) */}
             <div className="space-y-2">
               <Label htmlFor="agentCode" className="text-sm font-medium">
-                Code agent <span className="text-red-500">*</span>
+                Code agent ou numéro agent <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="agentCode"
                 type="text"
-                placeholder="Numéro de l'agent (ex: 202601)"
-                value={agentNumber}
-                onChange={(e) => setAgentNumber(e.target.value.replace(/\D/g, '').slice(0, 15))}
-                inputMode="numeric"
-                className="h-11 font-mono pl-14"
+                placeholder="AGT-123456 ou +228 90 00 00 00"
+                value={agentInput}
+                onChange={(e) => {
+                  setAgentInput(e.target.value.slice(0, 20));
+                  setAgentNumber(e.target.value.replace(/\D/g, '').slice(0, 15));
+                }}
+                className="h-11 font-mono"
               />
-              <span className="absolute mt-[-34px] ml-3 text-sm font-mono font-bold text-muted-foreground pointer-events-none">AGT-</span>
               {resolvingAgent ? (
                 <p className="text-xs text-blue-500 animate-pulse">Recherche de l&apos;agent...</p>
               ) : agentName ? (
                 <p className="text-sm text-emerald-600 font-medium">✅ {agentName}</p>
+              ) : agentLookupError ? (
+                <p className="text-xs text-red-500">{agentLookupError}</p>
               ) : (
-                <p className="text-xs text-muted-foreground">Entrez le numéro de l&apos;agent — le préfixe AGT- s&apos;ajoute automatiquement</p>
+                <p className="text-xs text-muted-foreground">
+                  Entrez le code agent (AGT-XXXXXX) ou le numéro de téléphone de l&apos;agent
+                </p>
               )}
             </div>
 
@@ -273,7 +326,7 @@ export default function WithdrawScreen() {
             <Button
               className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-base cursor-pointer"
               onClick={handleSubmit}
-              disabled={loading || !agentNumber || !agentName || (numericAmount > 0 && total > realBalance)}
+              disabled={loading || !agentInput.trim() || !agentName || (numericAmount > 0 && total > realBalance)}
             >
               {loading ? (
                 <span className="flex items-center gap-2">
@@ -300,7 +353,7 @@ export default function WithdrawScreen() {
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Code agent</span>
-              <span className="font-medium font-mono">AGT-{agentNumber}</span>
+              <span className="font-medium font-mono">{buildAgentCode()}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Frais</span>

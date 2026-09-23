@@ -98,14 +98,15 @@ export default function AgentActivityScreen() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-semibold text-foreground">
-                          {item.type === 'deposit' ? 'Depot' : 'Retrait'}
+                          {item.type === 'deposit' ? 'Dépôt client' : 'Retrait client'}
                         </p>
                         <Badge variant={item.status === 'completed' ? 'default' : 'secondary'} className="text-[10px]">
-                          {item.status === 'completed' ? 'Effectue' : item.status}
+                          {item.status === 'completed' ? 'Terminé' : item.status === 'pending' ? 'En attente' : item.status === 'failed' ? 'Échoué' : item.status}
                         </Badge>
                       </div>
                       <p className="text-xs text-muted-foreground truncate">
                         {item.clientName || item.clientPhone || 'Client'}
+                        {item.type === 'deposit' ? ' — dépôt via agent' : ' — retrait via agent'}
                       </p>
                     </div>
                     <div className="text-right shrink-0">

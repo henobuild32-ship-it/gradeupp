@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
 
     const agent = await db.user.findUnique({
       where: { id: auth.userId },
-      select: { role: true },
+      select: { role: true, validationStatus: true, suspended: true },
     })
 
     if (!agent || agent.role !== 'agent') {
@@ -19,7 +19,14 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const withdrawals = await db.withdrawal.findMany({
+    if (agent.suspended || agent.validationStatus !== 'validated') {
+      return NextResponse.json(
+        { success: false, message: 'Votre compte agent n\'est pas actif' },
+        { status: 403 }
+      )
+    }
+
+    const deposits = await db.deposit.findMany({
       where: { status: 'pending', agentId: auth.userId },
       include: {
         user: { select: { name: true, pseudo: true, phone: true } },
@@ -27,26 +34,23 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'asc' },
     })
 
-    const formatted = withdrawals.map((w) => ({
-      id: w.id,
-      userId: w.userId,
-      userName: w.user?.name || null,
-      userPseudo: w.user?.pseudo || null,
-      userPhone: w.user?.phone || '',
-      amount: w.amount,
-      fee: w.fee,
-      currency: w.currency,
-      method: w.method,
-      status: w.status,
-      createdAt: w.createdAt,
-    }))
-
     return NextResponse.json({
       success: true,
-      withdrawals: formatted,
+      deposits: deposits.map((d) => ({
+        id: d.id,
+        userId: d.userId,
+        userName: d.user?.name || null,
+        userPseudo: d.user?.pseudo || null,
+        userPhone: d.user?.phone || '',
+        amount: d.amount,
+        currency: d.currency,
+        method: d.method,
+        status: d.status,
+        createdAt: d.createdAt,
+      })),
     })
   } catch (error) {
-    console.error('Pending withdrawals error:', error)
+    console.error('Pending deposits error:', error)
     return NextResponse.json(
       { success: false, message: 'Erreur interne du serveur' },
       { status: 500 }

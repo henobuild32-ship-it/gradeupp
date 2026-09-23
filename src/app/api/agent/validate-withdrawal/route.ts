@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { logSecurityEvent } from '@/lib/security'
 import { requireUser } from '@/lib/auth'
+import { formatAmount } from '@/lib/tx-labels'
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,11 +22,42 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Find the withdrawal
+    const authAgent = await db.user.findUnique({
+      where: { id: auth.userId },
+      select: {
+        id: true,
+        role: true,
+        validationStatus: true,
+        suspended: true,
+        tempBlocked: true,
+      },
+    })
+
+    if (!authAgent || authAgent.role !== 'agent') {
+      return NextResponse.json(
+        { success: false, message: 'Accès réservé aux agents' },
+        { status: 403 }
+      )
+    }
+
+    if (authAgent.validationStatus !== 'validated') {
+      return NextResponse.json(
+        { success: false, message: 'Votre compte agent n\'est pas encore validé' },
+        { status: 403 }
+      )
+    }
+
+    if (authAgent.suspended || authAgent.tempBlocked) {
+      return NextResponse.json(
+        { success: false, message: 'Votre compte agent est suspendu ou bloqué' },
+        { status: 403 }
+      )
+    }
+
     const withdrawal = await db.withdrawal.findUnique({
       where: { id: withdrawalId },
       include: {
-        user: { select: { id: true, name: true, phone: true, realBalance: true, realBalanceFC: true } },
+        user: { select: { id: true, name: true, pseudo: true, phone: true, realBalance: true, realBalanceFC: true } },
         agent: { select: { id: true, name: true, pseudo: true, agentCode: true, agentNumber: true } },
       },
     })
@@ -51,9 +83,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const amountLabel = formatAmount(withdrawal.amount, withdrawal.currency)
+    const clientLabel = withdrawal.user?.name || withdrawal.user?.pseudo || withdrawal.user?.phone || 'le client'
+
     if (action === 'validate') {
-      // Credit the agent only after validation
-      const isFC = withdrawal.currency === 'FC';
+      const isFC = withdrawal.currency === 'FC'
       const [updated] = await db.$transaction([
         db.withdrawal.update({
           where: { id: withdrawalId },
@@ -74,34 +108,31 @@ export async function POST(request: NextRequest) {
           },
           data: { status: 'completed' },
         }),
-      ]);
+      ])
 
-      // Log agent validation
       if (withdrawal.agent) {
         await logSecurityEvent({
           userId: withdrawal.agent.id,
           action: 'agent_validate_withdrawal',
-          details: `L'agent ${withdrawal.agent.name || withdrawal.agent.pseudo || 'N/A'} (${withdrawal.agent.agentCode || withdrawal.agent.agentNumber || 'N/A'}) a VALIDE le retrait de ${withdrawal.amount.toFixed(2)} ${withdrawal.currency} pour le client ${withdrawal.user.phone}`,
+          details: `L'agent ${withdrawal.agent.name || withdrawal.agent.pseudo || 'N/A'} (${withdrawal.agent.agentCode || withdrawal.agent.agentNumber || 'N/A'}) a validé le retrait de ${amountLabel} pour ${clientLabel}`,
           riskLevel: 'low',
         })
       }
 
-      // Create notification for client
       await db.notification.create({
         data: {
           userId: withdrawal.userId,
           title: 'Retrait validé',
-          message: `Votre retrait de ${withdrawal.currency === 'FC' ? '' : '$'}${withdrawal.amount.toFixed(2)} ${withdrawal.currency} a été validé. Montant net: ${withdrawal.currency === 'FC' ? '' : '$'}${(withdrawal.amount - withdrawal.fee).toFixed(2)} ${withdrawal.currency}.`,
+          message: `Votre retrait de ${amountLabel} a été validé. Montant net: ${formatAmount(withdrawal.amount - withdrawal.fee, withdrawal.currency)}.`,
           type: 'withdrawal_validated',
         },
       })
 
-      // Send push notification
       try {
         const { sendPushToUser } = await import('@/lib/push');
         await sendPushToUser(withdrawal.userId, {
           title: 'Retrait validé',
-          body: `Votre retrait de ${withdrawal.amount.toFixed(2)} ${withdrawal.currency} a été validé par l'agent.`,
+          body: `Votre retrait de ${amountLabel} a été validé par l'agent.`,
           url: '/history',
         });
       } catch (err) {
@@ -119,7 +150,6 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'refuse') {
-      // Refund the client: add back amount + fee
       await db.withdrawal.update({
         where: { id: withdrawalId },
         data: { status: 'failed' },
@@ -135,8 +165,7 @@ export async function POST(request: NextRequest) {
         data: { status: 'failed' },
       })
 
-      // Refund the client's balance based on currency
-      const isFC = withdrawal.currency === 'FC';
+      const isFC = withdrawal.currency === 'FC'
       await db.user.update({
         where: { id: withdrawal.userId },
         data: isFC
@@ -144,32 +173,29 @@ export async function POST(request: NextRequest) {
           : { realBalance: { increment: withdrawal.amount + withdrawal.fee } },
       })
 
-      // Log agent refusal
       if (withdrawal.agent) {
         await logSecurityEvent({
           userId: withdrawal.agent.id,
           action: 'agent_refuse_withdrawal',
-          details: `L'agent ${withdrawal.agent.name || withdrawal.agent.pseudo || 'N/A'} (${withdrawal.agent.agentCode || withdrawal.agent.agentNumber || 'N/A'}) a REFUSE le retrait de ${withdrawal.amount.toFixed(2)} ${withdrawal.currency} pour le client ${withdrawal.user.phone}`,
+          details: `L'agent ${withdrawal.agent.name || withdrawal.agent.pseudo || 'N/A'} a refusé le retrait de ${amountLabel} pour ${clientLabel}`,
           riskLevel: 'low',
         })
       }
 
-      // Create notification for client
       await db.notification.create({
         data: {
           userId: withdrawal.userId,
           title: 'Retrait refusé',
-          message: `Votre retrait de ${withdrawal.currency === 'FC' ? '' : '$'}${withdrawal.amount.toFixed(2)} ${withdrawal.currency} a été refusé. Le montant a été remboursé sur votre solde.`,
+          message: `Votre retrait de ${amountLabel} a été refusé. Le montant a été remboursé sur votre solde.`,
           type: 'general',
         },
       })
 
-      // Send push notification
       try {
         const { sendPushToUser } = await import('@/lib/push');
         await sendPushToUser(withdrawal.userId, {
           title: 'Retrait refusé',
-          body: `Votre retrait de ${withdrawal.amount.toFixed(2)} ${withdrawal.currency} a été refusé par l'agent.`,
+          body: `Votre retrait de ${amountLabel} a été refusé par l'agent.`,
           url: '/history',
         });
       } catch (err) {

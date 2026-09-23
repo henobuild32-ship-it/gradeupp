@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { checkChildBalanceLimit, logSecurityEvent } from '@/lib/security'
 import { requireUser } from '@/lib/auth'
 import { updateBalanceAndNotify } from '@/lib/notifications'
+import { formatAmount } from '@/lib/tx-labels'
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,12 +19,14 @@ export async function POST(request: NextRequest) {
 
     const agentId = auth.userId
 
-    if (!clientPhone || !amount || amount <= 0) {
+    if (!clientPhone || typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) {
       return NextResponse.json(
         { success: false, message: 'Paramètres manquants ou invalides' },
         { status: 400 }
       )
     }
+
+    const cur = currency === 'FC' ? 'FC' : 'USD'
 
     const agent = await db.user.findUnique({
       where: { id: agentId },
@@ -50,6 +53,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (agent.tempBlocked) {
+      return NextResponse.json(
+        { success: false, message: 'Votre compte agent est temporairement bloqué' },
+        { status: 403 }
+      )
+    }
+
     const client = await db.user.findUnique({
       where: { phone: clientPhone.trim() },
     })
@@ -61,7 +71,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const limitCheck = await checkChildBalanceLimit(client.id, amount, currency || 'USD')
+    if (client.suspended || client.tempBlocked) {
+      return NextResponse.json(
+        { success: false, message: 'Ce compte client est suspendu ou bloqué' },
+        { status: 403 }
+      )
+    }
+
+    const limitCheck = await checkChildBalanceLimit(client.id, amount, cur)
     if (!limitCheck.allowed) {
       return NextResponse.json(
         { success: false, message: limitCheck.message },
@@ -76,60 +93,89 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const isFC = (currency || 'USD') === 'FC';
+    const isFC = cur === 'FC'
+    const amountLabel = formatAmount(amount, cur)
+    const agentLabel = agent.agentCode || agent.agentNumber || agent.name || agent.pseudo || 'agent'
+    const clientLabel = client.name || client.pseudo || client.phone
+    const description = `Dépôt de ${amountLabel} via agent ${agentLabel} pour ${clientLabel}`
 
-    // Verify agent has enough balance
-    const agentBalance = isFC ? agent.realBalanceFC : agent.realBalance;
-    if (agentBalance < amount) {
+    const deposit = await db.$transaction(async (tx) => {
+      const debit = await tx.user.updateMany({
+        where: {
+          id: agent.id,
+          ...(isFC ? { realBalanceFC: { gte: amount } } : { realBalance: { gte: amount } }),
+        },
+        data: isFC
+          ? { realBalanceFC: { decrement: amount } }
+          : { realBalance: { decrement: amount } },
+      })
+      if (debit.count !== 1) throw new Error('AGENT_INSUFFICIENT_BALANCE')
+
+      const created = await tx.deposit.create({
+        data: {
+          userId: client.id,
+          amount,
+          currency: cur,
+          method: 'agent',
+          status: 'completed',
+          agentId: agent.id,
+        },
+      })
+
+      await tx.user.update({
+        where: { id: client.id },
+        data: isFC
+          ? { realBalanceFC: { increment: amount } }
+          : { realBalance: { increment: amount } },
+      })
+
+      await tx.transaction.create({
+        data: {
+          type: 'deposit',
+          amount,
+          fee: 0,
+          currency: cur,
+          status: 'completed',
+          senderId: agent.id,
+          receiverId: client.id,
+          agentId: agent.id,
+          description,
+        },
+      })
+
+      await tx.notification.create({
+        data: {
+          userId: client.id,
+          title: 'Dépôt reçu',
+          message: `Un dépôt de ${amountLabel} a été effectué par l'agent ${agentLabel}.`,
+          type: 'general',
+        },
+      })
+
+      await tx.notification.create({
+        data: {
+          userId: agentId,
+          title: 'Dépôt effectué',
+          message: `Dépôt de ${amountLabel} effectué pour le client ${client.phone}.`,
+          type: 'general',
+        },
+      })
+
+      return created
+    }).catch((err: unknown) => {
+      if (err instanceof Error && err.message === 'AGENT_INSUFFICIENT_BALANCE') {
+        return null
+      }
+      throw err
+    })
+
+    if (!deposit) {
       return NextResponse.json(
         { success: false, message: 'Solde insuffisant pour effectuer ce dépôt' },
         { status: 400 }
       )
     }
 
-    // Atomic: create deposit, update client balance, DECREMENT agent balance, create notifications for both parties
-    await db.$transaction([
-      db.deposit.create({
-        data: {
-          userId: client.id,
-          amount,
-          currency: currency || 'USD',
-          method: 'agent',
-          status: 'completed',
-          agentId: agent.id,
-        },
-      }),
-      db.user.update({
-        where: { id: client.id },
-        data: isFC
-          ? { realBalanceFC: { increment: amount } }
-          : { realBalance: { increment: amount } },
-      }),
-      db.user.update({
-        where: { id: agent.id },
-        data: isFC
-          ? { realBalanceFC: { decrement: amount } }
-          : { realBalance: { decrement: amount } },
-      }),
-      db.notification.create({
-        data: {
-          userId: client.id,
-          title: 'Dépôt reçu',
-          message: `Un dépôt de ${isFC ? amount.toLocaleString('fr-FR') : '$' + amount.toFixed(2)} ${currency || 'USD'} a été effectué par l'agent ${agent.name || agent.pseudo || agent.agentCode || 'N/A'} via ${agent.phone}.`,
-          type: 'general',
-        },
-      }),
-      db.notification.create({
-        data: {
-          userId: agentId,
-          title: 'Dépôt effectué',
-          message: `Dépôt de ${isFC ? amount.toLocaleString('fr-FR') : '$' + amount.toFixed(2)} ${currency || 'USD'} effectué pour le client ${client.phone}.`,
-          type: 'general',
-        },
-      }),
-    ]);
-
-    // Real-time balance update via WebSocket for both agent and client
     const updatedClient = await db.user.findUnique({
       where: { id: client.id },
       select: { realBalance: true, realBalanceFC: true },
@@ -142,35 +188,34 @@ export async function POST(request: NextRequest) {
     })
     updateBalanceAndNotify(agentId, updatedAgent?.realBalance, updatedAgent?.realBalanceFC).catch(() => {})
 
-    // Push notifications for both parties
     const { sendPushToUser } = await import('@/lib/push').catch(() => ({ sendPushToUser: null }))
     if (sendPushToUser) {
-      const amountStr = isFC ? amount.toLocaleString('fr-FR') : '$' + amount.toFixed(2)
       sendPushToUser(client.id, {
         title: 'Dépôt reçu',
-        body: `Dépôt de ${amountStr} ${currency || 'USD'} reçu via l'agent ${agent.name || agent.pseudo || 'N/A'}.`,
+        body: `Dépôt de ${amountLabel} reçu via l'agent ${agent.name || agent.pseudo || 'TRAIT'}.`,
       }).catch(() => {})
       sendPushToUser(agentId, {
         title: 'Dépôt effectué',
-        body: `Dépôt de ${amountStr} ${currency || 'USD'} effectué pour le client ${client.name || client.pseudo || client.phone}.`,
+        body: `Dépôt de ${amountLabel} effectué pour le client ${clientLabel}.`,
       }).catch(() => {})
     }
 
     await logSecurityEvent({
       userId: agent.id,
       action: 'agent_deposit',
-      details: `L'agent ${agent.name || agent.pseudo || 'N/A'} (${agent.agentCode || agent.agentNumber || 'N/A'}) a effectué un dépôt de ${amount} ${currency || 'USD'} pour le client ${client.phone} (ID: ${client.id})`,
+      details: description,
       riskLevel: 'low',
     })
 
     return NextResponse.json({
       success: true,
       deposit: {
-        id: 'created',
+        id: deposit.id,
         amount,
-        currency: currency || 'USD',
+        currency: cur,
         status: 'completed',
-        createdAt: new Date().toISOString(),
+        description,
+        createdAt: deposit.createdAt,
       },
     })
   } catch (error) {

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { findActiveAgentByIdentifier } from '@/lib/agents';
+import { findAgentByIdentifier, findActiveAgentByIdentifier } from '@/lib/agents';
 import { requireUser } from '@/lib/auth';
 import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { safeDeductWithFee } from '@/lib/balance';
+import { formatAmount } from '@/lib/tx-labels';
 
 function round2(n: number) {
   return Math.round(n * 100) / 100;
@@ -50,9 +51,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const [user, agent] = await Promise.all([
+    const [user, agent, foundAgent] = await Promise.all([
       db.user.findUnique({ where: { id: userId } }),
       findActiveAgentByIdentifier(agentCode.trim()),
+      findAgentByIdentifier(agentCode.trim()),
     ]);
 
     if (!user) {
@@ -71,8 +73,23 @@ export async function POST(request: NextRequest) {
     }
 
     if (!agent) {
+      if (foundAgent?.suspended) {
+        return NextResponse.json(
+          { success: false, message: 'Cet agent est suspendu. Choisissez un autre agent.' },
+          { status: 403 },
+        );
+      }
+      if (foundAgent && foundAgent.validationStatus !== 'validated') {
+        return NextResponse.json(
+          { success: false, message: "Cet agent n'est pas encore validé. Choisissez un agent validé." },
+          { status: 403 },
+        );
+      }
       return NextResponse.json(
-        { success: false, message: 'Agent non trouvé. Vérifiez le code ou numéro agent.' },
+        {
+          success: false,
+          message: 'Agent non trouvé. Vérifiez le code agent (ex: AGT-123456) ou le numéro de téléphone de l\'agent.',
+        },
         { status: 404 },
       );
     }
@@ -162,14 +179,14 @@ export async function POST(request: NextRequest) {
           senderId: userId,
           receiverId: agent.id,
           agentId: agent.id,
-          description: `Retrait via agent ${agent.agentNumber || agent.agentCode}`,
+          description: `Retrait de ${formatAmount(amount, cur)} via agent ${agent.agentCode || agent.agentNumber || agent.name || 'TRAIT'}`,
         },
       }),
       db.notification.create({
         data: {
           userId,
           title: 'Retrait en cours de validation',
-          message: `Votre retrait de ${amount.toFixed(2)} ${cur} (frais : ${fee.toFixed(2)} ${cur}) via l'agent ${agent.agentNumber || agent.agentCode} a été soumis et est en attente de validation par l'agent.`,
+          message: `Votre retrait de ${formatAmount(amount, cur)} (frais : ${formatAmount(fee, cur)}) via l'agent ${agent.agentCode || agent.agentNumber || agent.name || 'TRAIT'} a été soumis et est en attente de validation par l'agent.`,
           type: 'withdrawal_validated',
         },
       }),
@@ -181,7 +198,7 @@ export async function POST(request: NextRequest) {
       data: {
         userId: agent.id,
         title: 'Nouveau retrait à valider',
-        message: `Le client ${user.name || user.pseudo || user.phone} demande un retrait de ${amount.toFixed(2)} ${cur}. Code: ${agentCodeDisplay}`,
+        message: `Le client ${user.name || user.pseudo || user.phone} demande un retrait de ${formatAmount(amount, cur)}. Code: ${agentCodeDisplay}`,
         type: 'general',
       },
     }).catch(() => {})
@@ -191,7 +208,7 @@ export async function POST(request: NextRequest) {
     if (sendPushToUser) {
       sendPushToUser(agent.id, {
         title: 'Nouveau retrait à valider',
-        body: `${user.name || user.pseudo || user.phone} demande ${amount.toFixed(2)} ${cur}. Validez dans l'app.`,
+        body: `${user.name || user.pseudo || user.phone} demande ${formatAmount(amount, cur)}. Validez dans l'app.`,
         url: '/agent-withdraw-validate',
       }).catch(() => {})
     }

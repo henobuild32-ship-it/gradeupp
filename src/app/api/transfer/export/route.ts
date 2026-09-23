@@ -26,17 +26,27 @@ export async function GET(request: NextRequest) {
     })
 
     const csvHeader = 'Date,Type,Montant,Devise,Frais,Statut,Description,Expéditeur,Bénéficiaire\n'
+    const typeLabels: Record<string, string> = {
+      transfer: 'Transfert',
+      send: 'Envoi',
+      receive: 'Réception',
+      qr_payment: 'Paiement QR',
+      withdrawal: 'Retrait',
+      deposit: 'Dépôt',
+      international_transfer: 'Transfert International',
+      barter: 'Barter',
+      card_payment: 'Paiement Carte',
+      child_recharge: 'Recharge carte enfant',
+    }
+    const statusLabels: Record<string, string> = {
+      completed: 'Terminé',
+      pending: 'En attente',
+      failed: 'Échoué',
+    }
     const csvRows = transactions.map((t) => {
       const date = new Date(t.createdAt).toLocaleDateString('fr-FR')
-      const typeLabel = {
-        transfer: 'Transfert',
-        qr_payment: 'Paiement QR',
-        withdrawal: 'Retrait',
-        deposit: 'Dépôt',
-        international_transfer: 'Transfert International',
-        barter: 'Barter',
-        card_payment: 'Paiement Carte',
-      }[t.type] || t.type
+      const typeLabel = typeLabels[t.type] || t.type
+      const statusLabel = statusLabels[t.status] || t.status
 
       return [
         date,
@@ -44,7 +54,7 @@ export async function GET(request: NextRequest) {
         t.amount.toFixed(2),
         t.currency,
         t.fee.toFixed(2),
-        t.status,
+        statusLabel,
         `"${(t.description || '').replace(/"/g, '""')}"`,
         t.sender?.name || t.sender?.phone || '',
         t.receiver?.name || t.receiver?.phone || '',

@@ -320,10 +320,19 @@ export default function HistoryScreen() {
 
               <div className="space-y-0 bg-gray-50 rounded-2xl overflow-hidden mb-6">
                 {[
-                  { label: 'Type', value: selectedTx.type.charAt(0).toUpperCase() + selectedTx.type.slice(1) },
+                  {
+                    label: 'Type',
+                    value: ({
+                      send: 'Envoi',
+                      receive: 'Réception',
+                      deposit: 'Dépôt',
+                      withdrawal: 'Retrait',
+                    } as Record<string, string>)[selectedTx.type] ||
+                      selectedTx.type.charAt(0).toUpperCase() + selectedTx.type.slice(1),
+                  },
                   { label: 'Montant', value: fmtCur(selectedTx.amount, selectedTx.currency) },
                   ...(selectedTx.fee > 0 ? [{ label: 'Frais', value: fmtCur(selectedTx.fee, selectedTx.currency) }] : []),
-                  { label: 'Devise', value: selectedTx.currency },
+                  { label: 'Devise', value: selectedTx.currency === 'FC' ? 'Franc congolais (FC)' : 'Dollar US (USD)' },
                   { label: 'Statut', value: getStatusBadge(selectedTx.status) },
                   { label: 'Date', value: formatDate(selectedTx.createdAt) },
                   { label: 'Description', value: selectedTx.description },

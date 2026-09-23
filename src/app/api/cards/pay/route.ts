@@ -126,7 +126,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const paymentDesc = description || `Paiement par carte ${card.cardNumber}${isChild ? ` (Commission Enfant: ${fee} ${currency})` : ''}`;
+    const last4 = String(card.cardNumber).slice(-4)
+    const paymentDesc = description || `Paiement par carte TRAIT - ****${last4}${isChild ? ` (Commission Enfant: ${fee} ${currency})` : ''}`;
 
     // Create records
     const [cardPayment] = await db.$transaction([

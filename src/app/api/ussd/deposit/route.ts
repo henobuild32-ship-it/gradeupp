@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireUser } from '@/lib/auth';
-import { findActiveAgentByIdentifier } from '@/lib/agents';
+import { findAgentByIdentifier, findActiveAgentByIdentifier } from '@/lib/agents';
 import { checkChildBalanceLimit, logSecurityEvent } from '@/lib/security';
 
 export async function POST(request: NextRequest) {
@@ -30,7 +30,14 @@ export async function POST(request: NextRequest) {
 
     const agent = await findActiveAgentByIdentifier(agentCode);
     if (!agent) {
-      return NextResponse.json({ success: false, message: 'Agent non trouvé. Vérifiez le code agent.' }, { status: 404 });
+      const found = await findAgentByIdentifier(agentCode);
+      if (found?.suspended) {
+        return NextResponse.json({ success: false, message: 'Cet agent est suspendu.' }, { status: 403 });
+      }
+      if (found && found.validationStatus !== 'validated') {
+        return NextResponse.json({ success: false, message: "Cet agent n'est pas encore validé." }, { status: 403 });
+      }
+      return NextResponse.json({ success: false, message: 'Agent non trouvé. Vérifiez le code agent (ex: AGT-123456).' }, { status: 404 });
     }
 
     const isFC = currency === 'FC';
@@ -73,7 +80,7 @@ export async function POST(request: NextRequest) {
           senderId: agent.id,
           receiverId: userId,
           agentId: agent.id,
-          description: `Dépôt de ${amount.toFixed(2)} ${currency} via agent ${agent.agentCode}`,
+          description: `Dépôt de ${amount.toFixed(2)} ${currency || 'USD'} via agent ${agent.agentCode || agent.agentNumber || agent.name || 'TRAIT'}`,
         },
       });
       await tx.notification.create({

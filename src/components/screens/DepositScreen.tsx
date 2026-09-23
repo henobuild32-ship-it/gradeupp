@@ -48,6 +48,9 @@ export default function DepositScreen() {
   const [cardCvv, setCardCvv] = useState('')
   const [cardHolder, setCardHolder] = useState('')
   const [agentNumber, setAgentNumber] = useState('')
+  const [pendingAgent, setPendingAgent] = useState(false)
+  const [pendingAgentCode, setPendingAgentCode] = useState('')
+  const [pendingMessage, setPendingMessage] = useState('')
 
   const numericAmount = parseFloat(amount) || 0
   const isFC = currency === 'FC'
@@ -61,7 +64,7 @@ export default function DepositScreen() {
       case 'card':
         return cardNumber.length >= 16 && cardExpiry.length >= 4 && cardCvv.length >= 3 && cardHolder && numericAmount > 0
       case 'agent':
-        return agentNumber.length >= 6 && numericAmount > 0
+        return agentNumber.trim().length >= 6 && numericAmount > 0
       default:
         return false
     }
@@ -90,17 +93,34 @@ export default function DepositScreen() {
         body.cardCvv = cardCvv
         body.cardHolder = cardHolder
       } else if (selectedMethod === 'agent') {
-        body.agentNumber = `AGT-${agentNumber}`
+        const raw = agentNumber.trim()
+        const digits = raw.replace(/\D/g, '')
+        const code = /^AGT-/i.test(raw)
+          ? raw.toUpperCase().replace(/\s+/g, '')
+          : digits
+            ? `AGT-${digits.slice(-6)}`
+            : raw
+        body.agentNumber = code
+        body.agentCode = code
       }
+
+      const token = useAppStore.getState().token
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (token) headers['Authorization'] = `Bearer ${token}`
 
       const res = await fetch('/api/transfer/deposit', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(body),
       })
       const data = await res.json()
 
       if (data.success) {
+        if (data.pending) {
+          setPendingAgent(true)
+          setPendingAgentCode(data.deposit?.agentCode || `AGT-${agentNumber}`)
+          setPendingMessage(data.message || 'Demande envoyée à l\'agent. En attente de validation.')
+        }
         if (data.updatedBalances) {
           setUser({
             ...user!,
@@ -111,7 +131,8 @@ export default function DepositScreen() {
           })
         }
         setStep('success')
-        toast.success(t('deposit.success'))
+        if (!data.pending) toast.success(t('deposit.success'))
+        else toast.info(data.message || 'Dépôt en attente de validation par l\'agent')
       } else {
         toast.error(data.message || t('deposit.error'))
       }
@@ -133,6 +154,9 @@ export default function DepositScreen() {
     setCardCvv('')
     setCardHolder('')
     setAgentNumber('')
+    setPendingAgent(false)
+    setPendingAgentCode('')
+    setPendingMessage('')
     setStep('form')
   }
 
@@ -146,8 +170,6 @@ export default function DepositScreen() {
     if (digits.length > 2) return digits.slice(0, 2) + '/' + digits.slice(2)
     return digits
   }
-
-  const agentInfoMessage = `Déposez l'argent auprès de l'agent Trait au numéro: ${agentNumber || '...'}. Montant: ${fmtCur(numericAmount, currency)}`
 
   return (
     <div className="min-h-screen bg-background">
@@ -169,13 +191,24 @@ export default function DepositScreen() {
             <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <Check className="w-10 h-10 text-green-600" />
             </div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">{t('deposit.success_title')}</h2>
+            <h2 className="text-2xl font-bold text-foreground mb-2">
+              {pendingAgent ? 'Dépôt en attente' : t('deposit.success_title')}
+            </h2>
             <p className="text-4xl font-bold text-[#0D5C63] mb-2">{fmtCur(numericAmount, currency)}</p>
-            <p className="text-sm text-muted-foreground mb-8">
+            <p className="text-sm text-muted-foreground mb-4">
               {selectedMethod === 'mobile_money' ? `Via ${mobileOperator} (${mobilePhone})` :
                selectedMethod === 'bank_transfer' ? `Virement ${bankName}` :
-               selectedMethod === 'card' ? 'Carte bancaire' : `Agent AGT-${agentNumber}`}
+               selectedMethod === 'card' ? 'Carte bancaire' : `Agent ${pendingAgentCode || `AGT-${agentNumber}`}`}
             </p>
+            {pendingAgent && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 text-left">
+                <p className="text-sm font-semibold text-amber-800 mb-1">En attente de validation</p>
+                <p className="text-xs text-amber-700">{pendingMessage}</p>
+                <p className="text-xs text-amber-700 mt-2">
+                  L&apos;agent doit valider dans « Valider opérations » pour créditer votre compte.
+                </p>
+              </div>
+            )}
             <Button
               onClick={() => { resetForm(); navigateTo('home') }}
               className="h-12 px-8 bg-[#0D5C63] hover:bg-[#083A3E] text-white rounded-xl font-semibold"
@@ -435,20 +468,21 @@ export default function DepositScreen() {
                 {selectedMethod === 'agent' && (
                   <div className="space-y-4 pt-2 border-t border-gray-100">
                     <div>
-                      <label className="text-sm font-medium text-foreground block mb-1.5">Numéro de l&apos;agent Trait</label>
+                      <label className="text-sm font-medium text-foreground block mb-1.5">Code agent Trait</label>
                       <input
-                        type="tel"
-                        placeholder="Numéro de l'agent"
+                        type="text"
+                        placeholder="AGT-123456"
                         value={agentNumber}
-                        onChange={(e) => setAgentNumber(e.target.value.replace(/\D/g, '').slice(0, 15))}
-                        inputMode="numeric"
-                        className="w-full h-12 pl-14 pr-4 bg-muted/30 border-2 border-gray-200 rounded-xl focus:border-[#0D5C63] outline-none text-base font-mono"
+                        onChange={(e) => setAgentNumber(e.target.value.slice(0, 20))}
+                        className="w-full h-12 px-4 bg-muted/30 border-2 border-gray-200 rounded-xl focus:border-[#0D5C63] outline-none text-base font-mono uppercase"
                       />
-                      <span className="absolute mt-[-34px] ml-4 text-sm font-mono font-bold text-muted-foreground pointer-events-none">AGT-</span>
+                      <p className="text-xs text-muted-foreground mt-1.5">
+                        Le dépôt sera en attente tant que l&apos;agent n&apos;a pas validé la réception des fonds.
+                      </p>
                     </div>
                     <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
                       <p className="text-xs text-amber-800">
-                        Rendez-vous chez l&apos;agent Trait avec votre numéro de téléphone. L&apos;agent effectuera le dépôt sur votre compte TRAIT.
+                        Rendez-vous chez l&apos;agent Trait, donnez l&apos;argent liquide, puis entrez son code. L&apos;agent validera le crédit sur votre compte TRAIT.
                       </p>
                     </div>
                   </div>

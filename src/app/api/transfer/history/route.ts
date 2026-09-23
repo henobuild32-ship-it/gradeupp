@@ -48,8 +48,13 @@ export async function GET(request: NextRequest) {
 
     const cursorFilter = cursor ? { createdAt: { lt: new Date(cursor) } } : {}
 
+    // Transferts uniquement — dépôts/retraits viennent des tables dédiées (pas de doublon)
     const sentTransactions = await db.transaction.findMany({
-      where: { senderId: userId, ...cursorFilter },
+      where: {
+        senderId: userId,
+        type: { notIn: ['deposit', 'withdrawal'] },
+        ...cursorFilter,
+      },
       include: { sender: userInclude, receiver: userInclude },
       orderBy,
       take,
@@ -57,7 +62,11 @@ export async function GET(request: NextRequest) {
     })
 
     const receivedTransactions = await db.transaction.findMany({
-      where: { receiverId: userId, ...cursorFilter },
+      where: {
+        receiverId: userId,
+        type: { notIn: ['deposit', 'withdrawal'] },
+        ...cursorFilter,
+      },
       include: { sender: userInclude, receiver: userInclude },
       orderBy,
       take,
@@ -66,6 +75,9 @@ export async function GET(request: NextRequest) {
 
     const deposits = await db.deposit.findMany({
       where: { userId, ...cursorFilter },
+      include: {
+        agent: { select: { id: true, agentCode: true, agentNumber: true, name: true, pseudo: true } },
+      },
       orderBy,
       take,
       skip,
@@ -73,32 +85,58 @@ export async function GET(request: NextRequest) {
 
     const withdrawals = await db.withdrawal.findMany({
       where: { userId, ...cursorFilter },
+      include: {
+        agent: { select: { id: true, agentCode: true, agentNumber: true, name: true, pseudo: true } },
+      },
       orderBy,
       take,
       skip,
     })
 
+    const { depositMethodLabel, withdrawalMethodLabel, formatAmount } = await import('@/lib/tx-labels')
+
+    const agentLabel = (agent: { agentCode: string | null; agentNumber: string | null; name: string | null; pseudo: string | null } | null | undefined) => {
+      if (!agent) return null
+      return agent.agentCode || agent.agentNumber || agent.name || agent.pseudo || null
+    }
+
     const sentItems: HistoryItem[] = sentTransactions.map((t) => ({
       id: t.id, type: 'send', amount: t.amount, fee: t.fee, currency: t.currency,
-      status: t.status, description: t.description || `Envoi de ${t.amount.toFixed(2)} ${t.currency} à ${t.receiver?.phone || 'inconnu'}`,
+      status: t.status,
+      description: t.description || `Transfert de ${formatAmount(t.amount, t.currency)} vers ${t.receiver?.phone || 'inconnu'}`,
       createdAt: t.createdAt, counterparty: t.receiver,
     }))
 
     const receivedItems: HistoryItem[] = receivedTransactions.map((t) => ({
       id: t.id, type: 'receive', amount: t.amount, fee: 0, currency: t.currency,
-      status: t.status, description: t.description || `Réception de ${t.amount.toFixed(2)} ${t.currency} de ${t.sender?.phone || 'inconnu'}`,
+      status: t.status,
+      description: t.description || `Réception de ${formatAmount(t.amount, t.currency)} de ${t.sender?.phone || 'inconnu'}`,
       createdAt: t.createdAt, counterparty: t.sender,
     }))
 
-    const depositItems: HistoryItem[] = deposits.map((d) => ({
-      id: d.id, type: 'deposit', amount: d.amount, fee: 0, currency: d.currency,
-      status: d.status, description: `Dépôt via ${d.method}`, createdAt: d.createdAt,
-    }))
+    const depositItems: HistoryItem[] = deposits.map((d) => {
+      const a = agentLabel(d.agent)
+      return {
+        id: d.id, type: 'deposit', amount: d.amount, fee: 0, currency: d.currency,
+        status: d.status,
+        description: a
+          ? `${depositMethodLabel(d.method)} de ${formatAmount(d.amount, d.currency)} — agent ${a}`
+          : `${depositMethodLabel(d.method)} de ${formatAmount(d.amount, d.currency)}`,
+        createdAt: d.createdAt,
+      }
+    })
 
-    const withdrawalItems: HistoryItem[] = withdrawals.map((w) => ({
-      id: w.id, type: 'withdrawal', amount: w.amount, fee: w.fee, currency: w.currency,
-      status: w.status, description: `Retrait via ${w.method}`, createdAt: w.createdAt,
-    }))
+    const withdrawalItems: HistoryItem[] = withdrawals.map((w) => {
+      const a = agentLabel(w.agent)
+      return {
+        id: w.id, type: 'withdrawal', amount: w.amount, fee: w.fee, currency: w.currency,
+        status: w.status,
+        description: a
+          ? `${withdrawalMethodLabel(w.method)} de ${formatAmount(w.amount, w.currency)} — agent ${a}`
+          : `${withdrawalMethodLabel(w.method)} de ${formatAmount(w.amount, w.currency)}`,
+        createdAt: w.createdAt,
+      }
+    })
 
     let allItems = [...sentItems, ...receivedItems, ...depositItems, ...withdrawalItems]
 
