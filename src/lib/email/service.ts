@@ -21,6 +21,9 @@ function getTransporter() {
       user: process.env.SMTP_EMAIL,
       pass: process.env.SMTP_PASSWORD,
     },
+    connectionTimeout: 8000,
+    greetingTimeout: 5000,
+    socketTimeout: 12000,
   })
   return transporter
 }

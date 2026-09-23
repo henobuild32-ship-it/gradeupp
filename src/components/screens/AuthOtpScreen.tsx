@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Loader2, Mail, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -49,33 +49,44 @@ export default function AuthOtpScreen() {
   const [sendLoading, setSendLoading] = useState(false);
   const [demoOtp, setDemoOtp] = useState('');
   const [countdown, setCountdown] = useState(60);
+  const lastSubmittedRef = useRef('');
+  const sentRef = useRef(false);
 
-  // Send OTP on mount
-  useEffect(() => {
-    const sendOtp = async () => {
-      setSendLoading(true);
-      try {
-        const body = hasEmail ? { email } : { phone: phoneNumber };
-        const res = await fetch('/api/auth/send-otp', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
-        const data = await res.json();
-        if (data.demoOtp) {
-          setDemoOtp(data.demoOtp);
-        }
-        if (!data.success) {
-          toast.error(data.message || "Erreur d'envoi du code");
-        }
-      } catch {
-        toast.error('Erreur de connexion');
-      } finally {
-        setSendLoading(false);
+  // Send OTP once on mount (email or phone)
+  const sendOtp = useCallback(async (isResend = false) => {
+    if (!isResend && sentRef.current) return;
+    if (!hasEmail && !phoneNumber) {
+      toast.error('Email ou téléphone manquant');
+      return;
+    }
+    sentRef.current = true;
+    setSendLoading(true);
+    try {
+      const body = hasEmail ? { email } : { phone: phoneNumber };
+      const res = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (data.demoOtp) setDemoOtp(data.demoOtp);
+      if (!res.ok || !data.success) {
+        toast.error(data.message || "Erreur d'envoi du code");
+      } else if (isResend) {
+        toast.success('Code renvoyé avec succès');
       }
-    };
-    sendOtp();
-  }, []);
+      setOtp('');
+      lastSubmittedRef.current = '';
+    } catch {
+      toast.error('Erreur de connexion');
+    } finally {
+      setSendLoading(false);
+    }
+  }, [email, hasEmail, phoneNumber]);
+
+  useEffect(() => {
+    sendOtp(false);
+  }, [sendOtp]);
 
   // Countdown timer for resend
   useEffect(() => {
@@ -87,29 +98,13 @@ export default function AuthOtpScreen() {
   const handleResend = useCallback(async () => {
     if (countdown > 0) return;
     setCountdown(60);
-    try {
-      const body = hasEmail ? { email } : { phone: phoneNumber };
-      const res = await fetch('/api/auth/send-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (data.demoOtp) {
-        setDemoOtp(data.demoOtp);
-      }
-      if (data.success) {
-        toast.success(data.demoOtp ? 'Code renvoyé (email non envoyé)' : 'Code renvoyé avec succès');
-      } else {
-        toast.error(data.message || 'Erreur lors du renvoi');
-      }
-    } catch {
-      toast.error('Erreur de connexion');
-    }
-  }, [countdown, email, hasEmail, phoneNumber]);
+    await sendOtp(true);
+  }, [countdown, sendOtp]);
 
   const handleVerify = useCallback(async (code: string) => {
-    if (code.length < 6) return;
+    if (code.length < 6 || loading) return;
+    if (lastSubmittedRef.current === code) return;
+    lastSubmittedRef.current = code;
     setLoading(true);
     try {
       const body = hasEmail
@@ -123,6 +118,8 @@ export default function AuthOtpScreen() {
       const data = await res.json();
       if (!res.ok || !data.success) {
         toast.error(data.message || 'Code invalide');
+        setOtp('');
+        lastSubmittedRef.current = '';
         return;
       }
       setOtpCode(code);
@@ -143,7 +140,6 @@ export default function AuthOtpScreen() {
       setUser(loggedInUser);
       if (data.token) setToken(data.token);
 
-      // New users go through pin-setup → onboarding → home
       if (!loggedInUser.hasCompletedOnboarding) {
         navigateTo('pin-setup');
       } else {
@@ -151,17 +147,18 @@ export default function AuthOtpScreen() {
       }
     } catch {
       toast.error('Erreur de connexion. Veuillez réessayer.');
+      lastSubmittedRef.current = '';
     } finally {
       setLoading(false);
     }
-  }, [email, hasEmail, mode, navigateTo, phoneNumber, setOtpCode, setOtpVerified, setUser, setToken]);
+  }, [email, hasEmail, loading, mode, navigateTo, phoneNumber, setOtpCode, setOtpVerified, setUser, setToken]);
 
-  // Auto-submit when all 6 digits filled
+  // Auto-submit once when 6 digits filled (no re-loop on failure)
   useEffect(() => {
-    if (otp.length === 6 && !loading) {
+    if (otp.length === 6 && !loading && !sendLoading) {
       handleVerify(otp);
     }
-  }, [otp, loading, handleVerify]);
+  }, [otp, loading, sendLoading, handleVerify]);
 
   const displayInfo = hasEmail
     ? maskEmail(email)
@@ -216,7 +213,7 @@ export default function AuthOtpScreen() {
               maxLength={6}
               value={otp}
               onChange={(value) => setOtp(value)}
-              disabled={loading || sendLoading}
+              disabled={loading}
               className="justify-center"
             >
               <InputOTPGroup>
@@ -243,13 +240,13 @@ export default function AuthOtpScreen() {
           {demoOtp && !loading && otp.length === 0 && (
             <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 rounded-xl p-4 text-center">
               <p className="text-xs text-amber-700 dark:text-amber-400 font-medium mb-1">
-                Code de test (non envoyé par email)
+                Votre code de vérification
               </p>
               <p className="text-2xl font-mono font-bold text-amber-800 dark:text-amber-300 tracking-widest">
                 {demoOtp}
               </p>
               <p className="text-[10px] text-amber-600 dark:text-amber-500 mt-1">
-                Ce code s&apos;affiche car l&apos;envoi par email a échoué. Utilisez-le pour continuer.
+                Saisissez ce code pour continuer.
               </p>
             </div>
           )}
@@ -264,7 +261,7 @@ export default function AuthOtpScreen() {
           ) : (
             <button
               onClick={handleResend}
-              disabled={loading}
+              disabled={loading || sendLoading}
               className="text-sm font-medium text-emerald-600 hover:text-emerald-700 underline underline-offset-2 cursor-pointer disabled:opacity-50"
             >
               Renvoyer le code

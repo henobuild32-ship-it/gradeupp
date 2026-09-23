@@ -80,25 +80,23 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(function(reg) {
-                    reg.addEventListener('updatefound', function() {
-                      var sw = reg.installing;
+              (function () {
+                if (!('serviceWorker' in navigator)) return;
+                window.addEventListener('load', function () {
+                  navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(function (reg) {
+                    function watch(sw) {
                       if (!sw) return;
-                      sw.addEventListener('statechange', function() {
+                      sw.addEventListener('statechange', function () {
                         if (sw.state === 'installed' && navigator.serviceWorker.controller) {
-                          sw.postMessage({ type: 'SKIP_WAITING' });
+                          try { sw.postMessage({ type: 'SW_UPDATE_AVAILABLE' }); } catch (e) {}
                         }
                       });
-                    });
-                  }).catch(function() {});
+                    }
+                    watch(reg.installing);
+                    reg.addEventListener('updatefound', function () { watch(reg.installing); });
+                  }).catch(function () {});
                 });
-
-                navigator.serviceWorker.addEventListener('controllerchange', function() {
-                  window.location.reload();
-                });
-              }
+              })();
             `,
           }}
         />

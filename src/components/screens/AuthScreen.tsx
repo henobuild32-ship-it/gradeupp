@@ -67,10 +67,17 @@ export default function AuthScreen() {
   const setPhoneNumber = useAppStore((s) => s.setPhoneNumber);
   const setRegistrationPassword = useAppStore((s) => s.setRegistrationPassword);
   const user = useAppStore((s) => s.user);
+  const pageParams = useAppStore((s) => s.pageParams) as { mode?: string };
   const { t } = useTranslation();
 
-  const [mode, setMode] = useState<AuthMode>('login');
+  const [mode, setMode] = useState<AuthMode>(pageParams?.mode === 'register' ? 'register' : 'login');
   const [selectedRole, setSelectedRole] = useState<Role>('client');
+
+  useEffect(() => {
+    if (pageParams?.mode === 'register' || pageParams?.mode === 'login') {
+      setMode(pageParams.mode);
+    }
+  }, [pageParams?.mode]);
 
   // Login fields
   const [loginCountryCode, setLoginCountryCode] = useState('+228');

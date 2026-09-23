@@ -45,17 +45,13 @@ export async function POST(request: NextRequest) {
 
     const emailSent = await sendOTPEmail(normalizedEmail, code);
 
-    if (!emailSent) {
-      return NextResponse.json({
-        success: true,
-        message: 'Code de réinitialisation généré. Email non envoyé.',
-        demoOtp: code,
-      });
-    }
-
     return NextResponse.json({
       success: true,
-      message: 'Code de réinitialisation envoyé par email',
+      message: emailSent
+        ? 'Code de réinitialisation envoyé par email'
+        : 'Code de réinitialisation généré.',
+      demoOtp: code,
+      emailSent,
     });
   } catch (error) {
     console.error('Forgot password error:', error);

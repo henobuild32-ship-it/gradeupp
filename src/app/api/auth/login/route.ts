@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
     const rateLimit = checkRateLimit({
       windowMs: 60 * 1000,
-      maxRequests: 5,
+      maxRequests: 20,
       key: `login:${ip}`,
     })
     if (!rateLimit.allowed) {
@@ -25,10 +25,26 @@ export async function POST(request: NextRequest) {
     }
 
     const { phone, password } = validation.data
+    const normalizedPhone = phone.trim()
 
-    const user = await db.user.findUnique({
-      where: { phone: phone.trim() },
+    let user = await db.user.findUnique({
+      where: { phone: normalizedPhone },
     })
+
+    if (!user) {
+      const digits = normalizedPhone.replace(/\D/g, '')
+      if (digits.length >= 8) {
+        user = await db.user.findFirst({
+          where: {
+            OR: [
+              { phone: digits },
+              { phone: `+${digits}` },
+              { phone: { endsWith: digits.slice(-9) } },
+            ],
+          },
+        })
+      }
+    }
 
     if (!user) {
       return NextResponse.json(

@@ -34,13 +34,26 @@ export function middleware(request: NextRequest) {
 
   if (pathname.startsWith('/api/')) {
     const origin = request.headers.get('origin')
-    const allowedOrigins = [
+    const host = request.headers.get('host') || ''
+    const allowedExact = new Set([
       'https://trait-rho.vercel.app',
       'http://localhost:3000',
       'http://localhost:3099',
-    ]
+    ])
 
-    if (origin && !allowedOrigins.includes(origin)) {
+    function isAllowedOrigin(o: string | null): boolean {
+      if (!o) return true
+      if (allowedExact.has(o)) return true
+      try {
+        const u = new URL(o)
+        if (u.host === host) return true
+        if (u.hostname.endsWith('.vercel.app') && u.hostname.includes('trait')) return true
+        if (u.hostname.endsWith('.vercel.app') && u.hostname.includes('henobuild')) return true
+      } catch {}
+      return false
+    }
+
+    if (!isAllowedOrigin(origin)) {
       return NextResponse.json(
         { success: false, message: 'Origin not allowed' },
         { status: 403 }

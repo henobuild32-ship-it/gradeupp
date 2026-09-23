@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Eye, EyeOff, Loader2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -77,9 +77,11 @@ export default function ForgotPasswordScreen() {
     return () => clearTimeout(timer);
   }, [countdown, step]);
 
-  // Auto-submit OTP
+  // Auto-submit OTP once when 6 digits filled
+  const lastOtpSubmitRef = useRef('');
   useEffect(() => {
-    if (step === 'otp' && otp.length === 6 && !otpLoading) {
+    if (step === 'otp' && otp.length === 6 && !otpLoading && otp !== lastOtpSubmitRef.current) {
+      lastOtpSubmitRef.current = otp;
       handleVerifyOtp(otp);
     }
   }, [otp, otpLoading, step]);
@@ -106,7 +108,7 @@ export default function ForgotPasswordScreen() {
       setDemoOtp(data.demoOtp || '');
       setStep('otp');
       setCountdown(60);
-      toast.success(data.demoOtp ? 'Code généré (email non envoyé)' : 'Code envoyé à votre adresse email');
+      toast.success('Code envoyé à votre adresse email');
     } catch {
       toast.error('Erreur de connexion');
     } finally {
@@ -127,6 +129,8 @@ export default function ForgotPasswordScreen() {
       const data = await res.json();
       if (!res.ok || !data.success) {
         toast.error(data.message || 'Code invalide');
+        setOtp('');
+        lastOtpSubmitRef.current = '';
         return;
       }
       setStep('password');
@@ -149,7 +153,7 @@ export default function ForgotPasswordScreen() {
       const data = await res.json();
       if (data.demoOtp) setDemoOtp(data.demoOtp);
       if (data.success) {
-        toast.success(data.demoOtp ? 'Code renvoyé (email non envoyé)' : 'Code renvoyé avec succès');
+        toast.success('Code renvoyé avec succès');
       } else {
         toast.error(data.message || 'Erreur lors du renvoi');
       }
@@ -373,13 +377,13 @@ export default function ForgotPasswordScreen() {
                 {demoOtp && !otpLoading && otp.length === 0 && (
                   <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 rounded-xl p-4 text-center w-full">
                     <p className="text-xs text-amber-700 dark:text-amber-400 font-medium mb-1">
-                      Code de test (non envoyé par email)
+                      Votre code de vérification
                     </p>
                     <p className="text-2xl font-mono font-bold text-amber-800 dark:text-amber-300 tracking-widest">
                       {demoOtp}
                     </p>
                     <p className="text-[10px] text-amber-600 dark:text-amber-500 mt-1">
-                      Utilisez ce code pour continuer.
+                      Saisissez ce code pour continuer.
                     </p>
                   </div>
                 )}

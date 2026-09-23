@@ -1,5 +1,5 @@
-// TRAIT Service Worker — Push Notifications
-const CACHE_NAME = 'trait-v4';
+// TRAIT Service Worker — Push Notifications + offline shell
+const CACHE_NAME = 'trait-v6';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -18,51 +18,78 @@ self.addEventListener('message', (event) => {
     self.skipWaiting();
   }
   if (event.data?.type === 'CLEAR_CACHE') {
-    caches.keys().then((keys) =>
-      Promise.all(keys.map((k) => caches.delete(k)))
+    event.waitUntil(
+      caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
     );
+  }
+  if (event.data?.type === 'SW_UPDATE_AVAILABLE') {
+    self.clients.matchAll().then((clients) => {
+      clients.forEach((c) => c.postMessage({ type: 'SW_UPDATE_AVAILABLE' }));
+    });
   }
 });
 
 self.addEventListener('fetch', (event) => {
   const { request } = event;
+  if (request.method !== 'GET') return;
+
   const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;
 
-  // Never intercept cross-origin (Google, Firebase, identitytoolkit, etc.)
-  if (url.origin !== self.location.origin) {
-    return;
-  }
-
-  // Network-first for HTML navigations
+  // Network-first for navigations
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const cloned = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, cloned));
+          if (response.ok) {
+            const cloned = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, cloned));
+          }
           return response;
         })
-        .catch(() => caches.match(request))
+        .catch(() => caches.match(request).then((r) => r || Response.error()))
     );
     return;
   }
 
-  // Network-first for API calls
+  // Network-first for API
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(fetch(request));
     return;
   }
 
-  // Cache-first for static assets (JS, CSS, images)
+  // Network-first for JS/CSS (fresh chunks after deploy)
+  if (
+    url.pathname.startsWith('/_next/static/') ||
+    url.pathname.endsWith('.js') ||
+    url.pathname.endsWith('.css')
+  ) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const cloned = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, cloned));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request).then((r) => r || Response.error()))
+    );
+    return;
+  }
+
+  // Cache-first for images/fonts/icons
   event.respondWith(
     caches.match(request).then((cached) => {
-      const fetchPromise = fetch(request).then((response) => {
-        if (response.ok) {
-          const cloned = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, cloned));
-        }
-        return response;
-      }).catch(() => cached);
+      const fetchPromise = fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const cloned = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, cloned));
+          }
+          return response;
+        })
+        .catch(() => cached || Response.error());
       return cached || fetchPromise;
     })
   );

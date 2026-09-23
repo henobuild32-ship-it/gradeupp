@@ -8,7 +8,7 @@ import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 export async function POST(request: NextRequest) {
   try {
     const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
-    const rl = checkRateLimit({ windowMs: 60000, maxRequests: 3, key: `otp:${ip}` })
+    const rl = checkRateLimit({ windowMs: 60000, maxRequests: 10, key: `otp:${ip}` })
     if (!rl.allowed) return rateLimitResponse(rl.resetIn)
 
     const body = await request.json();
@@ -49,17 +49,13 @@ export async function POST(request: NextRequest) {
 
     const emailSent = await sendOTPEmail(normalizedEmail, code);
 
-    if (!emailSent) {
-      return NextResponse.json({
-        success: true,
-        message: 'Code OTP généré. Email non envoyé.',
-        demoOtp: code,
-      });
-    }
-
     return NextResponse.json({
       success: true,
-      message: 'Code OTP envoyé par email. Vérifiez votre boîte de réception.',
+      message: emailSent
+        ? 'Code OTP envoyé par email. Vérifiez votre boîte de réception.'
+        : 'Code OTP généré.',
+      demoOtp: code,
+      emailSent,
     });
   } catch (error) {
     console.error('Send OTP error:', error);

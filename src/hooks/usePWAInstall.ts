@@ -66,13 +66,6 @@ export function usePWAInstall(): PWAInstallState {
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
 
-    // Register service worker
-    if ('serviceWorker' in navigator && !isStandalone) {
-      navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).catch(() => {
-        // Service worker registration failed - non-critical
-      });
-    }
-
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
