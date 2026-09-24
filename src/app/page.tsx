@@ -70,6 +70,7 @@ const KYCVerificationScreen = lazy(() => import('@/components/screens/KYCVerific
 const CardRequestScreen = lazy(() => import('@/components/screens/CardRequestScreen'));
 const CardPaymentScreen = lazy(() => import('@/components/screens/CardPaymentScreen'));
 const CardScreen = lazy(() => import('@/components/screens/CardScreen'));
+const VirtualCardScreen = lazy(() => import('@/components/screens/VirtualCardScreen'));
 
 // Seller screens
 const SellerRegisterScreen = lazy(() => import('@/components/screens/SellerRegisterScreen'));
@@ -186,6 +187,7 @@ const screenMap: Record<PageName, React.LazyExoticComponent<React.ComponentType>
   'card-request': CardRequestScreen,
   'card-payment': CardPaymentScreen,
   card: CardScreen,
+  'virtual-card': VirtualCardScreen,
   'admin-card-requests': AdminCardRequestsScreen,
   'admin-cards': AdminCardsScreen,
   'admin-client-messages': AdminClientMessagesScreen,
@@ -224,7 +226,7 @@ const screenMap: Record<PageName, React.LazyExoticComponent<React.ComponentType>
   'trait-ai-welcome': TraitAIScreen,
 };
 
-const pagesWithNav: PageName[] = ['home', 'send', 'withdraw', 'deposit', 'history', 'ussd', 'marketplace', 'marketplace-detail', 'marketplace-sell', 'orders', 'barter', 'barter-detail', 'barter-create', 'notifications', 'settings', 'profile', 'agent-dashboard', 'agent-deposit', 'agent-withdraw-validate', 'agent-activity', 'agent-messages', 'card-request', 'card-payment', 'card', 'kyc-verification', 'seller-dashboard', 'seller-products', 'child-sponsorship'];
+const pagesWithNav: PageName[] = ['home', 'send', 'withdraw', 'deposit', 'history', 'ussd', 'marketplace', 'marketplace-detail', 'marketplace-sell', 'orders', 'barter', 'barter-detail', 'barter-create', 'notifications', 'settings', 'profile', 'agent-dashboard', 'agent-deposit', 'agent-withdraw-validate', 'agent-activity', 'agent-messages', 'card-request', 'card-payment', 'card', 'virtual-card', 'kyc-verification', 'seller-dashboard', 'seller-products', 'child-sponsorship'];
 
 const adminPages: PageName[] = ['admin-login', 'admin-dashboard', 'admin-users', 'admin-agents', 'admin-transactions', 'admin-market', 'admin-barter', 'admin-notifications', 'admin-activity-log', 'admin-bonus', 'admin-bonus-adjust', 'admin-bonus-history', 'admin-bonus-campaigns', 'admin-agent-validation', 'admin-messages', 'admin-developers', 'admin-card-requests', 'admin-cards', 'admin-client-messages', 'admin-seller-validation', 'admin-sellers', 'admin-children', 'admin-kyc', 'admin-support', 'agent-register', 'agent-pending'];
 

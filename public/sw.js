@@ -1,5 +1,5 @@
 // TRAIT Service Worker — Push Notifications + offline shell
-const CACHE_NAME = 'trait-v9';
+const CACHE_NAME = 'trait-v10';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();

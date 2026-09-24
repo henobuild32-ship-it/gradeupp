@@ -375,7 +375,15 @@ export default function CardScreen() {
                               status={card.status}
                             />
 
-                            <div className="mt-3">
+                            <div className="mt-3 space-y-2">
+                              <Button
+                                className="w-full h-11 rounded-xl font-semibold text-sm bg-[#0f1b2d] hover:bg-[#0f1b2d]/90 text-white dark:bg-[#3ddc97] dark:text-[#0f1b2d] dark:hover:bg-[#3ddc97]/90"
+                                onClick={() => navigateTo('virtual-card', { cardId: card.id })}
+                              >
+                                <CreditCard className="w-4 h-4 mr-2" />
+                                Ma carte virtuelle
+                                <ChevronRight className="w-4 h-4 ml-auto" />
+                              </Button>
                               <Button
                                 variant="outline"
                                 className="w-full h-11 rounded-xl font-medium text-sm"

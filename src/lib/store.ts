@@ -61,6 +61,7 @@ export type PageName =
   | 'card-request'
   | 'card-payment'
   | 'card'
+  | 'virtual-card'
   | 'admin-card-requests'
   | 'admin-cards'
   | 'admin-client-messages'
