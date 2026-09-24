@@ -25,6 +25,7 @@ import {
 import { useAppStore } from '@/lib/store';
 import { useTranslation } from '@/lib/i18n';
 import { toast } from 'sonner';
+import { formatAgentCodeInput } from '@/lib/agent-format';
 
 function fmtCur(amount: number, currency: string) {
   if (currency === 'FC') return `${amount.toFixed(2)} FC`;
@@ -133,16 +134,7 @@ export default function WithdrawScreen() {
     : (user?.realBalance ?? 0);
 
   function buildAgentCode(): string {
-    const raw = agentInput.trim();
-    const digits = raw.replace(/\D/g, '');
-    const normalized = raw.toUpperCase().replace(/\s+/g, '');
-    if (/^AGT-/i.test(raw)) return normalized;
-    // Exact 6-digit agent code
-    if (digits.length === 6) return `AGT-${digits}`;
-    // Longer digits: last 6 as AGT code (common when pasting partial)
-    if (digits.length > 6 && digits.length <= 15) return `AGT-${digits.slice(-6)}`;
-    if (digits) return digits;
-    return raw;
+    return formatAgentCodeInput(agentInput, true) || agentInput.trim();
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -302,8 +294,9 @@ export default function WithdrawScreen() {
                 placeholder="AGT-123456 ou +228 90 00 00 00"
                 value={agentInput}
                 onChange={(e) => {
-                  setAgentInput(e.target.value.slice(0, 20));
-                  setAgentNumber(e.target.value.replace(/\D/g, '').slice(0, 15));
+                  const formatted = formatAgentCodeInput(e.target.value, true);
+                  setAgentInput(formatted);
+                  setAgentNumber(formatted.replace(/\D/g, '').slice(0, 15));
                 }}
                 className="h-11 font-mono"
               />

@@ -52,9 +52,15 @@ export default function AuthOtpScreen() {
   const lastSubmittedRef = useRef('');
   const sentRef = useRef(false);
 
-  // Send OTP once on mount (email or phone)
+  // Send OTP once on mount (email or phone) — never re-send while already verified
   const sendOtp = useCallback(async (isResend = false) => {
     if (!isResend && sentRef.current) return;
+    if (mode === 'verify' && user?.isVerified) {
+      // Already verified — skip OTP screen loop
+      if (user.hasCompletedOnboarding) navigateTo('home');
+      else navigateTo('pin-setup');
+      return;
+    }
     if (!hasEmail && !phoneNumber) {
       toast.error('Email ou téléphone manquant');
       return;
@@ -82,7 +88,7 @@ export default function AuthOtpScreen() {
     } finally {
       setSendLoading(false);
     }
-  }, [email, hasEmail, phoneNumber]);
+  }, [email, hasEmail, mode, navigateTo, phoneNumber, user?.isVerified, user?.hasCompletedOnboarding]);
 
   useEffect(() => {
     sendOtp(false);
@@ -137,7 +143,7 @@ export default function AuthOtpScreen() {
         return;
       }
       const loggedInUser = data.user as User;
-      setUser(loggedInUser);
+      setUser({ ...loggedInUser, isVerified: true });
       if (data.token) setToken(data.token);
 
       if (!loggedInUser.hasCompletedOnboarding) {

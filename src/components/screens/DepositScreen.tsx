@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { useAppStore } from '@/lib/store'
 import { useTranslation } from '@/lib/i18n'
 import { toast } from 'sonner'
+import { displayAgentCode, formatAgentCodeInput } from '@/lib/agent-format'
 
 function fmtCur(amount: number, currency: string) {
   return currency === 'FC' ? `${amount.toLocaleString('fr-FR')} FC` : `$${amount.toFixed(2)}`
@@ -64,7 +65,7 @@ export default function DepositScreen() {
       case 'card':
         return cardNumber.length >= 16 && cardExpiry.length >= 4 && cardCvv.length >= 3 && cardHolder && numericAmount > 0
       case 'agent':
-        return agentNumber.trim().length >= 6 && numericAmount > 0
+        return displayAgentCode(agentNumber).startsWith('AGT-') && numericAmount > 0
       default:
         return false
     }
@@ -93,19 +94,7 @@ export default function DepositScreen() {
         body.cardCvv = cardCvv
         body.cardHolder = cardHolder
       } else if (selectedMethod === 'agent') {
-        const raw = agentNumber.trim()
-        const digits = raw.replace(/\D/g, '')
-        const normalized = raw.toUpperCase().replace(/\s+/g, '')
-        let code: string
-        if (/^AGT-/i.test(raw)) {
-          code = normalized
-        } else if (digits.length === 6) {
-          code = `AGT-${digits}`
-        } else if (digits.length > 6 && digits.length <= 15) {
-          code = `AGT-${digits.slice(-6)}`
-        } else {
-          code = digits || raw
-        }
+        const code = displayAgentCode(agentNumber) || agentNumber.trim()
         body.agentNumber = code
         body.agentCode = code
       }
@@ -124,7 +113,7 @@ export default function DepositScreen() {
       if (data.success) {
         if (data.pending) {
           setPendingAgent(true)
-          setPendingAgentCode(data.deposit?.agentCode || `AGT-${agentNumber}`)
+          setPendingAgentCode(data.deposit?.agentCode || displayAgentCode(agentNumber))
           setPendingMessage(data.message || 'Demande envoyée à l\'agent. En attente de validation.')
         }
         if (data.updatedBalances) {
@@ -204,7 +193,7 @@ export default function DepositScreen() {
             <p className="text-sm text-muted-foreground mb-4">
               {selectedMethod === 'mobile_money' ? `Via ${mobileOperator} (${mobilePhone})` :
                selectedMethod === 'bank_transfer' ? `Virement ${bankName}` :
-               selectedMethod === 'card' ? 'Carte bancaire' : `Agent ${pendingAgentCode || `AGT-${agentNumber}`}`}
+               selectedMethod === 'card' ? 'Carte bancaire' : `Agent ${pendingAgentCode || displayAgentCode(agentNumber)}`}
             </p>
             {pendingAgent && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 text-left">
@@ -270,7 +259,7 @@ export default function DepositScreen() {
                   {selectedMethod === 'agent' && (
                     <div className="flex justify-between">
                       <span className="text-sm text-muted-foreground">Agent N°</span>
-                      <span className="font-semibold font-mono">AGT-{agentNumber}</span>
+                      <span className="font-semibold font-mono">{displayAgentCode(agentNumber)}</span>
                     </div>
                   )}
                 </div>
@@ -479,7 +468,7 @@ export default function DepositScreen() {
                         type="text"
                         placeholder="AGT-123456"
                         value={agentNumber}
-                        onChange={(e) => setAgentNumber(e.target.value.slice(0, 20))}
+                        onChange={(e) => setAgentNumber(formatAgentCodeInput(e.target.value, false).slice(0, 10))}
                         className="w-full h-12 px-4 bg-muted/30 border-2 border-gray-200 rounded-xl focus:border-[#0D5C63] outline-none text-base font-mono uppercase"
                       />
                       <p className="text-xs text-muted-foreground mt-1.5">

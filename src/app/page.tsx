@@ -270,7 +270,12 @@ export default function TraitApp() {
         if (!res.ok) return;
         const data = await res.json();
         if (!cancelled && data.success && data.user) {
-          useAppStore.getState().setUser({ ...user, ...data.user });
+          // Never downgrade a locally verified session if profile is stale
+          const merged = { ...user, ...data.user };
+          if (user.isVerified && !data.user.isVerified) {
+            merged.isVerified = true;
+          }
+          useAppStore.getState().setUser(merged);
         }
       } catch {}
     };

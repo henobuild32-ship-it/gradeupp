@@ -59,13 +59,21 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      const user = await db.user.findFirst({ where: { email: normalizedEmail } });
+      let user = await db.user.findFirst({ where: { email: normalizedEmail } });
 
       if (!user) {
         return NextResponse.json({
           success: true,
           message: 'Code vérifié',
           user: null,
+        });
+      }
+
+      // Persist verification in DB so reload/profile sync does not loop OTP
+      if (mode !== 'forgot' && !user.isVerified) {
+        user = await db.user.update({
+          where: { id: user.id },
+          data: { isVerified: true },
         });
       }
 
@@ -78,15 +86,17 @@ export async function POST(request: NextRequest) {
           id: user.id,
           phone: user.phone,
           name: user.name,
+          pseudo: user.pseudo,
           email: user.email,
           country: user.country,
           realBalance: user.realBalance,
           realBalanceFC: user.realBalanceFC,
           bonusBalance: user.bonusBalance,
           bonusBalanceFC: user.bonusBalanceFC,
-          isVerified: true,
+          isVerified: user.isVerified,
           role: user.role,
           hasCompletedOnboarding: user.hasCompletedOnboarding,
+          referralCode: user.referralCode,
         },
       });
       setTokenCookie(response, token);
