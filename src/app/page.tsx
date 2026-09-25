@@ -1,7 +1,7 @@
 'use client';
 
 import '@/lib/api';
-import { useEffect, Suspense, lazy } from 'react';
+import { useEffect, Suspense, lazy, Component } from 'react';
 import { useAppStore, PageName } from '@/lib/store';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OfflineBanner } from '@/components/layout/OfflineBanner';
@@ -128,6 +128,43 @@ function ScreenLoader() {
       </div>
     </div>
   );
+}
+
+class ScreenErrorBoundary extends Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch() {
+    // Chunk load failure or render crash — keep the app alive with a retry.
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex min-h-[60vh] items-center justify-center bg-background px-6">
+          <div className="text-center">
+            <p className="mb-2 text-2xl">⚠️</p>
+            <p className="mb-4 text-sm text-muted-foreground">
+              Une erreur est survenue. Vérifiez votre connexion puis réessayez.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground"
+            >
+              Réessayer
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 const screenMap: Record<PageName, React.LazyExoticComponent<React.ComponentType>> = {
@@ -381,7 +418,9 @@ export default function TraitApp() {
       {user && <PushPermissionBanner />}
       <div className={`flex-1 ${showNav ? 'pb-16' : ''}`}>
         <Suspense fallback={<ScreenLoader />}>
-          <Screen />
+          <ScreenErrorBoundary key={currentPage}>
+            <Screen />
+          </ScreenErrorBoundary>
         </Suspense>
       </div>
       {showNav && (

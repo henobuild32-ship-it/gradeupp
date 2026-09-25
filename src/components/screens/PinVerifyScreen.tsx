@@ -26,8 +26,9 @@ export default function PinVerifyScreen() {
       });
       const data = await res.json();
       if (data.success) {
+        const action = pendingPinAction;
         clearPendingPinAction?.();
-        pendingPinAction?.();
+        action?.(value);
         setPin('');
         pinRef.current = '';
       } else {

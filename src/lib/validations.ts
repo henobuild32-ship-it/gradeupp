@@ -4,7 +4,7 @@ export const SendMoneySchema = z.object({
   receiverPhone: z.string().min(8).max(20),
   amount: z.number().positive(),
   currency: z.enum(['USD', 'FC']),
-  pin: z.string().min(4).max(6).optional(),
+  pin: z.string().min(4).max(8).optional(),
   description: z.string().max(200).optional(),
 })
 
@@ -53,7 +53,7 @@ export const QRPaymentSchema = z.object({
   qrCode: z.string().min(1),
   amount: z.number().positive(),
   currency: z.enum(['USD', 'FC']).optional(),
-  pin: z.string().min(4).max(6).optional(),
+  pin: z.string().min(4).max(8).optional(),
 })
 
 export const InternationalTransferSchema = z.object({

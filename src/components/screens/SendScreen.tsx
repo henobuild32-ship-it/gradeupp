@@ -131,7 +131,7 @@ export default function SendScreen() {
     if (!user?.id) return;
     setShowConfirm(false);
 
-    setPendingPinAction(async () => {
+    setPendingPinAction(async (pin) => {
       setLoading(true);
       try {
         const res = await fetch('/api/transfer/send', {
@@ -142,6 +142,7 @@ export default function SendScreen() {
             receiverPhone: receiverPhone.trim(),
             amount: numericAmount,
             currency,
+            pin,
           }),
         });
         const data = await res.json();

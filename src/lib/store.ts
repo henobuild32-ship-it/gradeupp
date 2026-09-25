@@ -178,8 +178,8 @@ interface AuthFormState {
 }
 
 interface PinState {
-  pendingPinAction: (() => void) | null;
-  setPendingPinAction: (action: (() => void) | null) => void;
+  pendingPinAction: ((pin?: string) => void) | null;
+  setPendingPinAction: (action: ((pin?: string) => void) | null) => void;
   clearPendingPinAction: () => void;
 }
 
