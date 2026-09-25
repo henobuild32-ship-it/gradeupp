@@ -116,11 +116,16 @@ export default function SendScreen() {
     : (user?.realBalance ?? 0) + (user?.bonusBalance ?? 0);
 
   const curSymbol = isFC ? 'FC' : '$';
+  const receiverNotFound = lookupDone && !receiverName;
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!receiverPhone.trim()) {
       toast.error(t('send.phone_required'));
+      return;
+    }
+    if (receiverNotFound) {
+      toast.error(t('send.account_not_found'));
       return;
     }
     if (numericAmount <= 0) {
@@ -273,7 +278,6 @@ export default function SendScreen() {
                   <div className="flex items-center gap-1.5 text-xs text-amber-600 font-medium">
                     <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                     <span>{t('send.account_not_found')}</span>
-                    <span className="text-muted-foreground font-normal">— {t('send.new_account')}</span>
                   </div>
                 )
               )}
@@ -340,7 +344,7 @@ export default function SendScreen() {
             <Button
               className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-base"
               onClick={handleSubmit}
-              disabled={loading}
+              disabled={loading || receiverNotFound}
             >
               {loading ? (
                 <span className="flex items-center gap-2">

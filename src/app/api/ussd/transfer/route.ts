@@ -4,6 +4,7 @@ import { requireUser } from '@/lib/auth';
 import { checkChildBalanceLimit } from '@/lib/security';
 import { safeDeductWithFee } from '@/lib/balance';
 import { updateBalanceAndNotify } from '@/lib/notifications';
+import { findUserByPhone } from '@/lib/phone';
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,35 +37,21 @@ export async function POST(request: NextRequest) {
     const cur = currency || 'USD';
     const fee = Math.round(amount * 0.007 * 100) / 100;
 
+    // Find receiver first — aucun compte n'est créé automatiquement
+    const receiver = await findUserByPhone(receiverPhone);
+    if (!receiver) {
+      return NextResponse.json({ success: false, message: 'Aucun compte TRAIT trouvé pour ce numéro' }, { status: 404 });
+    }
+
+    const limitCheck = await checkChildBalanceLimit(receiver.id, amount, cur);
+    if (!limitCheck.allowed) {
+      return NextResponse.json({ success: false, message: limitCheck.message }, { status: 400 });
+    }
+
     // Atomic balance check + deduction (race-condition safe)
     const deductResult = await safeDeductWithFee(senderId, amount, fee, cur);
     if (!deductResult.success) {
       return NextResponse.json({ success: false, message: deductResult.message }, { status: 400 });
-    }
-
-    let receiver = await db.user.findUnique({ where: { phone: receiverPhone.trim() } });
-    if (receiver) {
-      const limitCheck = await checkChildBalanceLimit(receiver.id, amount, cur);
-      if (!limitCheck.allowed) {
-        // Refund on limit check failure
-        await db.user.update({
-          where: { id: senderId },
-          data: isFC ? { realBalanceFC: { increment: amount + fee } } : { realBalance: { increment: amount + fee } },
-        });
-        return NextResponse.json({ success: false, message: limitCheck.message }, { status: 400 });
-      }
-    }
-    if (!receiver) {
-      receiver = await db.user.create({
-        data: {
-          phone: receiverPhone.trim(),
-          bonusBalance: isFC ? 0 : 10,
-          bonusBalanceFC: isFC ? 0 : 0,
-          realBalance: 0,
-          realBalanceFC: 0,
-          country: 'CD',
-        },
-      });
     }
 
     const result = await db.$transaction(async (tx) => {

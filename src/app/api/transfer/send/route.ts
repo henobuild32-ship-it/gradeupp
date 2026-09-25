@@ -56,30 +56,22 @@ export async function POST(request: NextRequest) {
 
     const fee = Math.round(amount * 0.007 * 100) / 100
 
-    // Find or create receiver atomically (mêmes variants de numéro que le lookup de l'écran)
-    let receiver = await findUserByPhone(receiverPhone)
-
-    if (receiver) {
-      const limitCheck = await checkChildBalanceLimit(receiver.id, amount, cur)
-      if (!limitCheck.allowed) {
-        return NextResponse.json(
-          { success: false, message: limitCheck.message },
-          { status: 400 }
-        )
-      }
-    }
+    // Find receiver — aucun compte n'est créé automatiquement
+    const receiver = await findUserByPhone(receiverPhone)
 
     if (!receiver) {
-      receiver = await db.user.create({
-        data: {
-          phone: receiverPhone.trim(),
-          bonusBalance: isFC ? 0 : 10,
-          bonusBalanceFC: 0,
-          realBalance: 0,
-          realBalanceFC: 0,
-          country: 'CD',
-        },
-      })
+      return NextResponse.json(
+        { success: false, message: 'Aucun compte TRAIT trouvé pour ce numéro' },
+        { status: 404 }
+      )
+    }
+
+    const limitCheck = await checkChildBalanceLimit(receiver.id, amount, cur)
+    if (!limitCheck.allowed) {
+      return NextResponse.json(
+        { success: false, message: limitCheck.message },
+        { status: 400 }
+      )
     }
 
     const senderBalanceField = isFC ? 'realBalanceFC' : 'realBalance'
