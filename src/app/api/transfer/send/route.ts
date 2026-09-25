@@ -4,6 +4,7 @@ import { checkChildBalanceLimit } from '@/lib/security'
 import { requireUser } from '@/lib/auth'
 import { SendMoneySchema, validateRequest } from '@/lib/validations'
 import { updateBalanceAndNotify } from '@/lib/notifications'
+import { findUserByPhone } from '@/lib/phone'
 
 export async function POST(request: NextRequest) {
   try {
@@ -55,10 +56,8 @@ export async function POST(request: NextRequest) {
 
     const fee = Math.round(amount * 0.007 * 100) / 100
 
-    // Find or create receiver atomically
-    let receiver = await db.user.findUnique({
-      where: { phone: receiverPhone.trim() },
-    })
+    // Find or create receiver atomically (mêmes variants de numéro que le lookup de l'écran)
+    let receiver = await findUserByPhone(receiverPhone)
 
     if (receiver) {
       const limitCheck = await checkChildBalanceLimit(receiver.id, amount, cur)

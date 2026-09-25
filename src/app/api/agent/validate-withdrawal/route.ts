@@ -88,18 +88,27 @@ export async function POST(request: NextRequest) {
 
     if (action === 'validate') {
       const isFC = withdrawal.currency === 'FC'
-      const [updated] = await db.$transaction([
-        db.withdrawal.update({
+      const updated = await db.$transaction(async (tx) => {
+        // Vraie logique cash : l'agent remet le liquide au client → son compte est débité
+        const debit = await tx.user.updateMany({
+          where: {
+            id: withdrawal.agentId!,
+            ...(isFC
+              ? { realBalanceFC: { gte: withdrawal.amount } }
+              : { realBalance: { gte: withdrawal.amount } }),
+          },
+          data: isFC
+            ? { realBalanceFC: { decrement: withdrawal.amount } }
+            : { realBalance: { decrement: withdrawal.amount } },
+        })
+        if (debit.count !== 1) throw new Error('AGENT_INSUFFICIENT_BALANCE')
+
+        const done = await tx.withdrawal.update({
           where: { id: withdrawalId },
           data: { status: 'completed' },
-        }),
-        db.user.update({
-          where: { id: withdrawal.agentId! },
-          data: isFC
-            ? { realBalanceFC: { increment: withdrawal.amount } }
-            : { realBalance: { increment: withdrawal.amount } },
-        }),
-        db.transaction.updateMany({
+        })
+
+        await tx.transaction.updateMany({
           where: {
             senderId: withdrawal.userId,
             receiverId: withdrawal.agentId!,
@@ -107,8 +116,25 @@ export async function POST(request: NextRequest) {
             status: 'pending',
           },
           data: { status: 'completed' },
-        }),
-      ])
+        })
+
+        return done
+      }).catch((err: unknown) => {
+        if (err instanceof Error && err.message === 'AGENT_INSUFFICIENT_BALANCE') {
+          return null
+        }
+        throw err
+      })
+
+      if (!updated) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'Solde agent insuffisant pour valider ce retrait. Rechargez votre compte agent.',
+          },
+          { status: 400 },
+        )
+      }
 
       if (withdrawal.agent) {
         await logSecurityEvent({

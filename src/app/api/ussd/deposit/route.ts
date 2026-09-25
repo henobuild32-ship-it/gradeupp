@@ -70,6 +70,13 @@ export async function POST(request: NextRequest) {
           ? { realBalanceFC: { increment: amount } }
           : { realBalance: { increment: amount } },
       });
+      // Vraie logique cash : l'agent reçoit le liquide → son compte est crédité
+      await tx.user.update({
+        where: { id: agent.id },
+        data: isFC
+          ? { realBalanceFC: { increment: amount } }
+          : { realBalance: { increment: amount } },
+      });
       await tx.transaction.create({
         data: {
           type: 'deposit',

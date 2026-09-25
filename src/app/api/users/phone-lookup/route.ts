@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
 import { requireUser } from '@/lib/auth'
+import { findUserByPhone } from '@/lib/phone'
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,20 +17,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const normalized = phone.trim()
-
-    const user = await db.user.findUnique({
-      where: { phone: normalized },
-      select: {
-        id: true,
-        name: true,
-        pseudo: true,
-        phone: true,
-        role: true,
-        validationStatus: true,
-        suspended: true,
-      },
-    })
+    const user = await findUserByPhone(phone)
 
     if (!user) {
       return NextResponse.json({

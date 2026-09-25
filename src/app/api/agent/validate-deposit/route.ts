@@ -101,14 +101,11 @@ export async function POST(request: NextRequest) {
       const description = `${depositMethodLabel(deposit.method)} de ${amountLabel} pour ${clientLabel}`
 
       const result = await db.$transaction(async (tx) => {
-        const debit = await tx.user.updateMany({
-          where: {
-            id: auth.userId,
-            [agentBalanceField]: { gte: deposit.amount },
-          },
-          data: { [agentBalanceField]: { decrement: deposit.amount } },
+        // Vraie logique cash : l'agent reçoit le liquide → son compte est crédité
+        await tx.user.update({
+          where: { id: auth.userId },
+          data: { [agentBalanceField]: { increment: deposit.amount } },
         })
-        if (debit.count !== 1) throw new Error('AGENT_INSUFFICIENT_BALANCE')
 
         await tx.user.update({
           where: { id: deposit.userId },
@@ -144,19 +141,8 @@ export async function POST(request: NextRequest) {
         })
 
         return updated
-      }).catch((err: unknown) => {
-        if (err instanceof Error && err.message === 'AGENT_INSUFFICIENT_BALANCE') {
-          return null
-        }
-        throw err
       })
 
-      if (!result) {
-        return NextResponse.json(
-          { success: false, message: 'Solde agent insuffisant pour valider ce dépôt' },
-          { status: 400 }
-        )
-      }
 
       const updatedAgent = await db.user.findUnique({
         where: { id: auth.userId },
