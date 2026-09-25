@@ -55,6 +55,33 @@ export default function AgentDashboardScreen() {
       .catch(() => {});
   }, [user?.id]);
 
+  // Silently refresh balances so the card shows the real amount
+  useEffect(() => {
+    if (!user?.id) return;
+    const refresh = () => {
+      fetch('/api/auth/profile')
+        .then(r => r.json())
+        .then(d => {
+          if (d.success && d.user) {
+            const u = useAppStore.getState().user;
+            if (u) {
+              useAppStore.getState().setUser({
+                ...u,
+                realBalance: d.user.realBalance,
+                realBalanceFC: d.user.realBalanceFC,
+                bonusBalance: d.user.bonusBalance,
+                bonusBalanceFC: d.user.bonusBalanceFC,
+              } as any);
+            }
+          }
+        })
+        .catch(() => {});
+    };
+    refresh();
+    const interval = setInterval(refresh, 30000);
+    return () => clearInterval(interval);
+  }, [user?.id]);
+
   const handleCheckStatus = async () => {
     setCheckingStatus(true);
     try {
@@ -292,6 +319,42 @@ export default function AgentDashboardScreen() {
               <p className="text-sm text-amber-200 mt-2">
                 {user?.name || 'Agent'}
               </p>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Balance card */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+        >
+          <Card className="bg-gradient-to-br from-[#0D5C63] to-[#14888F] text-white border-0">
+            <CardContent className="p-5">
+              <p className="text-sm text-white/70">{t('home.total_balance')}</p>
+              <p className="text-3xl font-bold mt-1">
+                ${(((user?.realBalance ?? 0) + (user?.bonusBalance ?? 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))}
+              </p>
+              <div className="mt-3 flex gap-3">
+                <div className="flex-1 rounded-xl bg-white/10 p-2.5">
+                  <p className="text-[9px] text-white/60 font-semibold tracking-wider uppercase mb-0.5">USD</p>
+                  <p className="text-sm font-bold">
+                    {(user?.realBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                </div>
+                <div className="flex-1 rounded-xl bg-white/10 p-2.5">
+                  <p className="text-[9px] text-white/60 font-semibold tracking-wider uppercase mb-0.5">FC</p>
+                  <p className="text-sm font-bold">
+                    {(user?.realBalanceFC ?? 0).toLocaleString('fr-FR', { maximumFractionDigits: 0 })}
+                  </p>
+                </div>
+                <div className="flex-1 rounded-xl bg-white/10 p-2.5">
+                  <p className="text-[9px] text-white/60 font-semibold tracking-wider uppercase mb-0.5">Bonus</p>
+                  <p className="text-sm font-bold">
+                    ${(user?.bonusBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </motion.div>

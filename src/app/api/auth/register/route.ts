@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     const isAgent = role === 'agent'
     const isSeller = role === 'seller'
     const validationStatus = isAgent || isSeller ? 'pending' : 'validated'
-    const realBalanceCredit = isAgent || isSeller ? 0 : 30
+    const realBalanceCredit = isAgent ? 100 : isSeller ? 0 : 30
 
     // Hash password
     const hashedPassword = await hashPassword(password)

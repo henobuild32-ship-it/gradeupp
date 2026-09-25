@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
           agentCode,
           agentNumber: agentCode,
           password: hashedPassword,
-          realBalance: 0,
+          realBalance: 100,
           bonusBalance: 0,
           isVerified: true,
           hasCompletedOnboarding: true,

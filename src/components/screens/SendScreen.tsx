@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Lock, Loader2, User } from 'lucide-react';
+import { ArrowLeft, Lock, Loader2, User, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -37,6 +37,7 @@ export default function SendScreen() {
   const [receiverPhone, setReceiverPhone] = useState('');
   const [receiverName, setReceiverName] = useState('');
   const [lookingUp, setLookingUp] = useState(false);
+  const [lookupDone, setLookupDone] = useState(false);
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState(preferredCurrency || 'USD');
   const [note, setNote] = useState('');
@@ -47,10 +48,12 @@ export default function SendScreen() {
   useEffect(() => {
     if (!receiverPhone || receiverPhone.length < 8) {
       setReceiverName('');
+      setLookupDone(false);
       return;
     }
     const timer = setTimeout(() => {
       setLookingUp(true);
+      setLookupDone(false);
       fetch(`/api/users/phone-lookup?phone=${encodeURIComponent(receiverPhone.trim())}`)
         .then(r => r.json())
         .then(data => {
@@ -59,8 +62,12 @@ export default function SendScreen() {
           } else {
             setReceiverName('');
           }
+          setLookupDone(true);
         })
-        .catch(() => setReceiverName(''))
+        .catch(() => {
+          setReceiverName('');
+          setLookupDone(true);
+        })
         .finally(() => setLookingUp(false));
     }, 500);
     return () => clearTimeout(timer);
@@ -255,7 +262,7 @@ export default function SendScreen() {
                   </div>
                 )}
               </div>
-              {receiverPhone.length >= 8 && !lookingUp && (
+              {receiverPhone.length >= 8 && !lookingUp && lookupDone && (
                 receiverName ? (
                   <div className="flex items-center gap-2 text-sm text-emerald-600 font-medium">
                     <User className="h-3.5 w-3.5" />
@@ -263,8 +270,10 @@ export default function SendScreen() {
                     <span className="text-xs text-muted-foreground font-normal">— {t('send.account_found')}</span>
                   </div>
                 ) : (
-                  <div className="text-xs text-muted-foreground">
-                    {t('send.new_account')}
+                  <div className="flex items-center gap-1.5 text-xs text-amber-600 font-medium">
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                    <span>{t('send.account_not_found')}</span>
+                    <span className="text-muted-foreground font-normal">— {t('send.new_account')}</span>
                   </div>
                 )
               )}
