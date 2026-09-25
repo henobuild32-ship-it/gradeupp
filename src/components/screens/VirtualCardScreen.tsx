@@ -197,7 +197,7 @@ export default function VirtualCardScreen() {
 
   // ── Révélation sécurisée (PIN puis — natif — biométrie) ──
   const requestReveal = () => {
-    setPendingPinAction(() => async () => {
+    setPendingPinAction(async () => {
       // Après PIN OK : en mode live, appeler GET /api/cards/reveal → SDK émetteur.
       // Ici : jamais de PAN inventé hors spécimen.
       setRevealed(true);

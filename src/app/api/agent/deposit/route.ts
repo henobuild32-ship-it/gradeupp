@@ -4,6 +4,7 @@ import { checkChildBalanceLimit, logSecurityEvent } from '@/lib/security'
 import { requireUser } from '@/lib/auth'
 import { updateBalanceAndNotify } from '@/lib/notifications'
 import { formatAmount } from '@/lib/tx-labels'
+import { findUserByPhone } from '@/lib/phone'
 
 export async function POST(request: NextRequest) {
   try {
@@ -60,13 +61,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const client = await db.user.findUnique({
-      where: { phone: clientPhone.trim() },
-    })
+    const client = await findUserByPhone(clientPhone)
 
     if (!client) {
       return NextResponse.json(
-        { success: false, message: 'Client non trouvé' },
+        { success: false, message: 'Aucun compte TRAIT trouvé pour ce numéro' },
         { status: 404 }
       )
     }

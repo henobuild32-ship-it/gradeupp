@@ -167,7 +167,7 @@ export default function WithdrawScreen() {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    setPendingPinAction(() => async () => {
+    setPendingPinAction(async () => {
       setLoading(true);
       try {
         const res = await fetch('/api/transfer/withdraw', {
