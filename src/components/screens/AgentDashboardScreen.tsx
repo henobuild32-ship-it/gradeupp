@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, UserPlus, ShieldCheck, Activity, TrendingUp, DollarSign, Users, Clock, XCircle, Loader2, Bell } from 'lucide-react';
+import { ArrowLeft, UserPlus, ShieldCheck, Activity, TrendingUp, DollarSign, Users, Clock, XCircle, Loader2, Bell, Store, Handshake } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -420,6 +420,22 @@ export default function AgentDashboardScreen() {
               >
                 <Activity className="size-4" />
                 {t('action.agent_activity')}
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full justify-start gap-3 text-[#0891B2] border-cyan-200 hover:bg-cyan-50 cursor-pointer"
+                onClick={() => navigateTo('marketplace')}
+              >
+                <Store className="size-4" />
+                {t('nav.market')}
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full justify-start gap-3 text-orange-700 border-orange-200 hover:bg-orange-50 cursor-pointer"
+                onClick={() => navigateTo('barter')}
+              >
+                <Handshake className="size-4" />
+                {t('nav.barter')}
               </Button>
             </CardContent>
           </Card>

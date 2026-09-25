@@ -2,7 +2,7 @@
 
 import { useAppStore, PageName } from '@/lib/store';
 import { useTranslation } from '@/lib/i18n';
-import { Home, ArrowLeftRight, Store, Settings, Phone, MessageSquare, Globe, Bell, ShieldCheck } from 'lucide-react';
+import { Home, ArrowLeftRight, Store, Settings, Phone, MessageSquare, Globe, Bell, ShieldCheck, ShoppingBag, Handshake } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface NavItem {
@@ -24,7 +24,8 @@ const agentNavItems: NavItem[] = [
   { page: 'agent-dashboard', labelKey: 'nav.home', icon: Home, showBadge: true },
   { page: 'agent-deposit', labelKey: 'nav.deposit', icon: Store },
   { page: 'agent-withdraw-validate', labelKey: 'nav.withdraw', icon: ShieldCheck },
-  { page: 'notifications', labelKey: 'nav.notifications', icon: Bell, showBadge: true },
+  { page: 'marketplace', labelKey: 'nav.market', icon: ShoppingBag },
+  { page: 'barter', labelKey: 'nav.barter', icon: Handshake },
   { page: 'settings', labelKey: 'nav.more', icon: Settings },
 ];
 
@@ -43,7 +44,7 @@ export default function BottomNavigation() {
   const navItems = isSeller ? sellerNavItems : isAgent ? agentNavItems : clientNavItems;
 
   const clientSubPages = ['send', 'withdraw', 'deposit', 'history', 'notifications', 'profile', 'marketplace-detail', 'barter-detail', 'barter-create', 'ussd', 'international-transfer'];
-  const agentSubPages = ['agent-activity'];
+  const agentSubPages = ['agent-activity', 'notifications', 'marketplace-detail', 'marketplace-sell', 'orders', 'barter-detail', 'barter-create'];
   const sellerSubPages = ['seller-products', 'seller-qr-scanner', 'notifications'];
 
   return (
