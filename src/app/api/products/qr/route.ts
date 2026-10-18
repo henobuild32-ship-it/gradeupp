@@ -40,10 +40,21 @@ export async function GET(request: NextRequest) {
         category: product.category,
         condition: product.condition,
         imageUrl: product.imageUrl,
+        images: product.images,
+        paymentMethods: product.paymentMethods,
+        sellerPhone: product.sellerPhone,
+        sellerAddress: product.sellerAddress,
         stock: product.stock,
         active: product.active,
         qrCode: product.qrCode,
         seller: product.seller,
+        bonus: {
+          enabled: product.bonusEnabled,
+          only: product.bonusOnly,
+          bonusPrice: product.bonusPrice,
+          maxQty: product.bonusMaxQty,
+          expiryAt: product.bonusExpiryAt,
+        },
       },
     })
   } catch (error) {

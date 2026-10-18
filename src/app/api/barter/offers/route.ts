@@ -5,6 +5,19 @@ import { requireUser } from '@/lib/auth'
 // GET: List barter offers
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireUser(request)
+    if (auth instanceof NextResponse) return auth
+
+    const blocks = await db.userBlock.findMany({
+      where: {
+        OR: [
+          { blockerId: auth.userId },
+          { blockedId: auth.userId },
+        ],
+      },
+    })
+    const hiddenUserIds = blocks.map((b) => (b.blockerId === auth.userId ? b.blockedId : b.blockerId))
+
     const searchParams = request.nextUrl.searchParams
     const status = searchParams.get('status')
     const where: Record<string, unknown> = {}
@@ -12,6 +25,9 @@ export async function GET(request: NextRequest) {
       where.status = status
     } else {
       where.status = { in: ['active', 'accepted'] }
+    }
+    if (hiddenUserIds.length > 0) {
+      where.offeredBy = { notIn: hiddenUserIds }
     }
 
     const offers = await db.barterOffer.findMany({
@@ -55,12 +71,13 @@ export async function POST(request: NextRequest) {
     const auth = await requireUser(request)
     if (auth instanceof NextResponse) return auth
     const body = await request.json()
-    const { title, description, category, offeredBy, wantedItem } = body as {
+    const { title, description, category, offeredBy, wantedItem, images } = body as {
       title: string
       description: string
       category: string
       offeredBy: string
       wantedItem?: string
+      images?: string[]
     }
 
     if (!title || !description || !category || !offeredBy) {
@@ -75,6 +92,14 @@ export async function POST(request: NextRequest) {
         { success: false, message: 'Non autorisé' },
         { status: 403 }
       )
+    }
+
+    let imagesJson: string | null = null
+    if (Array.isArray(images) && images.length > 0) {
+      const valid = images.filter(
+        (i): i is string => typeof i === 'string' && i.startsWith('data:image/') && i.length <= 400_000
+      ).slice(0, 3)
+      if (valid.length > 0) imagesJson = JSON.stringify(valid)
     }
 
     const user = await db.user.findUnique({
@@ -95,6 +120,7 @@ export async function POST(request: NextRequest) {
         category: category.trim(),
         offeredBy,
         wantedItem: wantedItem?.trim() || null,
+        images: imagesJson,
       },
     })
 

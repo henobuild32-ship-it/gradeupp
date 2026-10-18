@@ -17,10 +17,12 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAppStore } from '@/lib/store';
+import ProductImagePicker from '@/components/marketplace/ProductImagePicker';
 
 export default function BarterCreateScreen() {
   const { goBack, user } = useAppStore();
   const [submitting, setSubmitting] = useState(false);
+  const [photos, setPhotos] = useState<string[]>([]);
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -60,6 +62,7 @@ export default function BarterCreateScreen() {
           category: form.category,
           offeredBy: user.id,
           wantedItem: form.wantedItem.trim() || undefined,
+          images: photos.length > 0 ? photos : undefined,
         }),
       });
       const data = await res.json();
@@ -165,12 +168,18 @@ export default function BarterCreateScreen() {
             />
           </div>
 
+          {/* Photos */}
+          <div className="space-y-2">
+            <Label>Photos (optionnel)</Label>
+            <ProductImagePicker images={photos} onChange={setPhotos} max={3} minSize={640} />
+          </div>
+
           {/* Info card */}
-          <Card className="bg-emerald-50 border-emerald-200">
+          <Card className="bg-emerald-500/10 border-emerald-500/30">
             <CardContent className="p-4">
-              <p className="text-sm text-emerald-800">
-                💡 Les offres de troc permettent d&apos;échanger des biens et services sans argent. 
-                Soyez précis dans votre description pour faciliter les échanges.
+              <p className="text-sm text-emerald-700 dark:text-emerald-300">
+                Les offres de troc permettent d&apos;échanger des biens et services sans argent.
+                Les discussions liées à une offre sont éphémères : elles expirent automatiquement après 48 h.
               </p>
             </CardContent>
           </Card>

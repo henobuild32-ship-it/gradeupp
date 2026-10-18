@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireUser } from '@/lib/auth'
 import crypto from 'crypto'
+import {
+  serializeJsonArray,
+  validateImageList,
+  validatePaymentMethodsList,
+} from '@/lib/marketplace'
 
 function makeProductQr(productId: string): string {
   return `TRAIT-PROD-${productId}-${crypto.randomBytes(4).toString('hex')}`
@@ -41,6 +46,10 @@ export async function GET(request: NextRequest) {
         currency: p.currency,
         category: p.category,
         imageUrl: p.imageUrl,
+        images: p.images,
+        paymentMethods: p.paymentMethods,
+        sellerPhone: p.sellerPhone,
+        sellerAddress: p.sellerAddress,
         active: p.active,
         stock: p.stock,
         condition: p.condition,
@@ -67,14 +76,14 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST: any authenticated user can list a product on the marketplace
+// POST: only validated sellers can list a product on the marketplace
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireUser(request)
     if (auth instanceof NextResponse) return auth
 
     const body = await request.json()
-    const { name, description, price, currency, category, imageUrl, stock, condition } = body
+    const { name, description, price, currency, category, images, paymentMethods, stock, condition, sellerPhone, sellerAddress } = body
 
     if (!name || !description || price === undefined || !category) {
       return NextResponse.json({ success: false, message: 'Champs requis manquants' }, { status: 400 })
@@ -84,10 +93,26 @@ export async function POST(request: NextRequest) {
     if (!user || user.suspended) {
       return NextResponse.json({ success: false, message: 'Compte non autorisé' }, { status: 403 })
     }
+    if (user.role !== 'seller' || user.validationStatus !== 'validated') {
+      return NextResponse.json(
+        { success: false, message: 'Seuls les vendeurs validés peuvent publier un produit' },
+        { status: 403 }
+      )
+    }
 
     const priceNum = parseFloat(price)
     if (!Number.isFinite(priceNum) || priceNum <= 0) {
       return NextResponse.json({ success: false, message: 'Prix invalide' }, { status: 400 })
+    }
+
+    const imageCheck = validateImageList(images)
+    if (!imageCheck.ok) {
+      return NextResponse.json({ success: false, message: imageCheck.error }, { status: 400 })
+    }
+
+    const methodsCheck = validatePaymentMethodsList(paymentMethods)
+    if (!methodsCheck.ok) {
+      return NextResponse.json({ success: false, message: methodsCheck.error }, { status: 400 })
     }
 
     const stockNum = Math.max(1, parseInt(String(stock ?? 1), 10) || 1)
@@ -101,7 +126,11 @@ export async function POST(request: NextRequest) {
         price: priceNum,
         currency: currency === 'FC' || currency === 'CDF' ? 'FC' : 'USD',
         category: String(category).trim(),
-        imageUrl: imageUrl || null,
+        imageUrl: imageCheck.images[0] || null,
+        images: serializeJsonArray(imageCheck.images),
+        paymentMethods: serializeJsonArray(methodsCheck.methods),
+        sellerPhone: String(sellerPhone || user.phone || '').trim() || null,
+        sellerAddress: String(sellerAddress || '').trim() || null,
         active: true,
         stock: stockNum,
         condition: condition || 'new',

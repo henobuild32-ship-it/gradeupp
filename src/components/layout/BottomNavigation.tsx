@@ -43,9 +43,9 @@ export default function BottomNavigation() {
   const isSeller = user?.role === 'seller';
   const navItems = isSeller ? sellerNavItems : isAgent ? agentNavItems : clientNavItems;
 
-  const clientSubPages: PageName[] = ['withdraw', 'deposit', 'history', 'notifications', 'profile', 'marketplace-detail', 'orders', 'barter', 'barter-detail', 'barter-create', 'ussd', 'receipt'];
-  const agentSubPages: PageName[] = ['agent-activity', 'agent-messages', 'notifications', 'marketplace-detail', 'marketplace-sell', 'orders', 'receipt', 'barter-detail', 'barter-create', 'profile'];
-  const sellerSubPages: PageName[] = ['seller-products', 'seller-qr-scanner', 'orders', 'marketplace', 'marketplace-detail', 'marketplace-sell', 'receipt', 'profile'];
+  const clientSubPages: PageName[] = ['withdraw', 'deposit', 'history', 'notifications', 'profile', 'marketplace-detail', 'orders', 'barter', 'barter-detail', 'barter-create', 'barter-chats', 'ussd', 'receipt'];
+  const agentSubPages: PageName[] = ['agent-activity', 'agent-messages', 'notifications', 'marketplace-detail', 'marketplace-sell', 'orders', 'receipt', 'barter', 'barter-detail', 'barter-create', 'barter-chats', 'profile'];
+  const sellerSubPages: PageName[] = ['seller-products', 'seller-qr-scanner', 'orders', 'marketplace', 'marketplace-detail', 'marketplace-sell', 'receipt', 'profile', 'barter', 'barter-detail', 'barter-create', 'barter-chats'];
   const subPages = isSeller ? sellerSubPages : isAgent ? agentSubPages : clientSubPages;
 
   return (

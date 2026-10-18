@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireUser } from '@/lib/auth'
 import crypto from 'crypto'
+import {
+  serializeJsonArray,
+  validateImageList,
+  validatePaymentMethodsList,
+} from '@/lib/marketplace'
 
 function makeProductQr(productId: string): string {
   return `TRAIT-PROD-${productId}-${crypto.randomBytes(4).toString('hex')}`
@@ -37,7 +42,7 @@ export async function POST(request: NextRequest) {
     if (auth instanceof NextResponse) return auth
 
     const body = await request.json()
-    const { name, description, price, currency, category, imageUrl, stock, condition } = body
+    const { name, description, price, currency, category, images, paymentMethods, stock, condition, sellerPhone, sellerAddress } = body
 
     if (!name || !description || price === undefined || !category) {
       return NextResponse.json({ success: false, message: 'Champs requis manquants' }, { status: 400 })
@@ -56,6 +61,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Prix invalide' }, { status: 400 })
     }
 
+    const imageCheck = validateImageList(images)
+    if (!imageCheck.ok) {
+      return NextResponse.json({ success: false, message: imageCheck.error }, { status: 400 })
+    }
+
+    const methodsCheck = validatePaymentMethodsList(paymentMethods)
+    if (!methodsCheck.ok) {
+      return NextResponse.json({ success: false, message: methodsCheck.error }, { status: 400 })
+    }
+
     const stockNum = Math.max(1, parseInt(String(stock ?? 1), 10) || 1)
     const tempId = crypto.randomUUID()
     const qrCode = makeProductQr(tempId)
@@ -68,7 +83,11 @@ export async function POST(request: NextRequest) {
         price: priceNum,
         currency: currency === 'FC' || currency === 'CDF' ? 'FC' : 'USD',
         category: String(category).trim(),
-        imageUrl: imageUrl || null,
+        imageUrl: imageCheck.images[0] || null,
+        images: serializeJsonArray(imageCheck.images),
+        paymentMethods: serializeJsonArray(methodsCheck.methods),
+        sellerPhone: String(sellerPhone || seller.phone || '').trim() || null,
+        sellerAddress: String(sellerAddress || '').trim() || null,
         active: true,
         stock: stockNum,
         condition: condition || 'new',
@@ -96,7 +115,7 @@ export async function PUT(request: NextRequest) {
     if (auth instanceof NextResponse) return auth
 
     const body = await request.json()
-    const { productId, name, description, price, currency, category, imageUrl, stock, condition, active } = body
+    const { productId, name, description, price, currency, category, imageUrl, images, paymentMethods, stock, condition, active, sellerPhone, sellerAddress } = body
 
     if (!productId) {
       return NextResponse.json({ success: false, message: 'Produit requis' }, { status: 400 })
@@ -119,7 +138,25 @@ export async function PUT(request: NextRequest) {
     }
     if (currency !== undefined) data.currency = currency === 'FC' || currency === 'CDF' ? 'FC' : 'USD'
     if (category !== undefined) data.category = String(category).trim()
-    if (imageUrl !== undefined) data.imageUrl = imageUrl || null
+    if (images !== undefined) {
+      const imageCheck = validateImageList(images)
+      if (!imageCheck.ok) {
+        return NextResponse.json({ success: false, message: imageCheck.error }, { status: 400 })
+      }
+      data.images = serializeJsonArray(imageCheck.images)
+      data.imageUrl = imageCheck.images[0] || null
+    } else if (imageUrl !== undefined) {
+      data.imageUrl = imageUrl || null
+    }
+    if (paymentMethods !== undefined) {
+      const methodsCheck = validatePaymentMethodsList(paymentMethods)
+      if (!methodsCheck.ok) {
+        return NextResponse.json({ success: false, message: methodsCheck.error }, { status: 400 })
+      }
+      data.paymentMethods = serializeJsonArray(methodsCheck.methods)
+    }
+    if (sellerPhone !== undefined) data.sellerPhone = String(sellerPhone).trim() || null
+    if (sellerAddress !== undefined) data.sellerAddress = String(sellerAddress).trim() || null
     if (stock !== undefined) data.stock = Math.max(0, parseInt(String(stock), 10) || 0)
     if (condition !== undefined) data.condition = condition
     if (active !== undefined) data.active = !!active

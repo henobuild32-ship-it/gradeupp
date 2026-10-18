@@ -14,6 +14,7 @@ import {
   MonitorSmartphone,
   ShoppingBag,
   Gift,
+  Handshake,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,6 +54,7 @@ interface Product {
   currency: string;
   category: string;
   imageUrl: string | null;
+  images?: string | null;
   active: boolean;
   stock?: number;
   condition?: string;
@@ -63,7 +65,7 @@ interface Product {
 }
 
 export default function MarketplaceScreen() {
-  const { navigateTo, goBack } = useAppStore();
+  const { navigateTo, goBack, user } = useAppStore();
   const [products, setProducts] = useState<Product[]>([]);
   const [filtered, setFiltered] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -143,13 +145,24 @@ export default function MarketplaceScreen() {
             <h1 className="text-lg font-semibold">Marketplace</h1>
           </div>
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             className="rounded-xl"
-            onClick={() => navigateTo('marketplace-sell')}
+            onClick={() => navigateTo('barter')}
           >
-            Vendre
+            <Handshake className="size-4 mr-1" />
+            Troc
           </Button>
+          {user?.role === 'seller' && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl"
+              onClick={() => navigateTo('marketplace-sell')}
+            >
+              Vendre
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"
@@ -276,6 +289,15 @@ export default function MarketplaceScreen() {
                 const displayPrice = isBonusProduct && product.bonus.bonusPrice
                   ? product.bonus.bonusPrice
                   : product.price;
+                let cover: string | null = product.imageUrl;
+                if (!cover && product.images) {
+                  try {
+                    const parsed = JSON.parse(product.images);
+                    if (Array.isArray(parsed) && typeof parsed[0] === 'string') cover = parsed[0];
+                  } catch {
+                    cover = null;
+                  }
+                }
 
                 return (
                   <motion.div
@@ -287,7 +309,7 @@ export default function MarketplaceScreen() {
                     transition={{ delay: index * 0.05 }}
                     className="group"
                   >
-                    <div className="bg-card rounded-xl border overflow-hidden shadow-sm hover:shadow-md transition-shadow relative">
+                    <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm hover:shadow-md transition-shadow relative">
                       {/* Bonus badge */}
                       {isBonusProduct && !isExpired && (
                         <div className="absolute top-2 left-2 z-10">
@@ -298,19 +320,21 @@ export default function MarketplaceScreen() {
                         </div>
                       )}
 
-                      {/* Image placeholder */}
+                      {/* Image */}
                       <div
-                        className={`aspect-square bg-gradient-to-br ${getGradient(
-                          product.category
-                        )} flex items-center justify-center relative cursor-pointer`}
+                        className={`aspect-square ${cover ? 'bg-muted' : `bg-gradient-to-br ${getGradient(product.category)}`} flex items-center justify-center relative cursor-pointer`}
                         onClick={() =>
                           navigateTo('marketplace-detail', {
                             productId: product.id,
                           })
                         }
                       >
-                        <Icon className="size-10 text-white/80" />
-                        <Badge className="absolute top-2 right-2 bg-white/20 text-white border-0 text-[10px] backdrop-blur-sm">
+                        {cover ? (
+                          <img src={cover} alt={product.name} className="absolute inset-0 w-full h-full object-cover" />
+                        ) : (
+                          <Icon className="size-10 text-white/80" />
+                        )}
+                        <Badge className="absolute top-2 right-2 bg-black/40 text-white border-0 text-[10px] backdrop-blur-sm">
                           {product.category}
                         </Badge>
                       </div>

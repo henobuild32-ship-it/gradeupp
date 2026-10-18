@@ -26,6 +26,7 @@ export type PageName =
   | 'barter'
   | 'barter-detail'
   | 'barter-create'
+  | 'barter-chats'
   | 'notifications'
   | 'settings'
   | 'profile'

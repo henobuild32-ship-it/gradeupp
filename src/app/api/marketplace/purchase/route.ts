@@ -7,11 +7,13 @@ export async function POST(request: NextRequest) {
     const auth = await requireUser(request)
     if (auth instanceof NextResponse) return auth
     const body = await request.json()
-    const { productId, buyerId, useBonus, useReal } = body as {
+    const { productId, buyerId, useBonus, useReal, quantity, clientRequestId } = body as {
       productId: string
       buyerId: string
       useBonus?: boolean
       useReal?: boolean
+      quantity?: number
+      clientRequestId?: string
     }
 
     if (!productId || !buyerId) {
@@ -26,6 +28,33 @@ export async function POST(request: NextRequest) {
         { success: false, message: 'Non autorisé' },
         { status: 403 }
       )
+    }
+
+    const qty = Math.min(10, Math.max(1, Math.floor(Number(quantity) || 1)))
+    const requestId = typeof clientRequestId === 'string' && clientRequestId.length > 0 && clientRequestId.length <= 64
+      ? clientRequestId
+      : undefined
+
+    if (requestId) {
+      const existing = await db.purchase.findUnique({ where: { clientRequestId: requestId } })
+      if (existing) {
+        return NextResponse.json({
+          success: true,
+          duplicate: true,
+          purchase: {
+            id: existing.id,
+            productId: existing.productId,
+            buyerId: existing.buyerId,
+            amount: existing.amount,
+            quantity: existing.quantity,
+            usedBonus: existing.usedBonus,
+            usedReal: existing.usedReal,
+            currency: 'USD',
+            status: existing.status,
+            createdAt: existing.createdAt,
+          },
+        })
+      }
     }
 
     // Defaults: if neither specified, use real balance only (backward compat)
@@ -45,9 +74,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (product.stock !== undefined && product.stock !== null && product.stock < 1) {
+    if (product.stock !== undefined && product.stock !== null && product.stock < qty) {
       return NextResponse.json(
-        { success: false, message: 'Produit en rupture de stock' },
+        { success: false, message: product.stock < 1 ? 'Produit en rupture de stock' : 'Stock insuffisant pour cette quantité' },
         { status: 409 }
       )
     }
@@ -76,14 +105,16 @@ export async function POST(request: NextRequest) {
     const currency = product.currency || 'USD'
     const isFC = currency === 'FC'
 
-    // ─── Determine effective price ───────────────────────────────────
-    const effectivePrice = willUseBonus && product.bonusPrice !== null && product.bonusPrice !== undefined
+    // ─── Determine effective unit price ─────────────────────────────
+    const effectiveUnitPrice = willUseBonus && product.bonusPrice !== null && product.bonusPrice !== undefined
       ? product.bonusPrice
       : product.price
 
-    if (!Number.isFinite(effectivePrice) || effectivePrice <= 0) {
+    if (!Number.isFinite(effectiveUnitPrice) || effectiveUnitPrice <= 0) {
       return NextResponse.json({ success: false, message: 'Prix du produit invalide' }, { status: 409 })
     }
+
+    const effectivePrice = effectiveUnitPrice * qty
 
     // ─── Validate bonus-related rules ────────────────────────────────
 
@@ -121,17 +152,19 @@ export async function POST(request: NextRequest) {
 
     // Rule: Check bonusMaxQty per user
     if (willUseBonus && product.bonusMaxQty !== null) {
-      const existingBonusPurchases = await db.purchase.count({
+      const existingBonusQty = await db.purchase.aggregate({
         where: {
           productId,
           buyerId,
           usedBonus: { gt: 0 },
         },
+        _sum: { quantity: true },
       })
 
-      if (existingBonusPurchases >= product.bonusMaxQty) {
+      const alreadyBought = existingBonusQty._sum.quantity || 0
+      if (alreadyBought + qty > product.bonusMaxQty) {
         return NextResponse.json(
-          { success: false, message: `You have reached the maximum limit of ${product.bonusMaxQty} bonus purchases for this product` },
+          { success: false, message: `Vous avez atteint la limite de ${product.bonusMaxQty} achat(s) bonus pour ce produit` },
           { status: 400 }
         )
       }
@@ -191,8 +224,8 @@ export async function POST(request: NextRequest) {
 
       // Decrement stock atomically (prevent oversell)
       const stockDec = await tx.marketplaceProduct.updateMany({
-        where: { id: productId, stock: { gte: 1 } },
-        data: { stock: { decrement: 1 } },
+        where: { id: productId, stock: { gte: qty } },
+        data: { stock: { decrement: qty } },
       })
       if (stockDec.count !== 1) throw new Error('OUT_OF_STOCK')
 
@@ -201,9 +234,11 @@ export async function POST(request: NextRequest) {
           productId,
           buyerId,
           amount: effectivePrice,
+          quantity: qty,
           usedBonus,
           usedReal,
           status: 'completed',
+          clientRequestId: requestId,
         },
         include: {
           product: true,
@@ -218,7 +253,7 @@ export async function POST(request: NextRequest) {
             buyerId,
             sellerId: product.sellerId,
             productId,
-            quantity: 1,
+            quantity: qty,
             amount: effectivePrice,
             currency,
             status: 'paid',
@@ -272,7 +307,7 @@ export async function POST(request: NextRequest) {
         data: {
           userId: product.sellerId,
           title: 'New Purchase',
-          message: `${buyer.name || buyer.pseudo || 'Someone'} purchased "${product.name}" for ${effectivePrice.toFixed(2)} ${currency}${usedBonus > 0 ? ' (bonus payment)' : ''}`,
+          message: `${buyer.name || buyer.pseudo || 'Someone'} purchased ${qty}x "${product.name}" for ${effectivePrice.toFixed(2)} ${currency}${usedBonus > 0 ? ' (bonus payment)' : ''}`,
           type: 'purchase',
         },
       })
@@ -283,7 +318,7 @@ export async function POST(request: NextRequest) {
       data: {
         userId: buyer.id,
         title: 'Achat confirmé',
-        message: `Votre achat de "${product.name}" pour ${effectivePrice.toFixed(2)} ${currency} a été confirmé. ${usedBonus > 0 ? `Bonus utilisé: ${usedBonus.toFixed(2)} USD.` : ''}`,
+        message: `Votre achat de ${qty}x "${product.name}" pour ${effectivePrice.toFixed(2)} ${currency} a été confirmé. ${usedBonus > 0 ? `Bonus utilisé: ${usedBonus.toFixed(2)} USD.` : ''}`,
         type: 'purchase',
       },
     })
@@ -312,6 +347,7 @@ export async function POST(request: NextRequest) {
         productId: purchase.productId,
         buyerId: purchase.buyerId,
         amount: purchase.amount,
+        quantity: purchase.quantity,
         usedBonus: purchase.usedBonus,
         usedReal: purchase.usedReal,
         currency,

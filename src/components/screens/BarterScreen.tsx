@@ -15,6 +15,7 @@ import {
   Repeat,
   User,
   Tag,
+  MessageSquare,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -116,11 +117,20 @@ export default function BarterScreen() {
           </div>
           <Button
             size="sm"
+            variant="outline"
+            className="rounded-xl"
+            onClick={() => navigateTo('barter-chats')}
+          >
+            <MessageSquare className="size-4 mr-1" />
+            Discussions
+          </Button>
+          <Button
+            size="sm"
             className="bg-emerald-600 hover:bg-emerald-700 text-white"
             onClick={() => navigateTo('barter-create')}
           >
             <Plus className="size-4" />
-            <span className="hidden sm:inline">Créer une offre</span>
+            <span className="hidden sm:inline">Créer</span>
           </Button>
         </div>
         <p className="text-sm text-muted-foreground mt-1 ml-12">
@@ -205,23 +215,39 @@ export default function BarterScreen() {
                 >
                   <Card className="hover:shadow-md transition-shadow cursor-pointer">
                     <CardContent className="p-4 space-y-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-semibold text-base leading-tight">
-                          {offer.title}
-                        </h3>
-                        <Badge
-                          variant="outline"
-                          className={
-                            CATEGORY_COLORS[offer.category] || 'bg-muted'
+                      <div className="flex items-start gap-3">
+                        {(() => {
+                          let thumb: string | null = null
+                          if (offer.images) {
+                            try {
+                              const parsed = JSON.parse(offer.images)
+                              if (Array.isArray(parsed) && typeof parsed[0] === 'string') thumb = parsed[0]
+                            } catch { thumb = null }
                           }
-                        >
-                          {offer.category}
-                        </Badge>
+                          return thumb ? (
+                            <img src={thumb} alt={offer.title} className="w-14 h-14 rounded-lg object-cover shrink-0" />
+                          ) : null
+                        })()}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <h3 className="font-semibold text-base leading-tight text-foreground">
+                              {offer.title}
+                            </h3>
+                            <Badge
+                              variant="outline"
+                              className={
+                                CATEGORY_COLORS[offer.category] ||
+                                'bg-muted text-muted-foreground border-border dark:bg-muted dark:text-muted-foreground'
+                              }
+                            >
+                              {offer.category}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
+                            {offer.description}
+                          </p>
+                        </div>
                       </div>
-
-                      <p className="text-sm text-muted-foreground line-clamp-2">
-                        {offer.description}
-                      </p>
 
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <User className="size-3.5" />

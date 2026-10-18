@@ -25,18 +25,31 @@ interface Order {
   status: string
   paymentStatus: string
   createdAt: string
-  product: { id: string; name: string; imageUrl: string | null; category: string; qrCode: string | null }
+  product: { id: string; name: string; imageUrl: string | null; images?: string | null; category: string; qrCode: string | null }
   buyer: { id: string; name: string; pseudo: string; phone: string }
   seller: { id: string; name: string; pseudo: string; phone: string; businessName: string | null }
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof Clock }> = {
-  pending: { label: 'En attente', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: Clock },
-  paid: { label: 'Payée', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: CheckCircle2 },
-  confirmed: { label: 'Confirmée', color: 'bg-indigo-100 text-indigo-700 border-indigo-200', icon: CheckCircle2 },
-  preparing: { label: 'Préparation', color: 'bg-violet-100 text-violet-700 border-violet-200', icon: Truck },
-  completed: { label: 'Terminée', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: CheckCircle2 },
-  cancelled: { label: 'Annulée', color: 'bg-red-100 text-red-700 border-red-200', icon: XCircle },
+  pending: { label: 'En attente', color: 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30', icon: Clock },
+  paid: { label: 'Payée', color: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/30', icon: CheckCircle2 },
+  confirmed: { label: 'Confirmée', color: 'bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-500/15 dark:text-indigo-300 dark:border-indigo-500/30', icon: CheckCircle2 },
+  preparing: { label: 'Préparation', color: 'bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-500/15 dark:text-violet-300 dark:border-violet-500/30', icon: Truck },
+  completed: { label: 'Terminée', color: 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30', icon: CheckCircle2 },
+  cancelled: { label: 'Annulée', color: 'bg-red-100 text-red-700 border-red-200 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/30', icon: XCircle },
+}
+
+function orderCover(o: Order): string | null {
+  if (o.product.imageUrl) return o.product.imageUrl
+  if (o.product.images) {
+    try {
+      const parsed = JSON.parse(o.product.images)
+      if (Array.isArray(parsed) && typeof parsed[0] === 'string') return parsed[0]
+    } catch {
+      return null
+    }
+  }
+  return null
 }
 
 export default function OrdersScreen() {
@@ -62,7 +75,7 @@ export default function OrdersScreen() {
 
   useEffect(() => {
     void fetchOrders(role)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [user, role])
 
   if (!user) return null
@@ -143,12 +156,12 @@ export default function OrdersScreen() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
-      <div className="flex items-center gap-3 p-4 bg-white shadow-sm">
+    <div className="flex flex-col h-full bg-background">
+      <div className="flex items-center gap-3 p-4 bg-background/80 backdrop-blur-md border-b border-border">
         <Button variant="ghost" size="icon" onClick={() => goBack()}>
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <h2 className="text-xl font-bold text-gray-800">Mes Commandes</h2>
+        <h2 className="text-xl font-bold text-foreground">Mes Commandes</h2>
       </div>
 
       <div className="flex gap-2 p-4 pb-0">
@@ -156,8 +169,8 @@ export default function OrdersScreen() {
           <button
             key={r}
             onClick={() => { setRole(r); setLoading(true) }}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-              role === r ? 'bg-[#0D5C63] text-white' : 'bg-white text-gray-500 border'
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
+              role === r ? 'bg-[#0D5C63] text-white' : 'bg-card text-muted-foreground border border-border'
             }`}
           >
             {r === 'buyer' ? 'Achats' : 'Ventes'}
@@ -171,7 +184,7 @@ export default function OrdersScreen() {
             <Loader2 className="w-8 h-8 animate-spin text-[#0D5C63]" />
           </div>
         ) : orders.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-12 text-gray-400 bg-white rounded-2xl">
+          <div className="flex flex-col items-center justify-center p-12 text-muted-foreground bg-card rounded-2xl border border-border">
             <ShoppingBag className="w-16 h-16 mb-4 opacity-20" />
             <p>Aucune commande.</p>
             <Button
@@ -186,37 +199,38 @@ export default function OrdersScreen() {
           orders.map((o) => {
             const cfg = STATUS_CONFIG[o.status] || STATUS_CONFIG.pending
             const StatusIcon = cfg.icon
+            const cover = orderCover(o)
             return (
               <motion.div
                 key={o.id}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white p-4 rounded-2xl shadow-sm border"
+                className="bg-card p-4 rounded-2xl shadow-sm border border-border"
               >
                 <div className="flex items-start gap-3">
-                  <div className="w-14 h-14 bg-gray-100 rounded-xl flex items-center justify-center overflow-hidden shrink-0">
-                    {o.product.imageUrl ? (
-                      <img src={o.product.imageUrl} alt={o.product.name} className="w-full h-full object-cover" />
+                  <div className="w-14 h-14 bg-muted rounded-xl flex items-center justify-center overflow-hidden shrink-0">
+                    {cover ? (
+                      <img src={cover} alt={o.product.name} className="w-full h-full object-cover" />
                     ) : (
-                      <Package className="w-6 h-6 text-gray-400" />
+                      <Package className="w-6 h-6 text-muted-foreground" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <h4 className="font-bold text-gray-800 truncate">{o.product.name}</h4>
-                        <p className="text-xs text-gray-500">
+                        <h4 className="font-bold text-foreground truncate">{o.product.name}</h4>
+                        <p className="text-xs text-muted-foreground">
                           {role === 'buyer' ? `Vendeur: ${o.seller.businessName || o.seller.name}` : `Acheteur: ${o.buyer.name}`}
                         </p>
-                        <p className="text-xs text-gray-400 mt-0.5">
+                        <p className="text-xs text-muted-foreground mt-0.5">
                           #{o.id.slice(-8)} · {new Date(o.createdAt).toLocaleDateString('fr-FR')}
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="font-bold text-[#0D5C63]">
+                        <p className="font-bold text-emerald-600 dark:text-emerald-400">
                           {o.amount.toFixed(2)} {o.currency}
                         </p>
-                        <p className="text-[10px] text-gray-400">x{o.quantity}</p>
+                        <p className="text-[10px] text-muted-foreground">x{o.quantity}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 mt-2">
