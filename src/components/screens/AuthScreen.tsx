@@ -172,6 +172,10 @@ export default function AuthScreen() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (selectedRole === 'seller') {
+      navigateTo('seller-register');
+      return;
+    }
     const cleanedPhone = regPhone.replace(/\s/g, '');
     if (!regName.trim()) {
       toast.error(t('validation.name_required'));
@@ -195,13 +199,6 @@ export default function AuthScreen() {
     }
     if (!acceptTerms) {
       toast.error('Veuillez accepter les conditions d\'utilisation');
-      return;
-    }
-
-    // Seller → redirect to dedicated form (same OTP workflow after)
-    if (selectedRole === 'seller') {
-      toast.success('Complétez le formulaire fournisseur ci-dessous.');
-      navigateTo('seller-register');
       return;
     }
 
@@ -504,26 +501,37 @@ export default function AuthScreen() {
                 </motion.div>
               )}
 
-              {/* Seller Info Card */}
+              {/* Seller → CTA vers l'unique formulaire vendeur */}
               {selectedRole === 'seller' && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="mb-6 bg-gradient-to-r from-pink-50 to-pink-100/50 border border-pink-200 rounded-xl px-4 py-3.5 flex items-start gap-3"
+                  className="mb-6 bg-gradient-to-r from-pink-50 to-pink-100/50 border border-pink-200 rounded-xl px-4 py-4"
                 >
-                  <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center shrink-0 mt-0.5">
-                    <Store className="w-5 h-5 text-pink-600" />
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center shrink-0 mt-0.5">
+                      <Store className="w-5 h-5 text-pink-600" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <p className="text-sm text-pink-800 font-semibold">Validation requise</p>
+                      <ul className="text-xs text-pink-700 space-y-0.5">
+                        <li>• Les comptes Service doivent être validés manuellement par les administrateurs.</li>
+                        <li>• Après validation, vous pourrez gérer vos produits et recevoir des paiements.</li>
+                        <li>• Un seul formulaire complet : identité, commerce, localisation et sécurité.</li>
+                      </ul>
+                    </div>
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <p className="text-sm text-pink-800 font-semibold">Validation requise</p>
-                    <ul className="text-xs text-pink-700 space-y-0.5">
-                      <li>• Les comptes Service doivent être validés manuellement par les administrateurs.</li>
-                      <li>• Après validation, vous pourrez gérer vos produits et recevoir des paiements.</li>
-                    </ul>
-                  </div>
+                  <Button
+                    type="button"
+                    onClick={() => navigateTo('seller-register')}
+                    className="mt-4 w-full h-12 text-base font-semibold bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white rounded-xl shadow-lg shadow-pink-500/20 cursor-pointer"
+                  >
+                    Ouvrir le formulaire fournisseur
+                  </Button>
                 </motion.div>
               )}
 
+              {selectedRole !== 'seller' && (
               <form onSubmit={handleRegister} className="flex flex-col gap-5">
                 {/* Name */}
                 <div className="flex flex-col gap-2">
@@ -723,6 +731,7 @@ export default function AuthScreen() {
                   )}
                 </Button>
               </form>
+              )}
 
               {/* Divider */}
               <div className="flex items-center gap-3 my-5">

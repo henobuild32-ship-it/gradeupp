@@ -270,6 +270,31 @@ const pagesWithNav: PageName[] = ['home', 'send', 'withdraw', 'deposit', 'histor
 
 const adminPages: PageName[] = ['admin-login', 'admin-dashboard', 'admin-users', 'admin-agents', 'admin-transactions', 'admin-market', 'admin-barter', 'admin-notifications', 'admin-activity-log', 'admin-bonus', 'admin-bonus-adjust', 'admin-bonus-history', 'admin-bonus-campaigns', 'admin-agent-validation', 'admin-messages', 'admin-developers', 'admin-card-requests', 'admin-cards', 'admin-client-messages', 'admin-seller-validation', 'admin-sellers', 'admin-children', 'admin-kyc', 'admin-support', 'agent-register', 'agent-pending'];
 
+const sellerPendingPages: PageName[] = [
+  'seller-pending', 'settings', 'support', 'notifications', 'profile',
+  'change-pin', 'two-factor-setup',
+  'welcome', 'auth', 'auth-role', 'auth-phone', 'auth-login', 'auth-otp', 'auth-profile',
+  'forgot-password', 'reset-password', 'pin-setup', 'pin-verify', 'onboarding',
+  'trait-ai', 'trait-ai-welcome',
+];
+
+const sellerValidatedPages: PageName[] = [
+  ...sellerPendingPages,
+  'seller-dashboard', 'seller-products', 'seller-qr-scanner',
+  'marketplace', 'marketplace-detail', 'marketplace-sell', 'orders', 'receipt',
+];
+
+const agentPages: PageName[] = [
+  'agent-dashboard', 'agent-deposit', 'agent-withdraw-validate', 'agent-activity', 'agent-messages',
+  'marketplace', 'marketplace-detail', 'marketplace-sell', 'orders', 'receipt',
+  'barter', 'barter-detail', 'barter-create',
+  'settings', 'support', 'notifications', 'profile',
+  'change-pin', 'two-factor-setup',
+  'welcome', 'auth', 'auth-role', 'auth-phone', 'auth-login', 'auth-otp', 'auth-profile',
+  'forgot-password', 'reset-password', 'pin-setup', 'pin-verify', 'onboarding',
+  'trait-ai', 'trait-ai-welcome',
+];
+
 export default function TraitApp() {
   const { currentPage, user, admin, navigateTo } = useAppStore();
   const Screen = screenMap[currentPage];
@@ -346,6 +371,24 @@ export default function TraitApp() {
       navigateTo('admin-dashboard');
     }
   }, [admin, currentPage, navigateTo]);
+
+  useEffect(() => {
+    if (!user || admin) return;
+    if (adminPages.includes(currentPage)) return;
+    if (user.role === 'seller') {
+      const validated = user.validationStatus === 'validated' && !user.suspended;
+      const allowed = validated ? sellerValidatedPages : sellerPendingPages;
+      if (!allowed.includes(currentPage)) {
+        navigateTo(validated ? 'seller-dashboard' : 'seller-pending');
+      }
+      return;
+    }
+    if (user.role === 'agent') {
+      if (!agentPages.includes(currentPage)) {
+        navigateTo('agent-dashboard');
+      }
+    }
+  }, [user, admin, currentPage, navigateTo]);
 
   // Session expired → friendly message + re-auth (not raw "Non authentifié")
   useEffect(() => {

@@ -43,18 +43,17 @@ export default function BottomNavigation() {
   const isSeller = user?.role === 'seller';
   const navItems = isSeller ? sellerNavItems : isAgent ? agentNavItems : clientNavItems;
 
-  const clientSubPages = ['send', 'withdraw', 'deposit', 'history', 'notifications', 'profile', 'marketplace-detail', 'barter-detail', 'barter-create', 'ussd', 'international-transfer'];
-  const agentSubPages = ['agent-activity', 'notifications', 'marketplace-detail', 'marketplace-sell', 'orders', 'barter-detail', 'barter-create'];
-  const sellerSubPages = ['seller-products', 'seller-qr-scanner', 'notifications'];
+  const clientSubPages: PageName[] = ['withdraw', 'deposit', 'history', 'notifications', 'profile', 'marketplace-detail', 'orders', 'barter', 'barter-detail', 'barter-create', 'ussd', 'receipt'];
+  const agentSubPages: PageName[] = ['agent-activity', 'agent-messages', 'notifications', 'marketplace-detail', 'marketplace-sell', 'orders', 'receipt', 'barter-detail', 'barter-create', 'profile'];
+  const sellerSubPages: PageName[] = ['seller-products', 'seller-qr-scanner', 'orders', 'marketplace', 'marketplace-detail', 'marketplace-sell', 'receipt', 'profile'];
+  const subPages = isSeller ? sellerSubPages : isAgent ? agentSubPages : clientSubPages;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-md safe-area-bottom">
       <div className="mx-auto flex h-16 max-w-lg items-center justify-around px-1">
         {navItems.map((item) => {
           const isHomeOrDash = item.page === 'home' || item.page === 'agent-dashboard' || item.page === 'seller-dashboard';
-          const isActive =
-            currentPage === item.page ||
-            (isHomeOrDash && [...clientSubPages, ...agentSubPages, ...sellerSubPages].includes(currentPage));
+          const isActive = currentPage === item.page || (isHomeOrDash && subPages.includes(currentPage));
 
           return (
             <button

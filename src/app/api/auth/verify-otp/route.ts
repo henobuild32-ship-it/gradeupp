@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
       const token = await signToken({ userId: user.id, role: user.role });
       const response = NextResponse.json({
         success: true,
-        message: 'Code vérifié',
+        message: 'Code vǸrifiǸ',
         token,
         user: {
           id: user.id,
@@ -95,6 +95,9 @@ export async function POST(request: NextRequest) {
           bonusBalanceFC: user.bonusBalanceFC,
           isVerified: user.isVerified,
           role: user.role,
+          validationStatus: user.validationStatus,
+          validationRejectReason: user.validationRejectReason,
+          suspended: user.suspended,
           hasCompletedOnboarding: user.hasCompletedOnboarding,
           pinSet: !!user.pin,
           biometricEnabled: user.biometricEnabled,
@@ -222,6 +225,9 @@ export async function POST(request: NextRequest) {
         bonusBalanceFC: updatedUser.bonusBalanceFC,
         isVerified: updatedUser.isVerified,
         role: updatedUser.role,
+        validationStatus: updatedUser.validationStatus,
+        validationRejectReason: updatedUser.validationRejectReason,
+        suspended: updatedUser.suspended,
         hasCompletedOnboarding: updatedUser.hasCompletedOnboarding,
         pinSet: !!updatedUser.pin,
         biometricEnabled: updatedUser.biometricEnabled,

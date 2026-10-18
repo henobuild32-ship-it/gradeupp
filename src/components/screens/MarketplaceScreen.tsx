@@ -63,7 +63,7 @@ interface Product {
 }
 
 export default function MarketplaceScreen() {
-  const { navigateTo } = useAppStore();
+  const { navigateTo, goBack } = useAppStore();
   const [products, setProducts] = useState<Product[]>([]);
   const [filtered, setFiltered] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,7 +135,7 @@ export default function MarketplaceScreen() {
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b px-4 py-3">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigateTo('home')}>
+          <Button variant="ghost" size="icon" onClick={() => goBack()}>
             <ArrowLeft className="size-5" />
           </Button>
           <div className="flex items-center gap-2 flex-1">
