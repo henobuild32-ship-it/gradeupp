@@ -4,6 +4,8 @@ import { useState, useCallback, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { signInWithGoogle, completeGoogleRedirect } from '@/lib/firebase';
 import { useAppStore } from '@/lib/store';
+import { routeAfterAuth } from '@/lib/route-after-auth';
+import { markFreshAuth } from '@/lib/session-flag';
 import { toast } from 'sonner';
 
 interface GoogleAuthButtonProps {
@@ -62,16 +64,9 @@ export default function GoogleAuthButton({
 
       const u = data.user;
       if (u) {
-        if (!u.hasCompletedOnboarding && u.role !== 'seller') {
-          navigateTo('onboarding');
-        } else if (u.role === 'agent') {
-          navigateTo('agent-dashboard');
-        } else if (u.role === 'seller') {
-          if (u.validationStatus !== 'validated' || u.suspended) navigateTo('seller-pending');
-          else navigateTo('seller-dashboard');
-        } else {
-          navigateTo('home');
-        }
+        // Procédure normale : PIN → onboarding → écran selon le rôle
+        markFreshAuth();
+        routeAfterAuth(navigateTo, u);
       }
 
       toast.success(data.isNewUser ? 'Compte créé avec Google !' : 'Connecté avec Google !');

@@ -20,6 +20,8 @@ import {
 } from '@/components/ui/select';
 import { useAppStore } from '@/lib/store';
 import type { User as AppUser } from '@/lib/store';
+import { routeAfterAuth } from '@/lib/route-after-auth';
+import { markFreshAuth } from '@/lib/session-flag';
 import { useTranslation } from '@/lib/i18n';
 import { toast } from 'sonner';
 import Image from 'next/image';
@@ -158,19 +160,9 @@ export default function AuthScreen() {
       }
       setUser(loggedInUser);
       if (data.token) setToken(data.token);
-      if (!loggedInUser.hasCompletedOnboarding && loggedInUser.role !== 'seller') {
-        navigateTo('onboarding');
-      } else if (loggedInUser.role === 'agent') {
-        navigateTo('agent-dashboard');
-      } else if (loggedInUser.role === 'seller') {
-        if (loggedInUser.validationStatus !== 'validated' || loggedInUser.suspended) {
-          navigateTo('seller-pending');
-        } else {
-          navigateTo('seller-dashboard');
-        }
-      } else {
-        navigateTo('home');
-      }
+      // Procédure normale : PIN → onboarding → écran selon le rôle
+      markFreshAuth();
+      routeAfterAuth(navigateTo, loggedInUser);
     } catch {
       toast.error(t('validation.connection_error'));
     } finally {

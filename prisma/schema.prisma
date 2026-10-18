@@ -78,6 +78,8 @@ model User {
   notifications          Notification[]
   purchases              Purchase[]
   securityLogs           SecurityLog[]
+  biometricCredentials   BiometricCredential[]
+  biometricEnabled       Boolean                 @default(false)
   cards                  TraitCard[]
   agentTransactions      Transaction[]           @relation("AgentTransactions")
   receivedTransactions   Transaction[]           @relation("ReceiverTransactions")
@@ -855,6 +857,25 @@ model VerificationCode {
   @@index([email])
   @@index([code])
   @@index([expiresAt])
+}
+
+// WebAuthn platform credential (empreinte / Face ID / Windows Hello / code du téléphone)
+model BiometricCredential {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialId String    @unique
+  publicKey    String
+  counter      Int       @default(0)
+  deviceType   String    @default("singleDevice")
+  deviceName   String?
+  transports   String?
+  backedUp     Boolean   @default(false)
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  lastUsedAt   DateTime?
+
+  @@index([userId])
 }
 
 model PushSubscription {

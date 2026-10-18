@@ -163,6 +163,8 @@ export async function POST(request: NextRequest) {
         parentId: user.parentId,
         hasCompletedOnboarding: user.hasCompletedOnboarding,
         twoFactorEnabled: user.twoFactorEnabled,
+        pinSet: !!user.pin,
+        biometricEnabled: user.biometricEnabled,
         referralCode: user.referralCode,
       },
     })

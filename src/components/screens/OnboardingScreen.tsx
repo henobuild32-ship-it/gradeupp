@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppStore } from '@/lib/store';
+import { routeAfterAuth } from '@/lib/route-after-auth';
 
 const slides = [
   {
@@ -44,22 +45,30 @@ export default function OnboardingScreen() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const isLast = currentSlide === slides.length - 1;
 
+  // Persiste hasCompletedOnboarding en base (sinon repose à chaque session)
+  const finishOnboarding = () => {
+    if (user) {
+      setUser({ ...user, hasCompletedOnboarding: true });
+      fetch('/api/auth/complete-onboarding', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id }),
+      }).catch(() => {});
+    }
+    routeAfterAuth(navigateTo, user);
+  };
+
   const handleNext = () => {
     if (isLast) {
-      if (user) {
-        setUser({ ...user, hasCompletedOnboarding: true });
-      }
-      navigateTo(user?.role === 'agent' ? 'agent-dashboard' : 'home');
+      finishOnboarding();
     } else {
       setCurrentSlide((prev) => prev + 1);
     }
   };
 
   const handleSkip = () => {
-    if (user) {
-      setUser({ ...user, hasCompletedOnboarding: true });
-    }
-    navigateTo(user?.role === 'agent' ? 'agent-dashboard' : 'home');
+    finishOnboarding();
   };
 
   const slide = slides[currentSlide];

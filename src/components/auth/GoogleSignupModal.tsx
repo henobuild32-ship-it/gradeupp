@@ -14,6 +14,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAppStore } from '@/lib/store';
+import { routeAfterAuth } from '@/lib/route-after-auth';
+import { markFreshAuth } from '@/lib/session-flag';
 import { toast } from 'sonner';
 
 const countryCodes = [
@@ -107,13 +109,9 @@ export default function GoogleSignupModal({
 
       const u = data.user;
       if (u) {
-        if (!u.hasCompletedOnboarding && u.role !== 'seller') {
-          navigateTo('onboarding');
-        } else if (u.role === 'agent') {
-          navigateTo('agent-pending');
-        } else {
-          navigateTo('home');
-        }
+        // Procédure normale : PIN → onboarding → écran selon le rôle
+        markFreshAuth();
+        routeAfterAuth(navigateTo, u);
       }
     } catch {
       toast.error('Erreur de connexion. Veuillez réessayer.');

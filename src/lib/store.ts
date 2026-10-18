@@ -123,6 +123,8 @@ export interface User {
   isVerified: boolean;
   suspended: boolean;
   hasCompletedOnboarding: boolean;
+  pinSet?: boolean;
+  biometricEnabled?: boolean;
   twoFactorEnabled?: boolean;
   referralCode?: string | null;
   createdAt?: string;

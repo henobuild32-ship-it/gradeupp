@@ -151,6 +151,8 @@ export async function POST(request: NextRequest) {
         role: user.role,
         hasCompletedOnboarding: user.hasCompletedOnboarding,
         isVerified: user.isVerified,
+        pinSet: false,
+        biometricEnabled: false,
         referralCode: user.referralCode,
       },
     })

@@ -96,6 +96,8 @@ export async function POST(request: NextRequest) {
           isVerified: user.isVerified,
           role: user.role,
           hasCompletedOnboarding: user.hasCompletedOnboarding,
+          pinSet: !!user.pin,
+          biometricEnabled: user.biometricEnabled,
           referralCode: user.referralCode,
         },
       });
@@ -221,6 +223,8 @@ export async function POST(request: NextRequest) {
         isVerified: updatedUser.isVerified,
         role: updatedUser.role,
         hasCompletedOnboarding: updatedUser.hasCompletedOnboarding,
+        pinSet: !!updatedUser.pin,
+        biometricEnabled: updatedUser.biometricEnabled,
         referralCode: updatedUser.referralCode,
       },
     });

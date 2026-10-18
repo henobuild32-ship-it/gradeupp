@@ -14,6 +14,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAppStore, type User } from '@/lib/store';
+import { routeAfterAuth } from '@/lib/route-after-auth';
+import { markFreshAuth } from '@/lib/session-flag';
 import { useTranslation } from '@/lib/i18n';
 import { toast } from 'sonner';
 import Image from 'next/image';
@@ -104,21 +106,9 @@ export default function AuthLoginScreen() {
       setUser(user);
       if (data.token) setToken(data.token);
 
-      // Route based on role and onboarding status
-      if (!user.hasCompletedOnboarding && user.role !== 'seller') {
-        navigateTo('onboarding');
-      } else if (user.role === 'agent') {
-        navigateTo('agent-dashboard');
-      } else if (user.role === 'seller') {
-        // If seller account is not fully validated or is suspended, show status screen
-        if (user.validationStatus !== 'validated' || user.suspended) {
-          navigateTo('seller-pending');
-        } else {
-          navigateTo('seller-dashboard');
-        }
-      } else {
-        navigateTo('home');
-      }
+      // Procédure normale : PIN → onboarding → écran selon le rôle
+      markFreshAuth();
+      routeAfterAuth(navigateTo, user);
     } catch {
       toast.error(t('validation.connection_error'));
     } finally {

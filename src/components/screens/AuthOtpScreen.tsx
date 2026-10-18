@@ -11,6 +11,8 @@ import {
   InputOTPSeparator,
 } from '@/components/ui/input-otp';
 import { useAppStore, type User } from '@/lib/store';
+import { routeAfterAuth } from '@/lib/route-after-auth';
+import { markFreshAuth } from '@/lib/session-flag';
 import { toast } from 'sonner';
 
 function maskEmail(email: string): string {
@@ -56,9 +58,8 @@ export default function AuthOtpScreen() {
   const sendOtp = useCallback(async (isResend = false) => {
     if (!isResend && sentRef.current) return;
     if (mode === 'verify' && user?.isVerified) {
-      // Already verified — skip OTP screen loop
-      if (user.hasCompletedOnboarding) navigateTo('home');
-      else navigateTo('pin-setup');
+      // Already verified — skip OTP screen loop, respect the normal procedure
+      routeAfterAuth(navigateTo, user);
       return;
     }
     if (!hasEmail && !phoneNumber) {
@@ -146,11 +147,8 @@ export default function AuthOtpScreen() {
       setUser({ ...loggedInUser, isVerified: true });
       if (data.token) setToken(data.token);
 
-      if (!loggedInUser.hasCompletedOnboarding) {
-        navigateTo('pin-setup');
-      } else {
-        navigateTo('home');
-      }
+      markFreshAuth();
+      routeAfterAuth(navigateTo, { ...loggedInUser, isVerified: true });
     } catch {
       toast.error('Erreur de connexion. Veuillez réessayer.');
       lastSubmittedRef.current = '';

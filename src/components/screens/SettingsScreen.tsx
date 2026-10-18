@@ -22,6 +22,7 @@ import {
   Apple,
   RefreshCw,
   X,
+  Fingerprint,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,6 +33,7 @@ import { usePWAInstall } from '@/hooks/usePWAInstall';
 import { useTranslation, languageNames, languages, type Language } from '@/lib/i18n';
 import { useState } from 'react';
 import { usePushSubscription } from '@/hooks/usePushSubscription';
+import { enrollBiometric, disableBiometric, checkBiometricSupport } from '@/lib/biometric';
 
 function LanguageModal({ onClose }: { onClose: () => void }) {
   const { language, setLanguage } = useTranslation();
@@ -196,7 +198,7 @@ function IOSGuideModal({ onClose }: { onClose: () => void }) {
 }
 
 export default function SettingsScreen() {
-  const { goBack, user, logout, navigateTo, isDarkMode, toggleTheme } =
+  const { goBack, user, setUser, logout, navigateTo, isDarkMode, toggleTheme } =
     useAppStore();
   const { canInstall, isIOS, isInstalled, isStandalone, installApp } = usePWAInstall();
   const { isSubscribed, permission, subscribe } = usePushSubscription();
@@ -207,6 +209,7 @@ export default function SettingsScreen() {
   const [installing, setInstalling] = useState(false);
   const [updateLoading, setUpdateLoading] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
+  const [bioLoading, setBioLoading] = useState(false);
 
   const isAgent = user?.role === 'agent';
 
@@ -248,6 +251,36 @@ export default function SettingsScreen() {
       }
     } finally {
       setPushLoading(false);
+    }
+  };
+
+  // Activation/désactivation réelle du déverrouillage biométrique
+  // (WebAuthn côté web, Keystore/Keychain côté APK — empreinte, visage, code appareil)
+  const handleBiometricToggle = async () => {
+    if (bioLoading || !user) return;
+    setBioLoading(true);
+    try {
+      if (user.biometricEnabled) {
+        await disableBiometric();
+        setUser({ ...user, biometricEnabled: false });
+        toast.success('Déverrouillage biométrique désactivé');
+      } else {
+        const support = await checkBiometricSupport();
+        if (!support.supported) {
+          toast.error('Biométrie indisponible sur cet appareil');
+          return;
+        }
+        await enrollBiometric();
+        setUser({ ...user, biometricEnabled: true });
+        toast.success(`Déverrouillage par ${support.label.toLowerCase()} activé`);
+      }
+    } catch (err: any) {
+      const msg = String(err?.message || err || '');
+      if (!/cancel|annul/i.test(msg)) {
+        toast.error(msg || 'Opération impossible');
+      }
+    } finally {
+      setBioLoading(false);
     }
   };
 
@@ -303,6 +336,12 @@ export default function SettingsScreen() {
           label: t('settings.enable_2fa'),
           value: user?.twoFactorEnabled ? 'active' : null,
           action: () => navigateTo('two-factor-setup'),
+        },
+        {
+          icon: Fingerprint,
+          label: t('settings.biometric'),
+          value: bioLoading ? '…' : user?.biometricEnabled ? t('settings.on') : t('settings.off'),
+          action: handleBiometricToggle,
         },
       ],
     },

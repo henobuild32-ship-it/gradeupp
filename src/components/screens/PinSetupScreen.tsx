@@ -1,17 +1,62 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle2, Loader2 } from 'lucide-react';
+import { CheckCircle2, Loader2, Fingerprint, ScanFace } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
+import { enrollBiometric, checkBiometricSupport } from '@/lib/biometric';
+import { routeAfterAuth } from '@/lib/route-after-auth';
 import { toast } from 'sonner';
 
 export default function PinSetupScreen() {
   const { navigateTo, user, setUser } = useAppStore();
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
-  const [step, setStep] = useState<'create' | 'confirm' | 'saving' | 'success'>('create');
+  const [step, setStep] = useState<'create' | 'confirm' | 'saving' | 'success' | 'biometric'>('create');
   const [error, setError] = useState('');
+  const [bioAvailable, setBioAvailable] = useState(false);
+  const [bioLabel, setBioLabel] = useState('Biométrie');
+  const [bioEnrolling, setBioEnrolling] = useState(false);
+
+  // Propose la biométrie (empreinte / visage / code de l'appareil) après le PIN
+  useEffect(() => {
+    if (step !== 'success') return;
+    (async () => {
+      try {
+        const support = await checkBiometricSupport();
+        if (support.supported) {
+          setBioAvailable(true);
+          setBioLabel(support.label);
+          setTimeout(() => setStep('biometric'), 1200);
+        } else {
+          setTimeout(() => finishFlow(), 1500);
+        }
+      } catch {
+        setTimeout(() => finishFlow(), 1500);
+      }
+    })()
+     
+  }, [step]);
+
+  // Procédure normale terminée : onboarding si jamais vu, sinon écran du rôle
+  const finishFlow = () => routeAfterAuth(navigateTo, { ...(user || {}), pinSet: true });
+
+  const handleEnableBiometric = async () => {
+    setBioEnrolling(true);
+    try {
+      await enrollBiometric();
+      if (user) setUser({ ...user, biometricEnabled: true });
+      toast.success(`Déverrouillage par ${bioLabel.toLowerCase()} activé !`);
+    } catch (err: any) {
+      const msg = String(err?.message || err || '');
+      if (!/cancel|annul/i.test(msg)) {
+        toast.error(msg || 'Activation impossible sur cet appareil');
+      }
+    } finally {
+      setBioEnrolling(false);
+      finishFlow();
+    }
+  };
 
   const handleDigit = (digit: string) => {
     if (step === 'create') {
@@ -47,10 +92,8 @@ export default function PinSetupScreen() {
               const data = await res.json();
 
               if (data.success && user) {
+                setUser({ ...user, pinSet: true });
                 setStep('success');
-                setTimeout(() => {
-                  navigateTo('onboarding');
-                }, 1500);
               } else {
                 const msg = data.message || 'Erreur lors de la sauvegarde';
                 if (msg.includes('Session expirée') || msg === 'Session invalide' || msg === 'Non authentifié') {
@@ -115,6 +158,49 @@ export default function PinSetupScreen() {
             <p className="text-sm text-muted-foreground text-center">
               Votre code PIN a été enregistré avec succès
             </p>
+          </motion.div>
+        ) : step === 'biometric' ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center gap-6 w-full max-w-sm"
+          >
+            <div className="w-20 h-20 rounded-3xl bg-emerald-50 border border-emerald-200 flex items-center justify-center">
+              {/fac|iris/i.test(bioLabel) ? (
+                <ScanFace className="w-10 h-10 text-emerald-600" />
+              ) : (
+                <Fingerprint className="w-10 h-10 text-emerald-600" />
+              )}
+            </div>
+            <div className="text-center">
+              <h2 className="text-xl font-bold text-foreground mb-2">
+                Activer la {bioLabel.toLowerCase()} ?
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Déverrouillez TRAIT avec {bioLabel.toLowerCase()} ou le code de votre appareil à
+                chaque réouverture. Vos données biométriques restent sur votre téléphone.
+              </p>
+            </div>
+            <div className="w-full flex flex-col gap-3 mt-2">
+              <button
+                onClick={handleEnableBiometric}
+                disabled={bioEnrolling}
+                className="h-12 rounded-xl bg-[#0D5C63] hover:bg-[#083A3E] text-white font-semibold flex items-center justify-center transition-colors active:scale-[0.98] cursor-pointer disabled:opacity-60"
+              >
+                {bioEnrolling ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  'Activer le déverrouillage rapide'
+                )}
+              </button>
+              <button
+                onClick={finishFlow}
+                disabled={bioEnrolling}
+                className="h-12 rounded-xl text-muted-foreground font-medium hover:text-foreground transition-colors cursor-pointer"
+              >
+                Plus tard
+              </button>
+            </div>
           </motion.div>
         ) : step === 'saving' ? (
           <motion.div

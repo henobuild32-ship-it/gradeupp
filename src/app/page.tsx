@@ -1,14 +1,17 @@
 'use client';
 
 import '@/lib/api';
-import { useEffect, Suspense, lazy, Component } from 'react';
+import { useEffect, Suspense, lazy, Component, useState } from 'react';
 import { useAppStore, PageName } from '@/lib/store';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OfflineBanner } from '@/components/layout/OfflineBanner';
 import { PushPermissionBanner } from '@/components/layout/PushPermissionBanner';
+import AppLock from '@/components/layout/AppLock';
 import { useRealtime } from '@/hooks/useRealtime';
 import { toast } from 'sonner';
 import { resetSessionExpiredFlag } from '@/lib/api';
+import { isFreshAuth } from '@/lib/session-flag';
+import { routeAfterAuth } from '@/lib/route-after-auth';
 
 // Auth screens
 const WelcomeScreen = lazy(() => import('@/components/screens/WelcomeScreen'));
@@ -270,24 +273,79 @@ const adminPages: PageName[] = ['admin-login', 'admin-dashboard', 'admin-users',
 export default function TraitApp() {
   const { currentPage, user, admin, navigateTo } = useAppStore();
   const Screen = screenMap[currentPage];
+  const [appLocked, setAppLocked] = useState(false);
 
   // Enable real-time WebSocket for notifications and balance updates
   useRealtime();
 
+  // Verrouillage à la réouverture de l'app (rechargement / cold start APK) :
+  // toute session restaurée depuis le stockage local passe par l'écran de
+  // verrouillage (biométrie ou PIN) sauf si l'auth vient d'avoir lieu.
   useEffect(() => {
-    if (user && currentPage === 'welcome') {
-      if (!user.isVerified && user.role !== 'agent') {
-        navigateTo('auth-otp', user.email ? { email: user.email, mode: 'verify' } : undefined);
+    if (user && !isFreshAuth()) {
+      setAppLocked(true);
+    }
+     
+  }, []);
+
+  // Retour au premier plan après inactivité → reverrouiller
+  useEffect(() => {
+    let hiddenAt: number | null = null;
+    const onVisibility = () => {
+      if (document.hidden) {
+        hiddenAt = Date.now();
+      } else {
+        if (hiddenAt && useAppStore.getState().user && Date.now() - hiddenAt > 60_000) {
+          setAppLocked(true);
+        }
+        hiddenAt = null;
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
+
+  // Restauration de session : procédure normale (vérification → PIN →
+  // onboarding) AVANT d'atteindre l'interface, avec la vérité serveur.
+  useEffect(() => {
+    if (!user || currentPage !== 'welcome') return;
+    let cancelled = false;
+    const route = (u: any) => {
+      if (cancelled) return;
+      if (!u.isVerified && u.role !== 'agent') {
+        navigateTo('auth-otp', u.email ? { email: u.email, mode: 'verify' } : undefined);
         return;
       }
-      if (user.role === 'agent') navigateTo('agent-dashboard');
-      else if (user.role === 'seller') navigateTo('seller-dashboard');
-      else navigateTo('home');
-    }
+      routeAfterAuth(navigateTo, u);
+    };
+    (async () => {
+      try {
+        const res = await fetch('/api/auth/profile', { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          if (!cancelled && data.success && data.user) {
+            const merged = { ...user, ...data.user };
+            useAppStore.getState().setUser(merged);
+            route(merged);
+            return;
+          }
+        }
+      } catch {}
+      // Hors ligne ou cookie expiré : vérité locale persistée
+      route(user);
+    })();
+    return () => {
+      cancelled = true;
+    };
+     
+  }, [user?.id, currentPage]);
+
+  // Restauration admin (mot de passe demandé à chaque session, voir store)
+  useEffect(() => {
     if (admin && currentPage === 'admin-login') {
       navigateTo('admin-dashboard');
     }
-  }, [user, admin, currentPage, navigateTo]);
+  }, [admin, currentPage, navigateTo]);
 
   // Session expired → friendly message + re-auth (not raw "Non authentifié")
   useEffect(() => {
@@ -315,12 +373,22 @@ export default function TraitApp() {
             merged.isVerified = true;
           }
           useAppStore.getState().setUser(merged);
+          // Procédure normale : un compte sans PIN configuré ne peut pas
+          // rester sur un écran de transaction — retour forcé à la config.
+          if (data.user.pinSet === false) {
+            const cur = useAppStore.getState().currentPage;
+            const transactable: PageName[] = ['home', 'send', 'withdraw', 'deposit', 'history', 'ussd', 'marketplace', 'marketplace-detail', 'marketplace-sell', 'orders', 'barter', 'barter-detail', 'barter-create', 'bills', 'bundle-catalog', 'micro-credit', 'savings-goals', 'payment-links', 'payment-requests', 'recurring-payments', 'international-transfer', 'card', 'virtual-card', 'card-payment', 'card-request', 'contact-pay', 'agent-dashboard', 'agent-deposit', 'agent-withdraw-validate', 'seller-dashboard', 'seller-products'];
+            if (transactable.includes(cur)) {
+              toast.info('Configurez votre code PIN pour effectuer des transactions');
+              useAppStore.getState().navigateTo('pin-setup');
+            }
+          }
         }
       } catch {}
     };
     const t = setTimeout(syncProfile, 500);
     return () => { cancelled = true; clearTimeout(t); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [user?.id]);
 
   useEffect(() => {
@@ -442,6 +510,9 @@ export default function TraitApp() {
         </Suspense>
       )}
       <OfflineBanner />
+      {user && appLocked && (
+        <AppLock onUnlock={() => setAppLocked(false)} />
+      )}
     </div>
   );
 }

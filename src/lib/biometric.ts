@@ -1,0 +1,243 @@
+import { Capacitor } from '@capacitor/core';
+import { NativeBiometric, BiometryType } from 'capacitor-native-biometric';
+import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
+import type { User } from '@/lib/store';
+
+/**
+ * Déverrouillage biométrique multi-plateforme — réel, pas simulé :
+ *
+ * - Web / PWA  : WebAuthn (plateforme) — empreinte, Face ID / Touch ID,
+ *                Windows Hello ou code de l'appareil selon l'OS.
+ *                Clé publique vérifiée serveur (@simplewebauthn/server).
+ * - APK natif  : capacitor-native-biometric — BiometricPrompt Android /
+ *                LAContext iOS (+ code de l'appareil en repli). Un secret
+ *                aléatoire vit dans le Keystore/Keychain ; le serveur n'en
+ *                garde que le SHA-256 et fabrique la session au déverrouillage.
+ */
+
+export type BiometricSupport = {
+  supported: boolean;
+  platform: 'web' | 'native';
+  label: string; // libellé humain (Empreinte, Face ID, …)
+};
+
+const BIOMETRIC_CRED_KEY = 'trait-biometric-cred';
+const NATIVE_SERVICE = 'com.trait.app.biometric';
+const NATIVE_USERNAME = 'trait-unlock-secret';
+
+export function isNativePlatform(): boolean {
+  return Capacitor.isNativePlatform();
+}
+
+export async function checkBiometricSupport(): Promise<BiometricSupport> {
+  if (isNativePlatform()) {
+    try {
+      const avail = await NativeBiometric.isAvailable({ useFallback: true });
+      if (!avail.isAvailable) {
+        return { supported: false, platform: 'native', label: 'Indisponible' };
+      }
+      const label = (() => {
+        switch (avail.biometryType) {
+          case BiometryType.FACE_ID:
+          case BiometryType.FACE_AUTHENTICATION:
+            return 'Reconnaissance faciale';
+          case BiometryType.FINGERPRINT:
+          case BiometryType.TOUCH_ID:
+            return 'Empreinte digitale';
+          case BiometryType.IRIS:
+            return 'Iris';
+          case BiometryType.MULTIPLE:
+            return 'Biométrie';
+          default:
+            return 'Code de l’appareil';
+        }
+      })();
+      return { supported: true, platform: 'native', label };
+    } catch {
+      return { supported: false, platform: 'native', label: 'Indisponible' };
+    }
+  }
+
+  // Web : PublicKeyCredential + authentificateur de plateforme requis
+  try {
+    if (typeof window === 'undefined' || !window.PublicKeyCredential) {
+      return { supported: false, platform: 'web', label: 'Indisponible' };
+    }
+    const uvpa = await (window.PublicKeyCredential as any).isUserVerifyingPlatformAuthenticatorAvailable?.();
+    if (!uvpa) {
+      return { supported: false, platform: 'web', label: 'Indisponible' };
+    }
+    const ua = navigator.userAgent;
+    const label = /iPhone|iPad|Mac/.test(ua)
+      ? 'Face ID / Touch ID'
+      : /Android/.test(ua)
+        ? 'Empreinte / code de l’appareil'
+        : /Windows/.test(ua)
+          ? 'Windows Hello'
+          : 'Biométrie de l’appareil';
+    return { supported: true, platform: 'web', label };
+  } catch {
+    return { supported: false, platform: 'web', label: 'Indisponible' };
+  }
+}
+
+function deviceName(): string {
+  if (isNativePlatform()) {
+    return `Appareil ${Capacitor.getPlatform() === 'android' ? 'Android' : 'iOS'}`;
+  }
+  const ua = navigator.userAgent;
+  if (/iPhone/.test(ua)) return 'iPhone';
+  if (/iPad/.test(ua)) return 'iPad';
+  if (/Android/.test(ua)) return 'Android';
+  if (/Mac/.test(ua)) return 'Mac';
+  if (/Windows/.test(ua)) return 'PC Windows';
+  return 'Navigateur';
+}
+
+async function api(path: string, body?: any) {
+  const res = await fetch(path, {
+    method: body === undefined ? 'GET' : 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.success === false) {
+    throw new Error(data.message || 'Erreur biométrique');
+  }
+  return data;
+}
+
+/** Enrôle l'appareil courant pour le déverrouillage biométrique. */
+export async function enrollBiometric(): Promise<void> {
+  const support = await checkBiometricSupport();
+  if (!support.supported) {
+    throw new Error('La biométrie n’est pas disponible sur cet appareil');
+  }
+
+  if (support.platform === 'native') {
+    // 1. L'appareil prouve l'identité (empreinte / visage / code du téléphone)
+    await NativeBiometric.verifyIdentity({
+      title: 'Activer le déverrouillage TRAIT',
+      subtitle: 'Authentification biométrique',
+      description: 'Utilisez votre empreinte, votre visage ou le code de l’appareil pour déverrouiller TRAIT.',
+      negativeButtonText: 'Annuler',
+      useFallback: true,
+      maxAttempts: 3,
+    });
+
+    // 2. Secret aléatoire → Keystore/Keychain (protégé par la biométrie)
+    const secret = randomSecret();
+    await NativeBiometric.setCredentials({
+      username: NATIVE_USERNAME,
+      password: secret,
+      server: NATIVE_SERVICE,
+    });
+
+    // 3. Le serveur ne garde que le hash
+    try {
+      await api('/api/biometric/native', { enable: true, secret, deviceName: deviceName() });
+    } catch (err) {
+      await NativeBiometric.deleteCredentials({ server: NATIVE_SERVICE }).catch(() => {});
+      throw err;
+    }
+    return;
+  }
+
+  // Web — WebAuthn
+  const { options, challengeToken } = await api('/api/biometric/register/options', {});
+  const attestation = await startRegistration({ optionsJSON: options as any });
+  const verify = await api('/api/biometric/register/verify', {
+    response: attestation,
+    challengeToken,
+    deviceName: deviceName(),
+  });
+  if (verify.credentialId) {
+    try {
+      localStorage.setItem(BIOMETRIC_CRED_KEY, verify.credentialId);
+    } catch {}
+  }
+}
+
+/** Déverrouille l'app via la biométrie. Retourne l'utilisateur rafraîchi. */
+export async function authenticateBiometric(reason?: string): Promise<User> {
+  const support = await checkBiometricSupport();
+  if (!support.supported) {
+    throw new Error('La biométrie n’est pas disponible sur cet appareil');
+  }
+
+  if (support.platform === 'native') {
+    await NativeBiometric.verifyIdentity({
+      title: 'Déverrouiller TRAIT',
+      subtitle: 'Authentification biométrique',
+      description: reason || 'Confirmez votre identité pour accéder à votre compte.',
+      negativeButtonText: 'Annuler',
+      useFallback: true,
+      maxAttempts: 3,
+    });
+
+    const cred = await NativeBiometric.getCredentials({ server: NATIVE_SERVICE });
+    if (!cred?.password) {
+      throw new Error('Aucun secret biométrique sur cet appareil');
+    }
+    const data = await api('/api/biometric/native/unlock', { secret: cred.password });
+    if (data.token) {
+      const { useAppStore } = await import('@/lib/store');
+      useAppStore.getState().setToken(data.token);
+    }
+    return data.user as User;
+  }
+
+  // Web — WebAuthn : la credential locale permet de s'authentifier même
+  // sans session (cookie expiré) — le serveur identifie l'utilisateur par la clé.
+  let credentialId: string | null = null;
+  try {
+    credentialId = localStorage.getItem(BIOMETRIC_CRED_KEY);
+  } catch {}
+
+  const { options, challengeToken } = await api('/api/biometric/auth/options', {
+    credentialId: credentialId || undefined,
+  });
+  const assertion = await startAuthentication({ optionsJSON: options as any });
+  const data = await api('/api/biometric/auth/verify', { response: assertion, challengeToken });
+  if (data.token) {
+    (await import('@/lib/store')).useAppStore.getState().setToken(data.token);
+  }
+  return data.user as User;
+}
+
+/** Désactive le déverrouillage biométrique sur tous les appareils. */
+export async function disableBiometric(): Promise<void> {
+  if (isNativePlatform()) {
+    await NativeBiometric.deleteCredentials({ server: NATIVE_SERVICE }).catch(() => {});
+  }
+  try {
+    localStorage.removeItem(BIOMETRIC_CRED_KEY);
+  } catch {}
+  const res = await fetch('/api/biometric?all=1', { method: 'DELETE', credentials: 'include' });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.success === false) {
+    throw new Error(data.message || 'Erreur lors de la désactivation');
+  }
+}
+
+export function storedCredentialId(): string | null {
+  try {
+    return localStorage.getItem(BIOMETRIC_CRED_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function randomSecret(): string {
+  const bytes = new Uint8Array(32);
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    crypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+  }
+  return btoa(String.fromCharCode(...bytes))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}

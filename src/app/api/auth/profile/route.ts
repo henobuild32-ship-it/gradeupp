@@ -39,6 +39,8 @@ export async function GET(request: NextRequest) {
         suspensionReason: true,
         tempBlocked: true,
         hasCompletedOnboarding: true,
+        pin: true,
+        biometricEnabled: true,
         kycStatus: true,
         parentId: true,
         createdAt: true,
@@ -52,6 +54,11 @@ export async function GET(request: NextRequest) {
         { status: 404 }
       )
     }
+
+    // Ne jamais renvoyer le hash du PIN au client — exposer pinSet (booléen)
+    const pinSet = !!user.pin
+    const { pin: _pinHash, ...safeUser } = user
+    const userOut = { ...safeUser, pinSet }
 
     // Auto-credit $30 USD for existing clients who never received it
     if (
@@ -108,7 +115,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true, user })
+    return NextResponse.json({ success: true, user: userOut })
   } catch (error) {
     console.error('Profile error:', error)
     return NextResponse.json(
