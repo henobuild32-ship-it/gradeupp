@@ -83,7 +83,15 @@ export default function TraitAIMessage({ role, content, actions, isTyping }: Pro
           <div className="bg-[#1a1a2e] border border-violet-500/20 px-4 py-3 rounded-2xl rounded-tl-md text-sm text-gray-100 leading-relaxed shadow-lg shadow-black/20">
             {content.split('\n').map((line, i) => (
               <span key={i}>
-                {line}
+                {line.split(/(\*\*[^*]+\*\*)/g).map((part, j) =>
+                  part.startsWith('**') && part.endsWith('**') ? (
+                    <strong key={j} className="font-semibold text-white">
+                      {part.slice(2, -2)}
+                    </strong>
+                  ) : (
+                    <span key={j}>{part}</span>
+                  )
+                )}
                 {i < content.split('\n').length - 1 && <br />}
               </span>
             ))}

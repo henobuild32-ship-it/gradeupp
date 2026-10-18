@@ -34,7 +34,8 @@ export async function POST(request: NextRequest) {
     const options = await generateRegistrationOptions({
       rpName: 'TRAIT',
       rpID,
-      userID: base64urlEncode(new TextEncoder().encode(user.id)),
+      // SimpleWebAuthn v14 exige un Uint8Array (les strings provoquent une 500)
+      userID: new TextEncoder().encode(user.id),
       userName: user.email || user.phone || user.id,
       userDisplayName: user.name || user.pseudo || 'Utilisateur TRAIT',
       attestationType: 'none',

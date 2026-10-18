@@ -1,4 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@/lib/db'
+import { getAuthUser } from '@/lib/auth'
+
+// L'IA conversationnelle a besoin de temps (modèle + contexte base)
+export const maxDuration = 30
 
 const GLM_API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions'
 const GLM_API_KEY = process.env.GLM_API_KEY || ''
@@ -34,7 +39,7 @@ function detectLang(text: string): 'fr' | 'en' | 'es' | 'ar' | 'pt' | 'other' {
   if (lower.match(/[\u0600-\u06FF]/) || lower.match(/\b(marhaba|shukran|afwan|kayfa|kam|ayna|mata|maa|fulus|irsal|bitaqa|fatura)\b/)) return 'ar'
   if (lower.match(/\b(hola|gracias|por favor|como|cuanto|donde|cuando|quiero|necesito|puedo|dinero|enviar|retirar|depositar|tarjeta|factura|pago|tambien|puedes|ayudame|necesitar|quisiera)\b/)) return 'es'
   if (lower.match(/\b(ola|obrigado|obrigada|por favor|como|quanto|onde|quando|o que|quem|quero|preciso|posso|dinheiro|enviar|retirar|depositar|cartao|fatura|pagamento|tambem|pode|ajudar|precisar)\b/)) return 'pt'
-  if (lower.match(/\b(salut|bonjour|bonsoir|bonne nuit|merci|aussi|mais|donc|pourquoi|comment|quest|cette|peut|importe|fait|dit|vraiment|beaucoup|toujours|jamais|aujourd|demain|hier|maintenant|encore|juste|assez|trop|rien|toute|tout|chaque|autre|entre|apres|avant|pendant|depuis|vers|chez|pour|par|avec|sans|dans|sur|sous|voila|daccord|super|ok|genial|bien|mal|peux|veux|voulez|pouvez|besoin|aide|question|reponse|explique|comment|combien|coute|cout|tarif|frais|transfert|envoyer|retrait|retirer|depot|deposer|solde|carte|facture|marche|epargne|parrainage|agent|securite|parametre|profil|notification|support)\b/)) return 'fr'
+  if (lower.match(/\b(salut|bonjour|bonsoir|bonne nuit|merci|aussi|mais|donc|pourquoi|comment|quest|cette|peut|importe|fait|dit|vraiment|beaucoup|toujours|jamais|aujourd|demain|hier|maintenant|encore|juste|assez|trop|rien|toute|tout|chaque|autre|entre|apres|avant|pendant|depuis|vers|chez|pour|par|avec|sans|dans|sur|sous|voila|daccord|super|ok|genial|bien|mal|peux|veux|voulez|pouvez|besoin|aide|question|reponse|explique|comment|combien|coute|cout|tarif|frais|transfert|envoyer|retrait|retirer|depot|deposer|solde|carte|facture|marche|epargne|parrainage|agent|securite|parametre|profil|notification|support|quelle|quel|quoi|capitale|voudrais|aimerais|pourrais|pourriez|explique|raconte)\b/)) return 'fr'
   if (lower.match(/\b(hello|hi|hey|how|what|when|where|why|who|which|thank|please|sorry|help|money|send|withdraw|deposit|balance|card|transfer|pay|bill|price|work|app|feature|can|could|would|tell|show|need|want|give|make|do|is|are|was|were|have|has|does|doing|about|think|know|right|good|bad|great|nice|yes|no|sure|okay|cool|awesome|love|like|really|very|much|more|most|best|better|also|too|well|just|now|here|there|then|than|about|into|over|after|before|during|while|since|until|because|so|but|and|or|not|all|some|any|every|each|other|another|next|last|new|old|big|small|first|last|long|short|high|low|fast|slow|easy|hard|free|busy|ready|safe|secure|private|public|personal|official|local|global|digital|virtual|real|actual|true|false|possible|impossible|important|necessary|useful|helpful|available|popular|common|rare|special|unique|different|similar|same|equal|opposite|simple|complex|clear|vague|open|close|start|stop|begin|end|enter|exit|join|leave|add|remove|create|delete|update|change|keep|save|send|receive|buy|sell|pay|get|take|give|put|set|run|move|turn|go|come|see|look|watch|listen|hear|feel|touch|smell|taste|read|write|speak|talk|ask|answer|say|tell|call|ring|speak|meet|visit|travel|walk|run|drive|fly|swim|eat|drink|sleep|wake|work|play|rest|relax|enjoy|have|be|do|get|make|go|come|see|know|think|take|want|give|use|find|tell|ask|try|keep|let|begin|seem|help|show|hear|play|run|move|live|believe|hold|bring|happen|write|sit|stand|lose|pay|meet|include|continue|learn|change|lead|understand|watch|follow|stop|create|speak|read|allow|add|spend|grow|open|walk|win|offer|remember|love|consider|appear|buy|wait|serve|die|send|expect|build|stay|fall|cut|reach|kill|remain|suggest|raise|pass|sell|require|report|decide|pull|develop)\b/)) return 'en'
   return 'other'
 }
@@ -457,34 +462,205 @@ function matchMessage(message: string): MatchResult | null {
    GLM API — Bonus AI for complex questions
    ═══════════════════════════════════════════════════════════════ */
 
-const GLM_SYSTEM_PROMPT = `You are TRAIT IA, a fintech app assistant for TRAIT (money transfers, payments, cards, marketplace, savings in DRC Congo). You help users navigate the app. Be concise (2-3 sentences). Respond in the SAME language the user writes in. Never do real financial operations. Be friendly. Fees: deposit free, withdrawal 0.7%, transfer 0.7%. Pages: home, send, withdraw, deposit, history, marketplace, bills, card, savings-goals, referral, settings, profile, notifications, support.`
+/* ═══════════════════════════════════════════════════════════════
+   CONTEXTE UTILISATEUR — vérité serveur injectée dans le prompt
+   ═══════════════════════════════════════════════════════════════ */
 
-async function callGLM(message: string, userName: string, userRole: string, history: Array<{role: string; content: string}>): Promise<string | null> {
+const ALLOWED_ACTION_PAGES = new Set([
+  'home', 'send', 'withdraw', 'deposit', 'history', 'ussd', 'marketplace', 'orders',
+  'barter', 'notifications', 'settings', 'profile', 'support', 'card', 'virtual-card',
+  'card-request', 'card-payment', 'kyc-verification', 'change-pin', 'my-qr-code',
+  'savings-goals', 'referral', 'bills', 'bundle-catalog', 'micro-credit', 'payment-links',
+  'payment-requests', 'recurring-payments', 'international-transfer', 'contact-pay',
+  'two-factor-setup', 'receipt',
+])
+
+async function buildUserContext(request: NextRequest, userName: string, userRole: string): Promise<string> {
+  const lines: string[] = []
+  try {
+    const auth = await getAuthUser(request)
+    if (auth?.userId) {
+      const user = await db.user.findUnique({
+        where: { id: auth.userId },
+        select: {
+          name: true, pseudo: true, role: true, country: true,
+          realBalance: true, realBalanceFC: true, bonusBalance: true, bonusBalanceFC: true,
+          validationStatus: true,
+        },
+      })
+      if (user) {
+        const fmt = (n: number) => Number(n || 0).toFixed(2)
+        lines.push(`Nom : ${user.name || user.pseudo || 'Utilisateur'} ; Rôle : ${user.role} ; Pays : ${user.country || 'N/C'}`)
+        lines.push(`Solde réel : ${fmt(user.realBalance)} USD et ${fmt(user.realBalanceFC)} FC ; Solde bonus : ${fmt(user.bonusBalance)} USD et ${fmt(user.bonusBalanceFC)} FC`)
+        if (user.role === 'agent' && user.validationStatus) {
+          lines.push(`Statut agent : ${user.validationStatus}`)
+        }
+        try {
+          const txs = await db.transaction.findMany({
+            where: { OR: [{ senderId: auth.userId }, { receiverId: auth.userId }] },
+            orderBy: { createdAt: 'desc' },
+            take: 5,
+            select: { type: true, amount: true, currency: true, status: true, createdAt: true },
+          })
+          if (txs.length) {
+            lines.push(
+              'Dernières transactions (de plus en plus anciennes) : ' +
+                txs
+                  .map((t) => `${t.createdAt.toLocaleDateString('fr-FR')} ${t.type} ${t.amount} ${t.currency} (${t.status})`)
+                  .join(' ; ')
+            )
+          }
+        } catch {}
+      }
+    }
+    if (lines.length === 0 && (userName || userRole)) {
+      lines.push(`Nom : ${userName || 'Utilisateur'} ; Rôle : ${userRole || 'client'} (profil fourni par l'application)`)
+    }
+    try {
+      const cfg = await db.systemConfig.findUnique({ where: { key: 'exchange_rate_usd_fc' } })
+      const rate = cfg ? parseFloat(cfg.value) : 2850
+      if (!Number.isNaN(rate)) lines.push(`Taux de change actuel : 1 USD = ${rate} FC`)
+    } catch {}
+  } catch {}
+  return lines.join('\n')
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   IA CONVERSATIONNELLE — prompt riche + GLM en premier choix
+   (les réponses locales prédéfinies ne servent plus que de repli)
+   ═══════════════════════════════════════════════════════════════ */
+
+function buildSystemPrompt(context: string): string {
+  return `Tu es TRAIT IA, l'assistant officiel et bienveillant de TRAIT, une application fintech moderne (envoi d'argent, paiements, cartes, épargne, marketplace).
+
+# Ton personnalité et ton style (priorité absolue)
+- Tu parles comme un ami serviable : naturel, vivant, chaleureux. Jamais robotique, jamais un ton de « manuel d'aide ».
+- Réponds d'abord précisément à ce qui est demandé, avec des faits concrets (montants, étapes, taux, frais).
+- Reste concis : 2 à 6 phrases en général ; liste courte numérotée seulement pour une procédure pas à pas.
+- Suit la conversation : retiens ce que l'utilisateur a déjà dit (montant, destinataire, projet) et enchaîne dessus.
+- Termine parfois par une question courte et naturelle qui fait avancer la conversation.
+- 0 à 2 emojis maximum par réponse, jamais sur chaque phrase.
+- Texte simple uniquement : pas de **gras**, pas de titres #, pas de code markdown. Les listes « • » ou « 1. » sont bienvenues.
+- Réponds TOUJOURS dans la langue de l'utilisateur (le plus souvent le français).
+
+# Connaissance complète de TRAIT
+- Dépôt d'espèces via agent TRAIT : GRATUIT.
+- Retrait d'espèces via agent : 0,7 % du montant.
+- Transfert vers un autre numéro TRAIT : 0,7 %, instantané, en USD ou FC.
+- Deux comptes de solde, USD et FC, plus un solde bonus ; conversion selon le taux de change (fourni dans le contexte).
+- Cartes : carte virtuelle sécurisée (numéro, CCV), carte enfant avec plafonds, demande de carte, paiement par carte.
+- Factures : électricité, eau, internet, recharge téléphonique.
+- USSD : services par code téléphone sans internet (solde, transfert, historique…).
+- Marché (Marketplace) : produits de vendeurs locaux, achat sécurisé, suivi de commandes.
+- Troc (Barter) : échange de biens et services entre utilisateurs.
+- Épargne : objectifs d'épargne avec suivi de progression.
+- Micro-crédit, liens et demandes de paiement, paiements récurrents, QR code, « Payer un contact », transfert international.
+- Parrainage : code unique, bonus pour le parrain et le filleul.
+- Sécurité : code PIN à 4 chiffres, déverrouillage biométrique (empreinte du doigt, visage) et verrouillage automatique de l'app à la réouverture, authentification à deux facteurs, blocage de compte.
+- Comptes agents (dépôts/retraits, commissions, validation) et comptes vendeurs (ventes, validation KYC).
+- KYC, notifications, support client intégré.
+
+# Contexte utilisateur réel (depuis la base de données — utilise-le quand c'est pertinent et ne l'invente jamais)
+${context || 'Utilisateur non connecté (contexte fourni par l\u0027application).'}
+
+# Sécurité — règles absolues
+- Tu n'effectues JAMAIS de vraies opérations financières et tu ne peux pas déplacer d'argent : aide l'utilisateur à le faire lui-même dans l'app.
+- Ne demande JAMAIS le code PIN, le mot de passe, un code OTP ni des documents d'identité — personne ne doit jamais te les donner. Si on te les demande, rappelle cette règle.
+- Transaction échouée, litige ou arnaque présumée → oriente vers le support dans l'app.
+- Sois honnête : si une fonction n'existe pas (ex. trading crypto), dis-le simplement et propose l'alternative.
+
+# Boutons d'action (navigation dans l'app)
+Quand ta réponse aide l'utilisateur à agir, termine UNIQUEMENT par une ligne au format exact, sur sa propre ligne :
+ACTIONS:{"actions":[{"label":"Envoyer","page":"send"}]}
+Pages autorisées : home, send, withdraw, deposit, history, marketplace, bills, card, virtual-card, savings-goals, referral, settings, profile, notifications, support, ussd, orders, barter, payment-links, payment-requests, bundle-catalog, micro-credit, international-transfer, contact-pay, kyc-verification, change-pin, my-qr-code, receipt, card-request.
+Maximum 2 boutons, libellés courts (3 mots maximum). Si aucune action n'aide réellement, n'écris PAS la ligne ACTIONS.
+
+Exemples du ton attendu :
+- « Salut ! Je suis TRAIT IA. Envoi d'argent, factures, retrait cash, carte — dis-moi ce que tu veux faire et je t'accompagne. »
+- « Un retrait de 50 $ te coûtera 0,35 $ de frais, tu recevras donc 49,65 $. Tu veux que je t'ouvre l'écran Retirer ? »
+- « Bien sûr, je peux vérifier : regarde le solde affiché sur ton accueil, ou je t'explique comment le convertir en FC. »`
+}
+
+// glm-4.5-flash répond vite et bien en conversationnel ; glm-4.7-flash sert de
+// repli si le premier est en erreur rapide (429, HTTP). En revanche, si le
+// premier modèle PEND jusqu'au timeout (quota qui bride), on n'essaye pas le
+// second : on retombe aussitôt sur les réponses locales.
+const GLM_MODELS = [
+  { model: 'glm-4.5-flash', maxTokens: 1500, timeoutMs: 11000 },
+  { model: 'glm-4.7-flash', maxTokens: 6144, timeoutMs: 9000 },
+]
+
+async function callGLM(
+  message: string,
+  systemPrompt: string,
+  history: Array<{ role?: string; content?: string }>
+): Promise<string | null> {
   if (!GLM_API_KEY) return null
 
-  try {
-    const roleCtx = userRole ? `\nUser: "${userName || 'User'}", Role: "${userRole}".` : ''
-    const msgs = [
-      { role: 'system', content: `${GLM_SYSTEM_PROMPT}${roleCtx}` },
-      ...history.slice(-6).map(h => ({ role: h.role === 'user' ? 'user' : 'assistant', content: h.content })),
-      { role: 'user', content: message },
-    ]
+  const hist = history
+    .slice(-12)
+    .filter((h) => (h?.role === 'user' || h?.role === 'assistant') && typeof h?.content === 'string' && h.content!.trim())
+    .map((h) => ({
+      role: (h.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
+      content: (h.content as string).slice(0, 3000),
+    }))
 
-    const response = await fetch(GLM_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GLM_API_KEY}` },
-      body: JSON.stringify({ model: 'glm-4.7-flash', messages: msgs, temperature: 0.7, max_tokens: 2048, top_p: 0.9 }),
-      signal: AbortSignal.timeout(15000),
-    })
-
-    if (!response.ok) return null
-
-    const data = await response.json()
-    const content = data.choices?.[0]?.message?.content || ''
-    return content.trim() || null
-  } catch {
-    return null
+  let previousHung = false
+  for (const { model, maxTokens, timeoutMs } of GLM_MODELS) {
+    if (previousHung) break // le précédent a pendu : le suivant pendrait pareil
+    try {
+      const response = await fetch(GLM_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GLM_API_KEY}` },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'system', content: systemPrompt }, ...hist, { role: 'user', content: message }],
+          temperature: 0.8,
+          max_tokens: maxTokens,
+          top_p: 0.9,
+        }),
+        signal: AbortSignal.timeout(timeoutMs),
+      })
+      if (response.status === 429) continue // quota atteint : on tente le modèle suivant puis repli local
+      if (!response.ok) continue
+      const data = await response.json()
+      const content = data.choices?.[0]?.message?.content || ''
+      if (content.trim()) return content.trim()
+    } catch (e: any) {
+      if (e?.name === 'TimeoutError' || /abort|timeout/i.test(String(e))) previousHung = true
+    }
   }
+  return null
+}
+
+/** Extrait la ligne ACTIONS:{...} en fin de réponse (boutons de navigation). */
+function extractActions(text: string): { message: string; actions: Array<{ label: string; page: string }> } {
+  let message = text
+  const actions: Array<{ label: string; page: string }> = []
+  const idx = message.search(/ACTIONS:\s*/i)
+  if (idx !== -1) {
+    const jsonStr = message
+      .slice(idx)
+      .replace(/ACTIONS:\s*/i, '')
+      .trim()
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/```\s*$/, '')
+      .trim()
+    let parsed: any = null
+    try {
+      parsed = JSON.parse(jsonStr)
+    } catch {}
+    if (parsed) {
+      for (const a of Array.isArray(parsed.actions) ? parsed.actions : []) {
+        if (a && typeof a.page === 'string' && ALLOWED_ACTION_PAGES.has(a.page) && typeof a.label === 'string') {
+          actions.push({ label: String(a.label).slice(0, 40), page: a.page })
+          if (actions.length >= 2) break
+        }
+      }
+      message = message.slice(0, idx).trim()
+    }
+  }
+  return { message: message || text, actions }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -496,34 +672,41 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { message, userName, userRole, history } = body
 
-    if (!message) {
+    if (!message || typeof message !== 'string') {
       return NextResponse.json({ success: false, message: 'Message requis' }, { status: 400 })
     }
 
+    // 1) Contexte réel (profil, solde, taux, dernières transactions) + prompt riche
+    const context = await buildUserContext(request, userName || '', userRole || '')
+    const systemPrompt = buildSystemPrompt(context)
+
+    // Historique nettoyé : le message courant ne doit pas être dupliqué en fin
+    const rawHistory: Array<{ role?: string; content?: string }> = Array.isArray(history) ? history : []
+    const deduped = rawHistory.filter(
+      (h, i) => !(i === rawHistory.length - 1 && h?.role === 'user' && h?.content === message)
+    )
+
+    // 2) IA conversationnelle (GLM) — premier choix
+    const glmResponse = await callGLM(message, systemPrompt, deduped)
+    if (glmResponse) {
+      const { message: cleanMessage, actions } = extractActions(glmResponse)
+      if (cleanMessage) {
+        return NextResponse.json({ success: true, message: cleanMessage, actions })
+      }
+    }
+
+    // 3) Repli : réponses locales prédéfinies (hors ligne / quota IA)
     const localMatch = matchMessage(message)
     if (localMatch) {
       return NextResponse.json({ success: true, message: localMatch.response, actions: localMatch.actions || [] })
     }
 
-    const glmResponse = await callGLM(message, userName || '', userRole || '', history || [])
-    if (glmResponse) {
-      let actions: Array<{ label: string; page: string }> = []
-      try {
-        const jsonMatch = glmResponse.match(/\{[\s\S]*"message"[\s\S]*\}/)
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0])
-          const allowed = Object.keys(PAGES)
-          actions = (parsed.actions || []).filter((a: {page: string}) => allowed.includes(a.page))
-          return NextResponse.json({ success: true, message: parsed.message || glmResponse, actions })
-        }
-      } catch {}
-      return NextResponse.json({ success: true, message: glmResponse, actions })
-    }
-
+    // 4) Dernier repli — en français par défaut (l'app est d'abord francophone)
     const lang = detectLang(message)
+    const effLang = lang === 'other' ? 'fr' : lang
     return NextResponse.json({
       success: true,
-      message: reply(lang,
+      message: reply(effLang,
         `Je ne suis pas sûr de comprendre ${pick(['🤔', '💡', '❓'])}\n\nVoici ce que je peux faire :\n• 💸 Envoyer de l'argent\n• 💵 Retirer du cash\n• 🏦 Déposer des fonds\n• 📄 Payer des factures\n• 💳 Gérer votre carte\n• 🛒 Explorer le marché\n\n${pick(['Posez-moi une question précise!', 'Essayez une autre question!'])}`,
         `I'm not sure I understand ${pick(['🤔', '💡', '❓'])}\n\nHere's what I can do:\n• 💸 Send money\n• 💵 Withdraw cash\n• 🏦 Deposit funds\n• 📄 Pay bills\n• 💳 Manage your card\n• 🛒 Explore the marketplace\n\n${pick(['Ask me a specific question!', 'Try another question!'])}`,
       ),
