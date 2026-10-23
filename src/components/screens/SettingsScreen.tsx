@@ -33,7 +33,7 @@ import { usePWAInstall } from '@/hooks/usePWAInstall';
 import { useTranslation, languageNames, languages, type Language } from '@/lib/i18n';
 import { useState } from 'react';
 import { usePushSubscription } from '@/hooks/usePushSubscription';
-import { enrollBiometric, disableBiometric, checkBiometricSupport } from '@/lib/biometric';
+import { enrollBiometric, disableBiometric, checkBiometricSupport, describeBiometricError } from '@/lib/biometric';
 
 function LanguageModal({ onClose }: { onClose: () => void }) {
   const { language, setLanguage } = useTranslation();
@@ -275,7 +275,7 @@ export default function SettingsScreen() {
         toast.success(`Déverrouillage par ${support.label.toLowerCase()} activé`);
       }
     } catch (err: any) {
-      const msg = String(err?.message || err || '');
+      const msg = describeBiometricError(err);
       if (!/cancel|annul/i.test(msg)) {
         toast.error(msg || 'Opération impossible');
       }

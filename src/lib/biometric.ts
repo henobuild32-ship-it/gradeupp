@@ -1,5 +1,5 @@
 import { Capacitor } from '@capacitor/core';
-import { NativeBiometric, BiometryType } from 'capacitor-native-biometric';
+import { NativeBiometric, BiometryType, BiometricAuthError } from 'capacitor-native-biometric';
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
 import type { User } from '@/lib/store';
 
@@ -81,6 +81,50 @@ export async function checkBiometricSupport(): Promise<BiometricSupport> {
   }
 }
 
+const BIOMETRIC_ERROR_FR: Record<number, string> = {
+  [BiometricAuthError.UNKNOWN_ERROR]: 'Échec de la biométrie',
+  [BiometricAuthError.BIOMETRICS_UNAVAILABLE]: 'Biométrie indisponible sur cet appareil',
+  [BiometricAuthError.USER_LOCKOUT]: 'Trop de tentatives — déverrouillez votre appareil puis réessayez',
+  [BiometricAuthError.BIOMETRICS_NOT_ENROLLED]:
+    'Aucune empreinte ni visage enregistré sur l’appareil. Ajoutez-en un dans les réglages du téléphone.',
+  [BiometricAuthError.USER_TEMPORARY_LOCKOUT]: 'Trop de tentatives — réessayez dans quelques instants',
+  [BiometricAuthError.AUTHENTICATION_FAILED]: 'Empreinte ou visage non reconnu',
+  [BiometricAuthError.APP_CANCEL]: 'Annulé',
+  [BiometricAuthError.INVALID_CONTEXT]: 'Erreur biométrie — redémarrez l’application',
+  [BiometricAuthError.NOT_INTERACTIVE]: 'Impossible d’afficher le déverrouillage — réessayez',
+  [BiometricAuthError.PASSCODE_NOT_SET]: 'Définissez d’abord un code de verrouillage sur votre téléphone',
+  [BiometricAuthError.SYSTEM_CANCEL]: 'Annulé',
+  [BiometricAuthError.USER_CANCEL]: 'Annulé',
+  [BiometricAuthError.USER_FALLBACK]: 'Annulé',
+};
+
+export function describeBiometricError(err: unknown): string {
+  const anyErr = err as { errorCode?: unknown; code?: unknown; message?: unknown } | null;
+  const raw = String(anyErr?.message || err || '');
+  const upper = raw.toUpperCase().replace(/[\s-]+/g, '_');
+  const codeRaw = anyErr?.errorCode ?? anyErr?.code;
+  const code = typeof codeRaw === 'string' ? Number(codeRaw) : codeRaw;
+  if (typeof code === 'number' && BIOMETRIC_ERROR_FR[code]) return BIOMETRIC_ERROR_FR[code];
+  const byToken: [RegExp, string][] = [
+    [/BIOMETRICS_NOT_ENROLLED|NOT_ENROLLED/, BIOMETRIC_ERROR_FR[BiometricAuthError.BIOMETRICS_NOT_ENROLLED]],
+    [/BIOMETRICS_UNAVAILABLE|NOT_AVAILABLE|NO_BIOMETRIC/, BIOMETRIC_ERROR_FR[BiometricAuthError.BIOMETRICS_UNAVAILABLE]],
+    [/NOT_IMPLEMENTED|DOES_NOT_EXIST|NOT_REGISTERED|NO_PLUGIN/, 'Biométrie indisponible — mettez à jour l’application'],
+    [/LOCKOUT_PERMANENT|TOO_MANY_ATTEMPTS|USER_LOCKOUT/, BIOMETRIC_ERROR_FR[BiometricAuthError.USER_LOCKOUT]],
+    [/TEMPORARY_LOCKOUT/, BIOMETRIC_ERROR_FR[BiometricAuthError.USER_TEMPORARY_LOCKOUT]],
+    [/AUTHENTICATION_FAILED|BIOMETRIC_[A-Z_]*FAILED/, BIOMETRIC_ERROR_FR[BiometricAuthError.AUTHENTICATION_FAILED]],
+    [/PASSCODE_NOT_SET|SCREEN_LOCK_NOT_SET/, BIOMETRIC_ERROR_FR[BiometricAuthError.PASSCODE_NOT_SET]],
+    [/NOT_INTERACTIVE/, BIOMETRIC_ERROR_FR[BiometricAuthError.NOT_INTERACTIVE]],
+    [/INVALID_CONTEXT/, BIOMETRIC_ERROR_FR[BiometricAuthError.INVALID_CONTEXT]],
+    [/CANCEL|ABORT|DISMISSED|NOT_ALLOWED|NOTALLOWED|USER_FALLBACK/, 'Annulé'],
+    [/NETWORK|FETCH|ECONNREFUSED|ETIMEDOUT/i, 'Connexion impossible — vérifiez votre réseau'],
+  ];
+  for (const [pattern, msg] of byToken) {
+    if (pattern.test(upper) || pattern.test(raw)) return msg;
+  }
+  if (!raw || raw === 'Error' || upper === 'UNKNOWN_ERROR') return 'Échec de la biométrie';
+  return raw;
+}
+
 function deviceName(): string {
   if (isNativePlatform()) {
     return `Appareil ${Capacitor.getPlatform() === 'android' ? 'Android' : 'iOS'}`;
@@ -117,22 +161,30 @@ export async function enrollBiometric(): Promise<void> {
 
   if (support.platform === 'native') {
     // 1. L'appareil prouve l'identité (empreinte / visage / code du téléphone)
-    await NativeBiometric.verifyIdentity({
-      title: 'Activer le déverrouillage TRAIT',
-      subtitle: 'Authentification biométrique',
-      description: 'Utilisez votre empreinte, votre visage ou le code de l’appareil pour déverrouiller TRAIT.',
-      negativeButtonText: 'Annuler',
-      useFallback: true,
-      maxAttempts: 3,
-    });
+    try {
+      await NativeBiometric.verifyIdentity({
+        title: 'Activer le déverrouillage TRAIT',
+        subtitle: 'Authentification biométrique',
+        description: 'Utilisez votre empreinte, votre visage ou le code de l’appareil pour déverrouiller TRAIT.',
+        negativeButtonText: 'Annuler',
+        useFallback: true,
+        maxAttempts: 3,
+      });
+    } catch (err) {
+      throw new Error(describeBiometricError(err));
+    }
 
     // 2. Secret aléatoire → Keystore/Keychain (protégé par la biométrie)
     const secret = randomSecret();
-    await NativeBiometric.setCredentials({
-      username: NATIVE_USERNAME,
-      password: secret,
-      server: NATIVE_SERVICE,
-    });
+    try {
+      await NativeBiometric.setCredentials({
+        username: NATIVE_USERNAME,
+        password: secret,
+        server: NATIVE_SERVICE,
+      });
+    } catch (err) {
+      throw new Error(describeBiometricError(err));
+    }
 
     // 3. Le serveur ne garde que le hash
     try {
@@ -167,18 +219,31 @@ export async function authenticateBiometric(reason?: string): Promise<User> {
   }
 
   if (support.platform === 'native') {
-    await NativeBiometric.verifyIdentity({
-      title: 'Déverrouiller TRAIT',
-      subtitle: 'Authentification biométrique',
-      description: reason || 'Confirmez votre identité pour accéder à votre compte.',
-      negativeButtonText: 'Annuler',
-      useFallback: true,
-      maxAttempts: 3,
-    });
+    try {
+      await NativeBiometric.verifyIdentity({
+        title: 'Déverrouiller TRAIT',
+        subtitle: 'Authentification biométrique',
+        description: reason || 'Confirmez votre identité pour accéder à votre compte.',
+        negativeButtonText: 'Annuler',
+        useFallback: true,
+        maxAttempts: 3,
+      });
+    } catch (err) {
+      throw new Error(describeBiometricError(err));
+    }
 
-    const cred = await NativeBiometric.getCredentials({ server: NATIVE_SERVICE });
+    let cred: { password?: string } | null = null;
+    try {
+      cred = await NativeBiometric.getCredentials({ server: NATIVE_SERVICE });
+    } catch (err) {
+      const msg = describeBiometricError(err);
+      if (/introuvable|non reconnu|Échec/i.test(msg)) {
+        throw new Error('Déverrouillage biométrique introuvable sur cet appareil — réactivez-le dans les réglages.');
+      }
+      throw new Error(msg);
+    }
     if (!cred?.password) {
-      throw new Error('Aucun secret biométrique sur cet appareil');
+      throw new Error('Déverrouillage biométrique introuvable sur cet appareil — réactivez-le dans les réglages.');
     }
     const data = await api('/api/biometric/native/unlock', { secret: cred.password });
     if (data.token) {

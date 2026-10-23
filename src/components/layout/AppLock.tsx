@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Fingerprint, ScanFace, Lock, ShieldAlert, LogOut, Loader2 } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
 import { toast } from 'sonner';
-import { authenticateBiometric, checkBiometricSupport, isNativePlatform, storedCredentialId } from '@/lib/biometric';
+import { authenticateBiometric, checkBiometricSupport, describeBiometricError, isNativePlatform, storedCredentialId } from '@/lib/biometric';
 
 /**
  * Écran de verrouillage TRAIT — s'affiche à la réouverture de l'app
@@ -70,7 +70,7 @@ export default function AppLock({ onUnlock }: { onUnlock: () => void }) {
         setBiometricLabel(support.label);
         // Prompt automatique (comportement bancaire standard)
         setTimeout(() => {
-          runBiometric(true);
+          runBiometric();
         }, 400);
       } catch {
         setShowPinPad(true);
@@ -79,7 +79,7 @@ export default function AppLock({ onUnlock }: { onUnlock: () => void }) {
      
   }, []);
 
-  const runBiometric = useCallback(async (auto = false) => {
+  const runBiometric = useCallback(async () => {
     if (prompting || cooldown) return;
     setPrompting(true);
     try {
@@ -94,16 +94,12 @@ export default function AppLock({ onUnlock }: { onUnlock: () => void }) {
         onUnlock();
       }
     } catch (err: any) {
-      const msg = String(err?.message || err || '');
-      const cancelled =
-        /cancel|annul|dismiss|fall back|fallback|USER_FALLBACK|USER_CANCEL|SYSTEM_CANCEL|not allowed|NotAllowedError/i.test(msg);
-      if (!cancelled && !auto) {
-        toast.error(msg || 'Échec de la biométrie');
+      const msg = describeBiometricError(err);
+      const cancelled = /cancel|annul|dismiss|fall back|fallback|not allowed/i.test(msg);
+      if (!cancelled) {
+        toast.error(msg);
       }
-      if (cancelled && auto) {
-        // L'utilisateur a fermé le prompt système → proposer le PIN
-        setShowPinPad(true);
-      }
+      setShowPinPad(true);
       setCooldown(true);
       setTimeout(() => setCooldown(false), BIOMETRIC_COOLDOWN_MS);
     } finally {
@@ -210,7 +206,7 @@ export default function AppLock({ onUnlock }: { onUnlock: () => void }) {
           <motion.button
             whileTap={{ scale: 0.92 }}
             disabled={prompting || cooldown}
-            onClick={() => runBiometric(false)}
+            onClick={() => runBiometric()}
             className="flex flex-col items-center gap-3 mb-10 cursor-pointer disabled:opacity-60"
           >
             <div className="w-24 h-24 rounded-full bg-emerald-50 dark:bg-emerald-950/30 border-2 border-emerald-200 dark:border-emerald-800/40 flex items-center justify-center">
