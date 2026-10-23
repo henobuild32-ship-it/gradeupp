@@ -486,6 +486,9 @@ model TraitCard {
   qrCode        String
   expiryDate    String
   status        String        @default("active")
+  holderName    String?
+  relation      String        @default("child")
+  maxLoadAmount Float?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   payments      CardPayment[]

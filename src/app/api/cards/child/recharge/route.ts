@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { logSecurityEvent } from '@/lib/security';
 import { requireUser, verifyAndMigratePin, verifyAndMigratePassword } from '@/lib/auth';
 import { createNotification, updateBalanceAndNotify } from '@/lib/notifications';
+import { loadCapFor, formatLoadCap, formatCardAmount, type CardCurrency } from '@/lib/family-card';
 
 export async function POST(request: NextRequest) {
   try {
@@ -75,15 +76,40 @@ export async function POST(request: NextRequest) {
     }
 
     const isFC = currency === 'FC';
-    const limitMax = isFC ? 10000000 : 1000;
-    const currentChildBal = isFC ? child.realBalanceFC : child.realBalance;
+    const capCurrency: CardCurrency = isFC ? 'FC' : 'USD';
 
-    // Enforce child balance limits
-    if (currentChildBal + amount > limitMax) {
+    const cards = await db.traitCard.findMany({
+      where: { userId: childId },
+      orderBy: { createdAt: 'desc' },
+    });
+    const card = cards.find((c) => c.cardType === currency) || cards[0] || null;
+    const maxLoad = loadCapFor(capCurrency, card && card.cardType === currency ? card.maxLoadAmount : null);
+
+    // Plafond d'encaissement cumulé (total jamais dépassé sur la carte)
+    const rechargedAgg = await db.transaction.aggregate({
+      where: { receiverId: childId, type: 'child_recharge', currency, status: 'completed' },
+      _sum: { amount: true },
+    });
+    const loadedTotal = rechargedAgg._sum.amount || 0;
+    if (loadedTotal + amount > maxLoad) {
+      const remaining = Math.max(0, maxLoad - loadedTotal);
       return NextResponse.json(
         {
           success: false,
-          message: `Dépassement de la limite autorisé pour ce compte enfant. Solde max : ${limitMax.toLocaleString('fr-FR')} ${currency}. Solde actuel: ${currentChildBal.toFixed(2)} ${currency}.`,
+          message: `Plafond d'encaissement de la carte dépassé : maximum ${formatLoadCap(capCurrency)} au total. Déjà encaissé : ${formatCardAmount(loadedTotal, capCurrency)} — reste disponible : ${formatCardAmount(remaining, capCurrency)}.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    const currentChildBal = isFC ? child.realBalanceFC : child.realBalance;
+
+    // Enforce child balance limits
+    if (currentChildBal + amount > maxLoad) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: `Dépassement de la limite autorisé pour ce compte. Solde max : ${formatCardAmount(maxLoad, capCurrency)}. Solde actuel : ${formatCardAmount(currentChildBal, capCurrency)}.`,
         },
         { status: 400 }
       );

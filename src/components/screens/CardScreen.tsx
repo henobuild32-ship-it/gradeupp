@@ -2,21 +2,22 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  ArrowLeft, 
-  CreditCard, 
-  Loader2, 
-  Clock, 
-  XCircle, 
-  Plus, 
-  Wallet, 
+import {
+  ArrowLeft,
+  CreditCard,
+  Loader2,
+  Clock,
+  XCircle,
+  Plus,
+  Wallet,
   ChevronRight,
   UserPlus,
   TrendingUp,
   History,
   Lock,
   DollarSign,
-  Smartphone
+  Smartphone,
+  Users
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -25,6 +26,7 @@ import { Input } from '@/components/ui/input';
 import { useAppStore } from '@/lib/store';
 import { toast } from 'sonner';
 import TraitCard from '@/components/trait/TraitCard';
+import { formatLoadCap, formatCardAmount, loadCapFor, relationLabel, type CardCurrency } from '@/lib/family-card';
 
 interface CardData {
   id: string;
@@ -54,6 +56,9 @@ interface ChildCardData {
   expiryDate: string;
   status: string;
   createdAt: string;
+  holderName?: string | null;
+  relation?: string | null;
+  maxLoadAmount?: number | null;
 }
 
 interface ChildUser {
@@ -65,6 +70,8 @@ interface ChildUser {
   realBalanceFC: number;
   suspended: boolean;
   cards: ChildCardData[];
+  relation?: string;
+  recharged?: { USD: number; FC: number };
 }
 
 interface TransactionHistory {
@@ -162,15 +169,29 @@ export default function CardScreen() {
     e.preventDefault();
     const parsedAmount = parseFloat(rechargeAmount);
     if (!selectedChildId) {
-      toast.error("Veuillez sélectionner un enfant");
+      toast.error('Veuillez sélectionner un bénéficiaire');
       return;
     }
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      toast.error("Veuillez entrer un montant valide supérieur à 0");
+      toast.error('Veuillez entrer un montant valide supérieur à 0');
       return;
     }
+    const capCur: CardCurrency = rechargeCurrency === 'FC' ? 'FC' : 'USD';
+    const target = childUsers.find((c) => c.id === selectedChildId);
+    if (target) {
+      const card = target.cards.find((cd) => cd.cardType === capCur) || target.cards[0];
+      const cap = loadCapFor(capCur, card && card.cardType === capCur ? card.maxLoadAmount : null);
+      const done = target.recharged?.[capCur] ?? 0;
+      const remaining = Math.max(0, cap - done);
+      if (parsedAmount > remaining) {
+        toast.error(
+          `Plafond d'encaissement : ${formatLoadCap(capCur)} — il ne reste que ${formatCardAmount(remaining, capCur)} à encaisser.`
+        );
+        return;
+      }
+    }
     if (!parentConfirmCode) {
-      toast.error("Veuillez entrer votre PIN ou mot de passe de confirmation");
+      toast.error('Veuillez entrer votre PIN ou mot de passe de confirmation');
       return;
     }
 
@@ -274,18 +295,21 @@ export default function CardScreen() {
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            Cartes Enfants ({childUsers.length})
-          </button>
-          <button
-            onClick={() => setActiveSubTab('recharge')}
-            className={`flex-1 py-3 text-xs font-bold border-b-2 text-center transition-all ${
-              activeSubTab === 'recharge'
-                ? 'border-[#0D5C63] text-[#0D5C63]'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Recharger Enfant
-          </button>
+              <span className="flex items-center justify-center gap-1">
+                <Users className="size-3.5" />
+                Cartes Famille ({childUsers.length})
+              </span>
+            </button>
+            <button
+              onClick={() => setActiveSubTab('recharge')}
+              className={`flex-1 py-3 text-xs font-bold border-b-2 text-center transition-all ${
+                activeSubTab === 'recharge'
+                  ? 'border-[#0D5C63] text-[#0D5C63]'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Recharger
+            </button>
         </div>
       )}
 
@@ -315,29 +339,32 @@ export default function CardScreen() {
                   <Plus className="w-4 h-4 mr-2" />
                   Demander une carte
                 </Button>
-                <Button
-                  variant="outline"
-                  className="w-full max-w-xs h-12 mt-3 font-semibold rounded-xl"
-                  onClick={() => navigateTo('child-sponsorship')}
-                >
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Créer une carte pour quelqu&apos;un
-                </Button>
-              </div>
-            ) : (
-              <>
-                {/* Create card for someone else — always visible */}
-                <div className="mb-4">
+                {user?.role === 'client' && (
                   <Button
                     variant="outline"
-                    className="w-full h-12 font-semibold rounded-xl border-dashed"
+                    className="w-full max-w-xs h-12 mt-3 font-semibold rounded-xl"
                     onClick={() => navigateTo('child-sponsorship')}
                   >
                     <UserPlus className="w-4 h-4 mr-2" />
                     Créer une carte pour quelqu&apos;un
                   </Button>
-                </div>
-
+                )}
+              </div>
+            ) : (
+              <>
+                {/* Create card for someone else — client only */}
+                {user?.role === 'client' && (
+                  <div className="mb-4">
+                    <Button
+                      variant="outline"
+                      className="w-full h-12 font-semibold rounded-xl border-dashed"
+                      onClick={() => navigateTo('child-sponsorship')}
+                    >
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      Créer une carte pour quelqu&apos;un
+                    </Button>
+                  </div>
+                )}
                 {/* Active cards */}
                 {cards.length > 0 && (
                   <div className="space-y-6">
@@ -485,7 +512,16 @@ export default function CardScreen() {
               <div key={child.id} className="p-4 border rounded-2xl bg-card/60 space-y-4">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="font-bold text-base text-foreground">{child.name}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-base text-foreground">{child.name}</h3>
+                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${
+                        (child.relation || child.cards[0]?.relation) === 'family'
+                          ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900/40'
+                          : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900/40'
+                      }`}>
+                        {(child.relation || child.cards[0]?.relation) === 'family' ? 'FAMILLE' : 'ENFANT'}
+                      </span>
+                    </div>
                     <p className="text-[10px] text-muted-foreground mt-0.5">Tél virtuel: {child.phone}</p>
                   </div>
                   {child.suspended && (
@@ -497,12 +533,16 @@ export default function CardScreen() {
 
                 {child.cards.map((card) => {
                   const statConfig = getChildStatusBadge(card.status);
+                  const capCur: CardCurrency = card.cardType === 'FC' ? 'FC' : 'USD';
+                  const cap = loadCapFor(capCur, card.maxLoadAmount);
+                  const done = child.recharged?.[capCur] ?? 0;
+                  const remaining = Math.max(0, cap - done);
                   return (
                     <div key={card.id} className="space-y-3">
                       <TraitCard
                         cardType={card.cardType}
                         cardNumber={card.cardNumber}
-                        cardHolder={child.name}
+                        cardHolder={card.holderName || child.name}
                         expiryDate={card.expiryDate}
                         cvv={card.cvv}
                         qrCode={card.qrCode}
@@ -514,6 +554,15 @@ export default function CardScreen() {
                         <span className="text-[11px] font-medium text-muted-foreground">Statut de la carte physique :</span>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statConfig.color}`}>
                           {statConfig.label}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between bg-muted/30 p-2.5 rounded-xl border border-border/60 text-[11px]">
+                        <span className="text-muted-foreground">
+                          Plafond {capCur === 'USD' ? '(USD)' : '(CDF)'} : <span className="font-bold text-foreground">{formatCardAmount(cap, capCur)}</span>
+                        </span>
+                        <span className="text-muted-foreground">
+                          Encaissé : <span className="font-semibold text-foreground">{formatCardAmount(done, capCur)}</span> • Reste : <span className={`font-semibold ${remaining > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>{formatCardAmount(remaining, capCur)}</span>
                         </span>
                       </div>
                     </div>
@@ -550,27 +599,27 @@ export default function CardScreen() {
             <Card className="border-border shadow-md">
               <CardContent className="p-5">
                 <form onSubmit={handleRecharge} className="space-y-4">
-                  {/* Select Child */}
+                  {/* Select beneficiary */}
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-foreground">Enfant à recharger</label>
+                    <label className="text-xs font-semibold text-foreground">Bénéficiaire à recharger</label>
                     <select
                       className="w-full h-11 rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0D5C63]"
                       value={selectedChildId}
                       onChange={(e) => setSelectedChildId(e.target.value)}
                     >
-                      <option value="">Sélectionnez un enfant...</option>
+                      <option value="">Sélectionnez un bénéficiaire...</option>
                       {childUsers.map((child) => (
                         <option key={child.id} value={child.id}>
-                          {child.name} ({child.phone})
+                          {child.name} — {relationLabel(child.relation || child.cards[0]?.relation)}
                         </option>
                       ))}
                     </select>
                   </div>
 
-                  {/* Child Balance info */}
+                  {/* Beneficiary balance info */}
                   {selectedChild && (
                     <div className="p-3 bg-muted/60 rounded-xl border flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Solde de l&apos;enfant :</span>
+                      <span className="text-xs text-muted-foreground">Solde du bénéficiaire :</span>
                       <span className="text-sm font-bold text-foreground">
                         {selectedChild.realBalance.toFixed(2)} USD / {selectedChild.realBalanceFC.toFixed(0)} CDF
                       </span>
@@ -675,7 +724,7 @@ export default function CardScreen() {
                           <TrendingUp className="size-4" />
                         </div>
                         <div>
-                          <p className="text-xs font-semibold text-foreground">Recharge Enfant</p>
+                          <p className="text-xs font-semibold text-foreground">Recharge carte</p>
                           <p className="text-[10px] text-muted-foreground mt-0.5">{new Date(item.createdAt).toLocaleString('fr-FR')}</p>
                         </div>
                       </div>

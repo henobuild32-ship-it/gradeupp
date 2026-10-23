@@ -4,6 +4,7 @@ import { logSecurityEvent } from '@/lib/security';
 import { requireUser, hashPin } from '@/lib/auth';
 import { randomInt, randomBytes } from 'crypto';
 import { createNotification } from '@/lib/notifications';
+import { CARD_LOAD_CAP, formatLoadCap, type CardRelation } from '@/lib/family-card';
 
 function maskCardNumber(num: string): string {
   return num.length >= 4 ? `****${num.slice(-4)}` : num;
@@ -43,16 +44,27 @@ export async function POST(request: NextRequest) {
     const auth = await requireUser(request);
     if (auth instanceof NextResponse) return auth;
     const body = await request.json();
-    const { parentId, childName, cardType, pin } = body as {
+    const { parentId, childName, cardType, pin, relation } = body as {
       parentId: string;
       childName: string;
       cardType: 'USD' | 'FC';
       pin?: string;
+      relation?: CardRelation;
     };
+
+    const cardRelation: CardRelation = relation === 'family' ? 'family' : 'child';
+    const holderLabel = cardRelation === 'family' ? 'du membre' : "de l'enfant";
 
     if (!parentId || !childName || !cardType) {
       return NextResponse.json(
         { success: false, message: 'Paramètres manquants: parentId, childName et cardType sont requis' },
+        { status: 400 }
+      );
+    }
+
+    if (cardType !== 'USD' && cardType !== 'FC') {
+      return NextResponse.json(
+        { success: false, message: 'Devise invalide : choisissez USD ou CDF' },
         { status: 400 }
       );
     }
@@ -67,14 +79,14 @@ export async function POST(request: NextRequest) {
     const trimmedName = childName.trim();
     if (!/^[a-zA-ZÀ-ÿ\s'-]+$/.test(trimmedName)) {
       return NextResponse.json(
-        { success: false, message: "Le nom de l'enfant ne doit contenir que des lettres" },
+        { success: false, message: `Le nom ${holderLabel} ne doit contenir que des lettres` },
         { status: 400 }
       );
     }
 
     if (!pin || pin.length !== 4 || !/^\d{4}$/.test(pin)) {
       return NextResponse.json(
-        { success: false, message: "Le PIN de l'enfant est obligatoire et doit contenir exactement 4 chiffres" },
+        { success: false, message: `Le PIN ${holderLabel} est obligatoire et doit contenir exactement 4 chiffres` },
         { status: 400 }
       );
     }
@@ -145,6 +157,7 @@ export async function POST(request: NextRequest) {
 
     const cvv = generateCVV();
     const expiryDate = generateExpiryDate();
+    const maxLoadAmount = CARD_LOAD_CAP[cardType === 'FC' ? 'FC' : 'USD'];
 
     // Create CardRequest + TraitCard
     const cardRequest = await db.cardRequest.create({
@@ -165,19 +178,24 @@ export async function POST(request: NextRequest) {
         qrCode: generateQRCode(cardRequest.id),
         expiryDate,
         status: 'pending_retrieval', // En attente de retrait
+        holderName: trimmedName,
+        relation: cardRelation,
+        maxLoadAmount,
       },
     });
 
     // Log the creation
     await logSecurityEvent({
       userId: parentId,
-      action: 'child_account_created',
+      action: cardRelation === 'family' ? 'family_card_created' : 'child_account_created',
       details: JSON.stringify({
         childId: child.id,
         childName,
         childPhone,
         cardId: card.id,
         cardType,
+        relation: cardRelation,
+        maxLoadAmount,
         cardNumber: maskCardNumber(cardNumber),
       }),
       riskLevel: 'low',
@@ -186,8 +204,10 @@ export async function POST(request: NextRequest) {
     // Notification for parent
     await createNotification(
       parentId,
-      'Compte Enfant créé',
-      `Le compte de votre enfant ${childName} a été créé avec succès avec la carte ${cardType} ****${cardNumber.slice(-4)}.`,
+      cardRelation === 'family' ? 'Carte Famille créée' : 'Compte Enfant créé',
+      cardRelation === 'family'
+        ? `La carte TRAIT ${cardType} de ${childName} (membre de votre famille) a été créée. Plafond d'encaissement : ${formatLoadCap(cardType === 'FC' ? 'FC' : 'USD')}.`
+        : `Le compte de votre enfant ${childName} a été créé avec succès avec la carte ${cardType} ****${cardNumber.slice(-4)}. Plafond d'encaissement : ${formatLoadCap(cardType === 'FC' ? 'FC' : 'USD')}.`,
       'general',
       false
     )
@@ -196,18 +216,33 @@ export async function POST(request: NextRequest) {
     await createNotification(
       child.id,
       'Bienvenue sur TRAIT',
-      `Ton compte enfant a été configuré par ton parent. Ta carte TRAIT ${cardType} est prête !`,
+      cardRelation === 'family'
+        ? `Votre compte TRAIT a été créé par un membre de votre famille. Votre carte ${cardType} est prête !`
+        : `Ton compte enfant a été configuré par ton parent. Ta carte TRAIT ${cardType} est prête !`,
       'general',
       false
     )
 
-    return NextResponse.json({
-      success: true,
-      message: `Félicitations ! La carte TRAIT de ${childName} a été créée avec succès.
+    const capLabel = formatLoadCap(cardType === 'FC' ? 'FC' : 'USD');
+    const successMessage = cardRelation === 'family'
+      ? `Félicitations ! La carte TRAIT ${cardType} de ${childName} (membre de votre famille) a été créée avec succès.
+
+Plafond d'encaissement de la carte : ${capLabel}.
+
+Rendez-vous à l'administration TRAIT pour récupérer la carte physique.
+
+La carte est actuellement active avec un solde de 0 USD et 0 CDF. Vous pouvez commencer à l'utiliser après l'avoir rechargée.`
+      : `Félicitations ! La carte TRAIT de ${childName} a été créée avec succès.
+
+Plafond d'encaissement de la carte : ${capLabel}.
 
 Rendez-vous à l'administration TRAIT pour récupérer la carte physique de votre enfant.
 
-La carte est actuellement active avec un solde de 0 USD et 0 CDF. Vous pouvez commencer à l'utiliser après l'avoir rechargée.`,
+La carte est actuellement active avec un solde de 0 USD et 0 CDF. Vous pouvez commencer à l'utiliser après l'avoir rechargée.`;
+
+    return NextResponse.json({
+      success: true,
+      message: successMessage,
       child: {
         id: child.id,
         name: child.name,
@@ -218,6 +253,8 @@ La carte est actuellement active avec un solde de 0 USD et 0 CDF. Vous pouvez co
         cardType: card.cardType,
         cardNumber: maskCardNumber(card.cardNumber),
         status: card.status,
+        relation: card.relation,
+        maxLoadAmount: card.maxLoadAmount,
       },
     });
   } catch (error) {

@@ -49,6 +49,9 @@ export async function GET(request: NextRequest) {
             expiryDate: true,
             status: true,
             createdAt: true,
+            holderName: true,
+            relation: true,
+            maxLoadAmount: true,
           },
         },
       },
@@ -56,6 +59,30 @@ export async function GET(request: NextRequest) {
     });
 
     const childrenIds = children.map((c) => c.id);
+
+    // Cumul déjà encaissé par bénéficiaire et devise (recharges parentales)
+    const rechargedByChild: Record<string, { USD: number; FC: number }> = {};
+    if (childrenIds.length > 0) {
+      const rechargeSums = await db.transaction.groupBy({
+        by: ['receiverId', 'currency'],
+        where: {
+          senderId: parentId,
+          receiverId: { in: childrenIds },
+          type: 'child_recharge',
+          status: 'completed',
+        },
+        _sum: { amount: true },
+      });
+      for (const row of rechargeSums) {
+        const entry = rechargedByChild[row.receiverId] || { USD: 0, FC: 0 };
+        if (row.currency === 'FC') {
+          entry.FC = row._sum.amount || 0;
+        } else {
+          entry.USD = row._sum.amount || 0;
+        }
+        rechargedByChild[row.receiverId] = entry;
+      }
+    }
 
     // Fetch recharge history (transactions sent by parent to children)
     const recharges = await db.transaction.findMany({
@@ -97,6 +124,8 @@ export async function GET(request: NextRequest) {
 
     const safeChildren = children.map(child => ({
       ...child,
+      relation: child.cards[0]?.relation || 'child',
+      recharged: rechargedByChild[child.id] || { USD: 0, FC: 0 },
       cards: child.cards.map(card => ({
         ...card,
         cardNumber: maskCardNumber(card.cardNumber),

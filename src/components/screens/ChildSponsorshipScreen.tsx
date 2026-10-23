@@ -1,20 +1,21 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  ArrowLeft, 
-  UserPlus, 
-  CreditCard, 
-  TrendingUp, 
-  History, 
-  Lock, 
-  Loader2, 
-  CheckCircle, 
+import {
+  ArrowLeft,
+  UserPlus,
+  CreditCard,
+  TrendingUp,
+  History,
+  Lock,
+  Loader2,
+  CheckCircle,
   AlertCircle,
   TrendingDown,
   DollarSign,
-  Smartphone
+  Smartphone,
+  Users
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -22,6 +23,7 @@ import { Input } from '@/components/ui/input';
 import { useAppStore } from '@/lib/store';
 import { toast } from 'sonner';
 import TraitCard from '@/components/trait/TraitCard';
+import { formatLoadCap, formatCardAmount, loadCapFor, relationLabel, type CardRelation } from '@/lib/family-card';
 
 interface ChildCardData {
   id: string;
@@ -32,6 +34,9 @@ interface ChildCardData {
   expiryDate: string;
   status: string;
   createdAt: string;
+  holderName?: string | null;
+  relation?: string | null;
+  maxLoadAmount?: number | null;
 }
 
 interface ChildUser {
@@ -43,6 +48,8 @@ interface ChildUser {
   realBalanceFC: number;
   suspended: boolean;
   cards: ChildCardData[];
+  relation?: string;
+  recharged?: { USD: number; FC: number };
 }
 
 interface TransactionHistory {
@@ -72,6 +79,9 @@ export default function ChildSponsorshipScreen() {
   const [childName, setChildName] = useState('');
   const [createCardType, setCreateCardType] = useState<'USD' | 'FC'>('USD');
   const [childPin, setChildPin] = useState('');
+  const [relation, setRelation] = useState<CardRelation>('child');
+  const isFamily = relation === 'family';
+  const nameHolderLabel = isFamily ? 'du membre de la famille' : "de l'enfant";
   
   // Recharge form states
   const [selectedChildId, setSelectedChildId] = useState('');
@@ -118,19 +128,29 @@ export default function ChildSponsorshipScreen() {
     fetchData();
   }, [user?.id]);
 
+  // Devise pré-remplie sur celle de la carte du bénéficiaire sélectionné
+  const prevSelectedRef = useRef('');
+  useEffect(() => {
+    if (!selectedChildId || selectedChildId === prevSelectedRef.current) return;
+    prevSelectedRef.current = selectedChildId;
+    const child = children.find((c) => c.id === selectedChildId);
+    const cardType = child?.cards[0]?.cardType;
+    if (cardType === 'USD' || cardType === 'FC') setRechargeCurrency(cardType);
+  }, [selectedChildId, children]);
+
   const handleCreateChild = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedName = childName.trim();
     if (!trimmedName) {
-      toast.error("Veuillez entrer le nom de l'enfant");
+      toast.error(isFamily ? 'Veuillez entrer le nom du membre' : "Veuillez entrer le nom de l'enfant");
       return;
     }
     if (!/^[a-zA-ZÀ-ÿ\s'-]+$/.test(trimmedName)) {
-      toast.error("Le nom de l'enfant ne doit contenir que des lettres");
+      toast.error(`Le nom ${nameHolderLabel} ne doit contenir que des lettres`);
       return;
     }
     if (!childPin || childPin.length !== 4) {
-      toast.error("Le PIN de l'enfant est obligatoire et doit contenir 4 chiffres");
+      toast.error(`Le PIN ${nameHolderLabel} est obligatoire et doit contenir 4 chiffres`);
       return;
     }
 
@@ -145,21 +165,23 @@ export default function ChildSponsorshipScreen() {
           childName: childName.trim(),
           cardType: createCardType,
           pin: childPin || undefined,
+          relation,
         }),
       });
 
       const data = await res.json();
       if (data.success) {
         setSuccessMessage(data.message);
-        toast.success("Compte enfant créé !");
+        toast.success(isFamily ? 'Carte famille créée !' : 'Compte enfant créé !');
         setChildName('');
         setChildPin('');
+        setRelation('child');
         await fetchData(); // Refresh data
       } else {
-        toast.error(data.message || "Erreur de création");
+        toast.error(data.message || 'Erreur de création');
       }
     } catch {
-      toast.error("Erreur réseau");
+      toast.error('Erreur réseau');
     } finally {
       setProcessing(false);
     }
@@ -169,15 +191,29 @@ export default function ChildSponsorshipScreen() {
     e.preventDefault();
     const parsedAmount = parseFloat(rechargeAmount);
     if (!selectedChildId) {
-      toast.error("Veuillez sélectionner un enfant");
+      toast.error('Veuillez sélectionner un bénéficiaire');
       return;
     }
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      toast.error("Veuillez entrer un montant valide supérieur à 0");
+      toast.error('Veuillez entrer un montant valide supérieur à 0');
       return;
     }
+    const capCur: 'USD' | 'FC' = rechargeCurrency === 'FC' ? 'FC' : 'USD';
+    const target = children.find((c) => c.id === selectedChildId);
+    if (target) {
+      const card = target.cards.find((cd) => cd.cardType === capCur) || target.cards[0];
+      const cap = loadCapFor(capCur, card && card.cardType === capCur ? card.maxLoadAmount : null);
+      const done = target.recharged?.[capCur] ?? 0;
+      const remaining = Math.max(0, cap - done);
+      if (parsedAmount > remaining) {
+        toast.error(
+          `Plafond d'encaissement : ${formatLoadCap(capCur)} — il ne reste que ${formatCardAmount(remaining, capCur)} à encaisser.`
+        );
+        return;
+      }
+    }
     if (!parentConfirmCode) {
-      toast.error("Veuillez entrer votre PIN ou mot de passe de confirmation");
+      toast.error('Veuillez entrer votre PIN ou mot de passe de confirmation');
       return;
     }
 
@@ -229,6 +265,13 @@ export default function ChildSponsorshipScreen() {
   };
 
   const selectedChild = children.find(c => c.id === selectedChildId);
+  const selCapCur: 'USD' | 'FC' = rechargeCurrency === 'FC' ? 'FC' : 'USD';
+  const selCard = selectedChild
+    ? selectedChild.cards.find((cd) => cd.cardType === selCapCur) || selectedChild.cards[0] || null
+    : null;
+  const selCap = loadCapFor(selCapCur, selCard && selCard.cardType === selCapCur ? selCard.maxLoadAmount : null);
+  const selDone = selectedChild?.recharged?.[selCapCur] ?? 0;
+  const selRemaining = Math.max(0, selCap - selDone);
 
   return (
     <div className="min-h-screen bg-background pb-12">
@@ -242,13 +285,13 @@ export default function ChildSponsorshipScreen() {
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-xl font-bold text-foreground">Parrainage Enfant</h1>
+        <h1 className="text-xl font-bold text-foreground">Cartes Famille</h1>
       </div>
 
       {loading ? (
         <div className="flex flex-col items-center justify-center pt-24">
           <Loader2 className="h-8 w-8 animate-spin text-[#0D5C63]" />
-          <p className="text-xs text-muted-foreground mt-2">Chargement du module de parrainage...</p>
+          <p className="text-xs text-muted-foreground mt-2">Chargement de vos cartes famille...</p>
         </div>
       ) : (
         <div className="px-4 space-y-6">
@@ -264,7 +307,7 @@ export default function ChildSponsorshipScreen() {
             >
               <span className="flex items-center justify-center gap-1.5">
                 <UserPlus className="size-4" />
-                Créer Profil
+                Créer une carte
               </span>
             </button>
             <button
@@ -277,7 +320,7 @@ export default function ChildSponsorshipScreen() {
             >
               <span className="flex items-center justify-center gap-1.5">
                 <CreditCard className="size-4" />
-                Mes Enfants ({children.length})
+                Mes cartes ({children.length})
               </span>
             </button>
             {children.length > 0 && (
@@ -324,24 +367,56 @@ export default function ChildSponsorshipScreen() {
                         }}
                         className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl mt-2"
                       >
-                        Voir la carte de mon enfant
+                        Voir la carte
                       </Button>
                     </CardContent>
                   </Card>
                 ) : (
                   <Card className="border-border">
                     <CardHeader className="pb-3">
-                      <CardTitle className="text-base font-bold">Nouveau Compte Enfant</CardTitle>
+                      <CardTitle className="text-base font-bold">Nouvelle carte famille / enfant</CardTitle>
                       <CardDescription className="text-xs">
-                        Créez un compte pour votre enfant et recevez sa carte TRAIT associée. Le solde de départ sera de 0.
+                        Créez un compte et sa carte TRAIT pour votre enfant ou un membre de votre famille. Choisissez la devise : le plafond d&apos;encaissement est de {formatLoadCap('USD')} (carte USD) ou {formatLoadCap('FC')} (carte CDF).
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
                       <form onSubmit={handleCreateChild} className="space-y-4">
                         <div className="space-y-2">
-                          <label className="text-xs font-semibold text-foreground">Nom de l&apos;enfant</label>
+                          <label className="text-xs font-semibold text-foreground">Pour qui ?</label>
+                          <div className="grid grid-cols-2 gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setRelation('child')}
+                              className={`py-3.5 rounded-xl border text-center font-semibold text-sm transition-all flex flex-col items-center justify-center gap-1 ${
+                                relation === 'child'
+                                  ? 'border-[#0D5C63] bg-[#0D5C63]/5 text-[#0D5C63]'
+                                  : 'border-border text-muted-foreground hover:bg-muted/50'
+                              }`}
+                            >
+                              <UserPlus className="size-4" />
+                              Enfant
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setRelation('family')}
+                              className={`py-3.5 rounded-xl border text-center font-semibold text-sm transition-all flex flex-col items-center justify-center gap-1 ${
+                                relation === 'family'
+                                  ? 'border-[#0D5C63] bg-[#0D5C63]/5 text-[#0D5C63]'
+                                  : 'border-border text-muted-foreground hover:bg-muted/50'
+                              }`}
+                            >
+                              <Users className="size-4" />
+                              Membre de famille
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-xs font-semibold text-foreground">
+                            {isFamily ? 'Nom du membre' : "Nom de l'enfant"}
+                          </label>
                           <Input
-                            placeholder="Ex: David Mukendi"
+                            placeholder={isFamily ? 'Ex: Sarah Mukendi' : 'Ex: David Mukendi'}
                             value={childName}
                             onChange={(e) => setChildName(e.target.value)}
                             disabled={processing}
@@ -350,7 +425,7 @@ export default function ChildSponsorshipScreen() {
                         </div>
 
                         <div className="space-y-2">
-                          <label className="text-xs font-semibold text-foreground">Type de carte</label>
+                          <label className="text-xs font-semibold text-foreground">Devise de la carte</label>
                           <div className="grid grid-cols-2 gap-3">
                             <button
                               type="button"
@@ -363,6 +438,9 @@ export default function ChildSponsorshipScreen() {
                             >
                               <DollarSign className="size-4" />
                               Compte USD ($)
+                              <span className="text-[10px] font-normal text-muted-foreground">
+                                Encaissable : 1 000 $
+                              </span>
                             </button>
                             <button
                               type="button"
@@ -375,13 +453,24 @@ export default function ChildSponsorshipScreen() {
                             >
                               <Smartphone className="size-4" />
                               Compte CDF (FC)
+                              <span className="text-[10px] font-normal text-muted-foreground">
+                                Encaissable : 3 000 000 FC
+                              </span>
                             </button>
+                          </div>
+                          <div className="flex items-center justify-between p-2.5 bg-muted/60 rounded-xl border border-border/60">
+                            <span className="text-[11px] text-muted-foreground">
+                              Plafond d&apos;encaissement de la carte
+                            </span>
+                            <span className="text-xs font-bold text-foreground">
+                              {formatLoadCap(createCardType)}
+                            </span>
                           </div>
                         </div>
 
                         <div className="space-y-2">
                           <label className="text-xs font-semibold text-foreground flex justify-between">
-                            PIN de l&apos;enfant (Obligatoire)
+                            {isFamily ? 'PIN du membre' : "PIN de l'enfant"} (Obligatoire)
                             <span className="text-[10px] font-normal text-muted-foreground">(4 chiffres)</span>
                           </label>
                           <Input
@@ -405,7 +494,7 @@ export default function ChildSponsorshipScreen() {
                               Création en cours...
                             </>
                           ) : (
-                            'Créer le profil et générer la carte'
+                            'Créer le compte et générer la carte'
                           )}
                         </Button>
                       </form>
@@ -427,9 +516,9 @@ export default function ChildSponsorshipScreen() {
                 {children.length === 0 ? (
                   <Card className="border-dashed border-2 py-10 flex flex-col items-center text-center px-4">
                     <UserPlus className="size-10 text-muted-foreground mb-3 opacity-60" />
-                    <p className="text-sm font-semibold text-foreground">Aucun profil enfant</p>
+                    <p className="text-sm font-semibold text-foreground">Aucune carte famille / enfant</p>
                     <p className="text-xs text-muted-foreground max-w-xs mt-1">
-                      Vous n&apos;avez pas encore créé de compte enfant. Cliquez sur l&apos;onglet &quot;Créer Profil&quot; pour commencer.
+                      Vous n&apos;avez pas encore créé de carte. Cliquez sur &quot;Créer une carte&quot; pour votre enfant ou un membre de votre famille.
                     </p>
                   </Card>
                 ) : (
@@ -437,7 +526,16 @@ export default function ChildSponsorshipScreen() {
                     <div key={child.id} className="space-y-3 p-4 rounded-2xl border bg-card/60 shadow-sm relative">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h3 className="font-bold text-base text-foreground">{child.name}</h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-base text-foreground">{child.name}</h3>
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${
+                              (child.relation || child.cards[0]?.relation) === 'family'
+                                ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900/40'
+                                : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900/40'
+                            }`}>
+                              {(child.relation || child.cards[0]?.relation) === 'family' ? 'FAMILLE' : 'ENFANT'}
+                            </span>
+                          </div>
                           <p className="text-[10px] text-muted-foreground mt-0.5">Tél virtuel: {child.phone}</p>
                         </div>
                         {child.suspended && (
@@ -450,13 +548,18 @@ export default function ChildSponsorshipScreen() {
                       {child.cards.length > 0 ? (
                         child.cards.map((card) => {
                           const statusConfig = getStatusBadge(card.status);
+                          const capCur: 'USD' | 'FC' = card.cardType === 'FC' ? 'FC' : 'USD';
+                          const cap = loadCapFor(capCur, card.maxLoadAmount);
+                          const done = child.recharged?.[capCur] ?? 0;
+                          const remaining = Math.max(0, cap - done);
+                          const pct = cap > 0 ? Math.min(100, Math.round((done / cap) * 100)) : 0;
                           return (
                             <div key={card.id} className="space-y-3">
                               {/* Renders TraitCard */}
                               <TraitCard
                                 cardType={card.cardType}
                                 cardNumber={card.cardNumber}
-                                cardHolder={child.name}
+                                cardHolder={card.holderName || child.name}
                                 expiryDate={card.expiryDate}
                                 cvv={card.cvv}
                                 qrCode={card.qrCode}
@@ -470,6 +573,31 @@ export default function ChildSponsorshipScreen() {
                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusConfig.color}`}>
                                   {statusConfig.label}
                                 </span>
+                              </div>
+
+                              <div className="p-3 rounded-xl border border-border/60 bg-muted/30 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[11px] font-medium text-muted-foreground">
+                                    Plafond d&apos;encaissement ({capCur === 'USD' ? 'USD' : 'CDF'})
+                                  </span>
+                                  <span className="text-[11px] font-bold text-foreground">
+                                    {formatCardAmount(cap, capCur)}
+                                  </span>
+                                </div>
+                                <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                                  <div
+                                    className="h-full rounded-full bg-[#0D5C63] transition-all"
+                                    style={{ width: `${pct}%` }}
+                                  />
+                                </div>
+                                <div className="flex items-center justify-between text-[10px]">
+                                  <span className="text-muted-foreground">
+                                    Encaissé : <span className="font-semibold text-foreground">{formatCardAmount(done, capCur)}</span>
+                                  </span>
+                                  <span className="text-muted-foreground">
+                                    Reste : <span className="font-semibold text-emerald-600 dark:text-emerald-400">{formatCardAmount(remaining, capCur)}</span>
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           );
@@ -508,37 +636,64 @@ export default function ChildSponsorshipScreen() {
               >
                 <Card className="border-border">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base font-bold">Recharger Carte Enfant</CardTitle>
+                    <CardTitle className="text-base font-bold">Recharger une carte</CardTitle>
                     <CardDescription className="text-xs">
-                      Transférez instantanément des fonds de votre solde vers la carte de votre enfant.
+                      Transférez instantanément des fonds de votre solde vers la carte de votre enfant ou d&apos;un membre de votre famille, dans la limite du plafond d&apos;encaissement.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <form onSubmit={handleRecharge} className="space-y-4">
-                      {/* Sélection de l'enfant */}
+                      {/* Sélection du bénéficiaire */}
                       <div className="space-y-2">
-                        <label className="text-xs font-semibold text-foreground">Sélectionner l&apos;enfant</label>
+                        <label className="text-xs font-semibold text-foreground">Sélectionner un bénéficiaire</label>
                         <select
                           className="w-full h-11 rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0D5C63] focus-visible:ring-offset-2"
                           value={selectedChildId}
                           onChange={(e) => setSelectedChildId(e.target.value)}
                         >
-                          <option value="">Sélectionnez un enfant...</option>
+                          <option value="">Sélectionnez un bénéficiaire...</option>
                           {children.map((child) => (
                             <option key={child.id} value={child.id}>
-                              {child.name} ({child.phone})
+                              {child.name} — {relationLabel(child.relation || child.cards[0]?.relation)}
                             </option>
                           ))}
                         </select>
                       </div>
 
-                      {/* Solde actuel de l'enfant sélectionné */}
+                      {/* Solde actuel du bénéficiaire sélectionné */}
                       {selectedChild && (
                         <div className="p-3 bg-muted/60 rounded-xl border flex items-center justify-between">
-                          <span className="text-xs text-muted-foreground">Solde actuel de l&apos;enfant :</span>
+                          <span className="text-xs text-muted-foreground">Solde actuel du bénéficiaire :</span>
                           <span className="text-sm font-bold text-foreground">
                             {selectedChild.realBalance.toFixed(2)} USD / {selectedChild.realBalanceFC.toFixed(0)} CDF
                           </span>
+                        </div>
+                      )}
+
+                      {/* Plafond d'encaissement pour la devise choisie */}
+                      {selectedChild && (
+                        <div className="p-3 bg-muted/60 rounded-xl border space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-muted-foreground">
+                              Plafond d&apos;encaissement ({selCapCur === 'USD' ? 'USD' : 'CDF'}) :
+                            </span>
+                            <span className="text-sm font-bold text-foreground">{formatCardAmount(selCap, selCapCur)}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-muted-foreground">Déjà encaissé :</span>
+                            <span className="text-xs font-semibold text-foreground">{formatCardAmount(selDone, selCapCur)}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-muted-foreground">Reste à encaisser :</span>
+                            <span className={`text-xs font-semibold ${selRemaining > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
+                              {formatCardAmount(selRemaining, selCapCur)}
+                            </span>
+                          </div>
+                          {selRemaining <= 0 && (
+                            <p className="text-[10px] text-red-500 font-medium">
+                              Plafond atteint — cette carte ne peut plus être rechargée en {selCapCur === 'USD' ? 'USD' : 'CDF'}.
+                            </p>
+                          )}
                         </div>
                       )}
 
@@ -604,7 +759,7 @@ export default function ChildSponsorshipScreen() {
 
                       <Button
                         type="submit"
-                        disabled={processing}
+                        disabled={processing || (!!selectedChild && selRemaining <= 0)}
                         className="w-full bg-[#0D5C63] hover:bg-[#0D5C63]/90 text-white font-semibold h-11 rounded-xl mt-4"
                       >
                         {processing ? (
@@ -624,7 +779,7 @@ export default function ChildSponsorshipScreen() {
               <div className="space-y-3">
                 <h3 className="font-bold text-sm text-foreground flex items-center gap-1.5">
                   <History className="size-4 text-[#0D5C63]" />
-                  Historique des Recharges parentales
+                  Historique des recharges
                 </h3>
 
                 {rechargeHistory.length === 0 ? (
@@ -640,7 +795,7 @@ export default function ChildSponsorshipScreen() {
                             <TrendingUp className="size-4" />
                           </div>
                           <div>
-                            <p className="text-xs font-semibold text-foreground">Recharge pour {item.receiver?.name || 'Enfant'}</p>
+                            <p className="text-xs font-semibold text-foreground">Recharge pour {item.receiver?.name || 'Bénéficiaire'}</p>
                             <p className="text-[10px] text-muted-foreground mt-0.5">{new Date(item.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
                           </div>
                         </div>
@@ -657,12 +812,12 @@ export default function ChildSponsorshipScreen() {
               <div className="space-y-3">
                 <h3 className="font-bold text-sm text-foreground flex items-center gap-1.5">
                   <TrendingDown className="size-4 text-red-500" />
-                  Dépenses des enfants en temps réel
+                  Dépenses des cartes en temps réel
                 </h3>
 
                 {expenseHistory.length === 0 ? (
                   <p className="text-xs text-muted-foreground italic text-center py-4 bg-muted/20 border rounded-xl">
-                    Aucune dépense enregistrée sur les cartes enfants.
+                    Aucune dépense enregistrée sur les cartes famille / enfant.
                   </p>
                 ) : (
                   <div className="space-y-2">
@@ -675,7 +830,7 @@ export default function ChildSponsorshipScreen() {
                           <div>
                             <p className="text-xs font-semibold text-foreground">{item.description}</p>
                             <p className="text-[10px] text-muted-foreground mt-0.5">
-                              Par : {item.sender?.name || 'Enfant'} • {new Date(item.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                              Par : {item.sender?.name || 'Bénéficiaire'} • {new Date(item.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                             </p>
                           </div>
                         </div>

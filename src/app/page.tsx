@@ -390,6 +390,12 @@ export default function TraitApp() {
       if (!agentPages.includes(currentPage)) {
         navigateTo('agent-dashboard');
       }
+      return;
+    }
+    const clientOnlyPages: PageName[] = ['child-sponsorship'];
+    if (clientOnlyPages.includes(currentPage) && user.role !== 'client') {
+      navigateTo('home');
+      return;
     }
   }, [user, admin, currentPage, navigateTo]);
 
