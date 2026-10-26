@@ -33,6 +33,7 @@ type UssdStep =
   | 'deposit-currency' | 'deposit-agent' | 'deposit-agent-name' | 'deposit-amount' | 'deposit-confirm' | 'deposit-done'
   | 'credit-currency' | 'credit-network' | 'credit-phone' | 'credit-amount' | 'credit-confirm' | 'credit-pin' | 'credit-done'
   | 'bill-currency' | 'bill-type' | 'bill-reference' | 'bill-amount' | 'bill-confirm' | 'bill-pin' | 'bill-done'
+  | 'credit-unavailable' | 'bill-unavailable'
   | 'history' | 'favorites-list' | 'favorites-add' | 'quick-send' | 'quick-amount' | 'quick-confirm' | 'quick-pin' | 'quick-done'
   | 'account-info' | 'change-pin-current' | 'change-pin-new' | 'change-pin-confirm' | 'change-pin-done'
   | 'temp-block' | 'temp-block-done'
@@ -81,8 +82,8 @@ const MAIN_MENU = [
   { id: '2', label: 'Transférer de l\'argent', icon: Send, step: 'transfer-currency' as UssdStep },
   { id: '3', label: 'Retrait via agent', icon: ArrowDownToLine, step: 'withdraw-currency' as UssdStep },
   { id: '4', label: 'Dépôt via agent', icon: ArrowUpFromLine, step: 'deposit-currency' as UssdStep },
-  { id: '5', label: 'Achat de crédit', icon: CreditCard, step: 'credit-currency' as UssdStep },
-  { id: '6', label: 'Paiement de factures', icon: FileText, step: 'bill-currency' as UssdStep },
+  { id: '5', label: 'Achat de crédit (indisponible)', icon: CreditCard, step: 'credit-unavailable' as UssdStep },
+  { id: '6', label: 'Paiement de factures (indisponible)', icon: FileText, step: 'bill-unavailable' as UssdStep },
   { id: '7', label: 'Achats Bundles', icon: Package, step: 'bundles' as UssdStep },
   { id: '8', label: 'Micro-Crédit', icon: PiggyBank, step: 'microcredit' as UssdStep },
   { id: '9', label: 'Épargne / Objectifs', icon: Target, step: 'savings' as UssdStep },
@@ -1214,18 +1215,11 @@ export default function USSDScreen() {
 
   function renderBundles() {
     return renderInfoScreen('Achats Bundles', <Package className="size-8 text-emerald-700" />, [
-      'BUNDLES DISPONIBLES',
-      '━━━━━━━━━━━━━━━',
-      '📦 Data: 1Go — 2 500 FC',
-      '📦 Data: 5Go — 7 500 FC',
-      '📦 Data: 10Go — 12 000 FC',
-      '📦 Data: 20Go — 20 000 FC',
-      '━━━━━━━━━━━━━━━',
-      '📱 Société: Vodacom, Airtel, Orange',
-      '━━━━━━━━━━━━━━━',
-      'Utilisez l\'app TRAIT > Bundles',
-      'pour acheter en détail.',
-      'Ou composez *1709*7#',
+      'SERVICE TEMPORAIREMENT INDISPONIBLE',
+      '━━━━━━━━━━━━━━━━━━━━━━━━',
+      'Les opérateurs ne sont pas encore raccordés.',
+      'Aucun achat ne sera débité.',
+      'Réessayez lorsque le service sera activé.',
     ]);
   }
 
@@ -1877,6 +1871,13 @@ export default function USSDScreen() {
     'credit-confirm': renderCreditConfirm,
     'credit-pin': renderCreditPin,
     'credit-done': () => <DoneStep msg={resultMessage} />,
+    'credit-unavailable': () => renderInfoScreen('Achat de crédit', <AlertTriangle className="size-8 text-amber-600" />, [
+      'SERVICE TEMPORAIREMENT INDISPONIBLE',
+      '━━━━━━━━━━━━━━━━━━━━━━━━',
+      'Les opérateurs ne sont pas encore raccordés.',
+      'Aucun montant ne sera prélevé.',
+      'Réessayez lorsque le service sera activé.',
+    ]),
     'bill-currency': () => renderCurrencySelection('Paiement de factures', { fc: 'bill-type', usd: 'bill-type' }),
     'bill-type': renderBillType,
     'bill-reference': renderBillReference,
@@ -1884,6 +1885,13 @@ export default function USSDScreen() {
     'bill-confirm': renderBillConfirm,
     'bill-pin': renderBillPin,
     'bill-done': () => <DoneStep msg={resultMessage} />,
+    'bill-unavailable': () => renderInfoScreen('Paiement de factures', <AlertTriangle className="size-8 text-amber-600" />, [
+      'SERVICE TEMPORAIREMENT INDISPONIBLE',
+      '━━━━━━━━━━━━━━━━━━━━━━━━',
+      'Les fournisseurs ne sont pas encore raccordés.',
+      'Aucun montant ne sera prélevé.',
+      'Réessayez lorsque le service sera activé.',
+    ]),
     'history': renderHistory,
     'favorites-list': renderFavoritesList,
     'favorites-add': renderFavoritesAdd,

@@ -108,7 +108,7 @@ export default function ForgotPasswordScreen() {
       setDemoOtp(data.demoOtp || '');
       setStep('otp');
       setCountdown(60);
-      toast.success('Code envoyé à votre adresse email');
+      toast.success(data.message || 'Si un compte correspond à cette adresse, un code sera envoyé.');
     } catch {
       toast.error('Erreur de connexion');
     } finally {
@@ -153,7 +153,7 @@ export default function ForgotPasswordScreen() {
       const data = await res.json();
       if (data.demoOtp) setDemoOtp(data.demoOtp);
       if (data.success) {
-        toast.success('Code renvoyé avec succès');
+        toast.success(data.message || 'Si un compte correspond à cette adresse, un code sera envoyé.');
       } else {
         toast.error(data.message || 'Erreur lors du renvoi');
       }
@@ -165,8 +165,8 @@ export default function ForgotPasswordScreen() {
   // Step 3 — Reset password
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!password.trim() || password.trim().length < 4) {
-      toast.error('Le mot de passe doit contenir au moins 4 caractères');
+    if (!password.trim() || password.trim().length < 8) {
+      toast.error('Le mot de passe doit contenir au moins 8 caractères');
       return;
     }
     if (password.trim() !== confirmPassword.trim()) {

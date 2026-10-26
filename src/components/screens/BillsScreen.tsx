@@ -12,6 +12,7 @@ import {
   Check,
   Clock,
   History,
+  AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -169,6 +170,15 @@ export default function BillsScreen() {
         <h1 className="text-xl font-bold text-foreground">Factures & Paiements</h1>
       </div>
 
+      <div className="px-4 mb-4">
+        <Card className="border-amber-300 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30">
+          <CardContent className="flex items-start gap-3 p-3 text-amber-950 dark:text-amber-100">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <p className="text-xs leading-relaxed">Les fournisseurs ne sont pas encore raccordés. Les paiements sont désactivés et aucun montant ne sera prélevé.</p>
+          </CardContent>
+        </Card>
+      </div>
+
       {!selectedBiller ? (
         <>
           <div className="px-4">
@@ -274,8 +284,8 @@ export default function BillsScreen() {
               </div>
 
               <Button className="w-full bg-[#0D5C63] hover:bg-[#0D5C63]/90 text-white h-12 rounded-xl font-semibold"
-                onClick={handleConfirm}>
-                Payer
+                onClick={handleConfirm} disabled>
+                Service indisponible
               </Button>
             </CardContent>
           </Card>

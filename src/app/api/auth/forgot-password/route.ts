@@ -27,31 +27,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = await db.user.findFirst({ where: { email: normalizedEmail } });
+    const users = await db.user.findMany({ where: { email: normalizedEmail }, take: 2, select: { id: true } });
 
-    if (!user) {
-      return NextResponse.json(
-        { success: false, message: 'Aucun compte trouvé avec cet email' },
-        { status: 404 }
-      );
+    // Respond identically for missing or ambiguous addresses to prevent account enumeration.
+    if (users.length !== 1) {
+      return NextResponse.json({
+        success: true,
+        message: 'Si un compte TRAIT correspond à cette adresse, un code sera envoyé si le service email est disponible.',
+      });
     }
 
     const code = generateOTP();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-    await db.verificationCode.create({
+    const verification = await db.verificationCode.create({
       data: { email: normalizedEmail, code, expiresAt },
     });
 
     const emailSent = await sendOTPEmail(normalizedEmail, code);
+    if (!emailSent) {
+      await db.verificationCode.update({ where: { id: verification.id }, data: { used: true } });
+    }
 
     return NextResponse.json({
       success: true,
-      message: emailSent
-        ? 'Code de réinitialisation envoyé par email'
-        : 'Impossible d’envoyer le code de réinitialisation. Vérifiez la configuration SMTP.',
-      emailSent,
-    }, { status: emailSent ? 200 : 502 });
+      message: 'Si un compte TRAIT correspond à cette adresse, un code sera envoyé si le service email est disponible.',
+    });
   } catch (error) {
     console.error('Forgot password error:', error);
     return NextResponse.json(

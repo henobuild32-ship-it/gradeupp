@@ -51,13 +51,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (role === 'agent' && email) {
+    if (email) {
       const existingEmail = await db.user.findFirst({
         where: { email: email.trim().toLowerCase() },
       })
       if (existingEmail) {
         return NextResponse.json(
-          { success: false, message: 'Cette adresse email est déjà utilisée' },
+          { success: false, message: 'Cette adresse email est déjà utilisée par un compte TRAIT' },
           { status: 409 }
         )
       }

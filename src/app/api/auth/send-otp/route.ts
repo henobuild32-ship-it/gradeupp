@@ -22,6 +22,14 @@ export async function POST(request: NextRequest) {
     }
 
     if (!email && typeof phone === 'string' && phone.trim()) {
+      if (process.env.NODE_ENV === 'production') {
+        return NextResponse.json({
+          success: false,
+          code: 'SMS_PROVIDER_UNAVAILABLE',
+          message: 'La vérification par SMS n’est pas configurée. Utilisez la vérification par email ou contactez le support.',
+        }, { status: 503 });
+      }
+
       const code = generateOTP();
       otpStore.set(phone.trim(), { code, expires: Date.now() + 5 * 60 * 1000 });
       return NextResponse.json({
@@ -43,11 +51,14 @@ export async function POST(request: NextRequest) {
     const code = generateOTP();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-    await db.verificationCode.create({
+    const verification = await db.verificationCode.create({
       data: { email: normalizedEmail, code, expiresAt },
     });
 
     const emailSent = await sendOTPEmail(normalizedEmail, code);
+    if (!emailSent) {
+      await db.verificationCode.update({ where: { id: verification.id }, data: { used: true } });
+    }
 
     return NextResponse.json({
       success: true,

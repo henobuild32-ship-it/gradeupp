@@ -13,6 +13,7 @@ import {
   Loader2,
   Check,
   Phone,
+  AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -57,6 +58,7 @@ export default function BundleCatalogScreen() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const purchaseAvailable = false;
 
   const balanceUSD = (user?.realBalance ?? 0) + (user?.bonusBalance ?? 0);
   const balanceFC = (user?.realBalanceFC ?? 0) + (user?.bonusBalanceFC ?? 0);
@@ -68,7 +70,21 @@ export default function BundleCatalogScreen() {
     try {
       const res = await fetch(`/api/bundles?category=${category}`);
       const data = await res.json();
-      if (data.success) setProducts(data.products ?? []);
+      const slug = category === 'canalplus' ? 'canal-plus' : category;
+      const selectedCategory = (data.categories ?? []).find((item: { slug: string }) => item.slug === slug);
+      if (data.success) {
+        setProducts((selectedCategory?.products ?? []).map((product: {
+          id: string; name: string; price: number; currency: string; type: string; amount: number; description?: string;
+        }) => ({
+          id: product.id,
+          name: product.name,
+          amount: product.price,
+          currency: product.currency,
+          category,
+          description: product.description,
+          dataSize: product.type === 'data' ? `${product.amount >= 1024 ? `${product.amount / 1024} Go` : `${product.amount} Mo`}` : undefined,
+        })));
+      } else setProducts([]);
     } catch { toast.error('Erreur de chargement'); }
     finally { setLoading(false); }
   }
@@ -78,6 +94,10 @@ export default function BundleCatalogScreen() {
   }
 
   function handleSelect(product: Product) {
+    if (!purchaseAvailable) {
+      toast.error('Le service opérateur n’est pas encore raccordé. Aucun achat ne peut être débité.');
+      return;
+    }
     if (needsPhone() && !phoneNumber.trim()) {
       toast.error('Veuillez entrer un numéro de téléphone');
       return;
@@ -136,6 +156,17 @@ export default function BundleCatalogScreen() {
         </Card>
       </div>
 
+      {!purchaseAvailable && (
+        <div className="px-4 mb-4">
+          <Card className="border-amber-300 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30">
+            <CardContent className="flex items-start gap-3 p-3 text-amber-950 dark:text-amber-100">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <p className="text-xs leading-relaxed">Catalogue consultable. Le raccordement aux opérateurs n’est pas encore actif : les achats sont désactivés et aucun montant ne sera prélevé.</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       <div className="flex gap-2 px-4 mb-4 overflow-x-auto pb-1 scrollbar-none">
         {categories.map((cat) => {
           const Icon = cat.icon;
@@ -183,11 +214,14 @@ export default function BundleCatalogScreen() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.05 }}
                 onClick={() => handleSelect(product)}
-                className="text-left p-4 rounded-xl border border-border bg-card hover:border-[#0D5C63]/30 hover:shadow-md transition-all active:scale-[0.98]"
+                disabled={!purchaseAvailable}
+                aria-disabled={!purchaseAvailable}
+                className={`text-left p-4 rounded-xl border border-border bg-card transition-all ${purchaseAvailable ? 'hover:border-[#0D5C63]/30 hover:shadow-md active:scale-[0.98]' : 'cursor-not-allowed opacity-70'}`}
               >
                 <p className="text-sm font-semibold text-foreground">{product.name}</p>
                 {product.dataSize && <p className="text-[10px] text-muted-foreground mt-0.5">{product.dataSize}</p>}
                 {product.validity && <p className="text-[10px] text-muted-foreground">{product.validity}</p>}
+                {!purchaseAvailable && <Badge variant="secondary" className="mt-2 text-[10px]">Indisponible</Badge>}
                 <p className="text-lg font-bold text-[#0D5C63] mt-2">
                   {product.currency === 'FC' ? '' : '$'}{product.amount.toFixed(2)} {product.currency === 'FC' ? 'FC' : ''}
                 </p>
