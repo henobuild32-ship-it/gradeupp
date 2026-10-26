@@ -33,7 +33,7 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
-# Local database backups contain sensitive production data.
+# Keep local database files out of source control.
 /backup/
 /db/*.db
 /prisma/db/*.db
