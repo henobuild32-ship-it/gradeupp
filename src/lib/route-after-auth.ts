@@ -1,6 +1,6 @@
-import type { User } from '@/lib/store';
+import type { PageName, User } from '@/lib/store';
 
-type Navigate = (page: string, params?: Record<string, any>) => void;
+type Navigate = (page: PageName, params?: Record<string, any>) => void;
 
 /**
  * Routage centralisé après authentification — la procédure normale :

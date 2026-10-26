@@ -175,6 +175,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         success: true, message: 'Clés API générées',
+        ...{ id: apiKey.id, publicKey, secretKey, webhookUrl: apiKey.webhookUrl, mode: apiKey.mode, isActive: apiKey.isActive, createdAt: apiKey.createdAt },
         apiKey: { id: apiKey.id, publicKey, secretKey, mode: apiKey.mode, isActive: apiKey.isActive, createdAt: apiKey.createdAt },
       });
     }

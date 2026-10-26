@@ -44,8 +44,6 @@ export async function checkBiometricSupport(): Promise<BiometricSupport> {
           case BiometryType.FINGERPRINT:
           case BiometryType.TOUCH_ID:
             return 'Empreinte digitale';
-          case BiometryType.IRIS:
-            return 'Iris';
           case BiometryType.MULTIPLE:
             return 'Biométrie';
           default:

@@ -26,7 +26,18 @@ export interface PendingTransaction {
   retries: number
 }
 
+function isSafeToSync(url: string, method: string): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    const parsed = new URL(url, window.location.origin)
+    return parsed.origin === window.location.origin && parsed.pathname === '/api/ussd/favorites' && method.toUpperCase() === 'POST'
+  } catch {
+    return false
+  }
+}
+
 export async function savePendingTransaction(data: Omit<PendingTransaction, 'id' | 'createdAt' | 'retries'>) {
+  if (!isSafeToSync(data.url, data.method)) return false
   try {
     const db = await openDB()
     const tx = db.transaction(STORE_NAME, 'readwrite')
@@ -63,24 +74,25 @@ export async function removePendingTransaction(id: number) {
 }
 
 export async function syncPendingTransactions(): Promise<{ synced: number; failed: number }> {
-  // Ask the service worker to sync
-  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-    navigator.serviceWorker.controller.postMessage({ type: 'SYNC_NOW' })
-    return { synced: 0, failed: 0 }
-  }
-
-  // Fallback: sync from the main thread
+  // Sync from the page so failures are visible and authenticated cookies are included.
   const pending = await getPendingTransactions()
   let synced = 0
   let failed = 0
 
   for (const ptx of pending) {
+    if (!isSafeToSync(ptx.url, ptx.method)) {
+      // Older app versions queued money-moving requests. Never replay them automatically.
+      await removePendingTransaction(ptx.id!)
+      failed++
+      continue
+    }
     try {
       const headers = ptx.headers ? JSON.parse(ptx.headers) : {}
       const res = await fetch(ptx.url, {
         method: ptx.method,
         headers: { 'Content-Type': 'application/json', ...headers },
         body: ptx.body,
+        credentials: 'include',
       })
       if (res.ok || res.status === 409) {
         await removePendingTransaction(ptx.id!)

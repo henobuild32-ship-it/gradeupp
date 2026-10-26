@@ -209,3 +209,51 @@ export async function sendAgentCredentialsEmail(
     return false
   }
 }
+
+export async function sendDeveloperApiKeysEmail(
+  email: string,
+  developerName: string,
+  appName: string,
+  publicKey: string,
+  secretKey: string,
+  webhookUrl?: string | null,
+): Promise<boolean> {
+  const normalizedEmail = normalizeEmail(email)
+  if (!isValidEmail(normalizedEmail) || !process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) return false
+
+  const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  })[char] || char)
+  const safeName = escapeHtml(developerName)
+  const safeAppName = escapeHtml(appName)
+  const safePublicKey = escapeHtml(publicKey)
+  const safeSecretKey = escapeHtml(secretKey)
+  const safeWebhook = webhookUrl ? escapeHtml(webhookUrl) : ''
+
+  try {
+    const t = getTransporter()
+    const fromAddress = process.env.SMTP_FROM || process.env.SMTP_EMAIL
+    const fromName = process.env.SMTP_FROM_NAME || 'TRAIT'
+    await t.sendMail({
+      from: `${fromName} <${fromAddress}>`,
+      replyTo: process.env.SMTP_EMAIL,
+      to: normalizedEmail,
+      subject: 'Vos clés API TRAIT',
+      text: [
+        `Bonjour ${developerName},`,
+        '',
+        `Voici les clés API de production pour ${appName}.`,
+        `Clé publique : ${publicKey}`,
+        `Clé secrète : ${secretKey}`,
+        webhookUrl ? `Webhook : ${webhookUrl}` : '',
+        '',
+        'Conservez la clé secrète dans un gestionnaire de secrets et ne la partagez jamais.',
+      ].filter(Boolean).join('\n'),
+      html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;color:#1f2937"><h1 style="color:#0D5C63">TRAIT API</h1><p>Bonjour ${safeName},</p><p>Voici les clés de production pour <strong>${safeAppName}</strong>.</p><p>Clé publique</p><pre>${safePublicKey}</pre><p>Clé secrète</p><pre>${safeSecretKey}</pre>${safeWebhook ? `<p>Webhook : ${safeWebhook}</p>` : ''}<p>Conservez la clé secrète dans un gestionnaire de secrets et ne la partagez jamais.</p></div>`,
+    })
+    return true
+  } catch {
+    console.error('[Developer API] Email delivery failed')
+    return false
+  }
+}

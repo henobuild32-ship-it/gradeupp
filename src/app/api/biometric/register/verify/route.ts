@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyRegistrationResponse } from '@simplewebauthn/server';
+import type { RegistrationResponseJSON } from '@simplewebauthn/server';
 import { db } from '@/lib/db';
 import { requireUser } from '@/lib/auth';
-import { resolveRp, verifySignedChallenge, base64urlEncode } from '@/lib/webauthn';
+import { resolveRp, verifySignedChallengeClaim, base64urlEncode } from '@/lib/webauthn';
+import { consumeWebAuthnChallenge } from '@/lib/webauthn-challenge-store';
 
 /**
  * POST /api/biometric/register/verify
@@ -24,8 +26,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Paramètres manquants' }, { status: 400 });
     }
 
-    const storedChallenge = verifySignedChallenge(challengeToken, 'biometric-register');
-    if (!storedChallenge) {
+    const challenge = verifySignedChallengeClaim(challengeToken, 'biometric-register');
+    if (!challenge || challenge.subject !== auth.userId) {
       return NextResponse.json(
         { success: false, message: 'Session biométrique expirée. Réessayez.' },
         { status: 400 }
@@ -36,7 +38,7 @@ export async function POST(request: NextRequest) {
 
     const verification = await verifyRegistrationResponse({
       response,
-      expectedChallenge: storedChallenge,
+      expectedChallenge: challenge.challenge,
       expectedOrigin: origins,
       expectedRPID: rpID,
       requireUserVerification: true,
@@ -47,6 +49,11 @@ export async function POST(request: NextRequest) {
         { success: false, message: 'Vérification biométrique impossible. Réessayez.' },
         { status: 400 }
       );
+    }
+
+    const challengeConsumed = await consumeWebAuthnChallenge('biometric-register', challenge.challenge, auth.userId);
+    if (!challengeConsumed) {
+      return NextResponse.json({ success: false, message: 'Cette demande biométrique a déjà été utilisée. Recommencez.' }, { status: 409 });
     }
 
     const { credential, credentialDeviceType, credentialBackedUp } = verification.registrationInfo;

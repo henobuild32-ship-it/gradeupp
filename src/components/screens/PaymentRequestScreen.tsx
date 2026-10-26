@@ -137,18 +137,18 @@ export default function PaymentRequestScreen() {
   }
 
   function handleAccept(request: PaymentRequest) {
-    setPendingPinAction(async () => {
+    setPendingPinAction(async (pin) => {
       try {
         const res = await fetch(`/api/payments/request/${request.id}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'accept', userId: user?.id }),
+          body: JSON.stringify({ action: 'accept', pin }),
         });
         const data = await res.json();
         if (data.success) {
           toast.success('Paiement accepté !');
-          fetchRequests();
         } else toast.error(data.message || 'Erreur');
+        navigateTo('payment-requests');
       } catch { toast.error('Erreur de connexion'); }
     });
     navigateTo('pin-verify');

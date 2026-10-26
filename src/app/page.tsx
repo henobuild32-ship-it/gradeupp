@@ -144,8 +144,12 @@ class ScreenErrorBoundary extends Component<
     return { hasError: true };
   }
 
-  componentDidCatch() {
-    // Chunk load failure or render crash — keep the app alive with a retry.
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('Screen render failure', {
+      name: error.name,
+      message: error.message,
+      componentStack: info.componentStack,
+    });
   }
 
   render() {

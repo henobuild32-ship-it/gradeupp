@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateRegistrationOptions } from '@simplewebauthn/server';
+import type { AuthenticatorTransport } from '@simplewebauthn/server';
 import { db } from '@/lib/db';
 import { requireUser } from '@/lib/auth';
 import { resolveRp, signChallenge, base64urlEncode } from '@/lib/webauthn';
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
       attestationType: 'none',
       excludeCredentials: existing.map((c) => ({
         id: c.credentialId,
-        transports: c.transports ? c.transports.split(',') as AuthenticatorTransportFuture[] : undefined,
+        transports: c.transports ? c.transports.split(',') as AuthenticatorTransport[] : undefined,
       })),
       authenticatorSelection: {
         residentKey: 'preferred',

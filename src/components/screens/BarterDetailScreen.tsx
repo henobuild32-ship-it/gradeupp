@@ -372,7 +372,7 @@ export default function BarterDetailScreen() {
     });
   };
 
-  const chatCreatedAt = chatInfo ? new Date(chatInfo.createdAt).getTime() : null;
+  const chatCreatedAt = chatInfo?.createdAt ?? null;
   const remainingMs = chatCreatedAt !== null ? remainingChatTime(chatCreatedAt) : BARTER_CHAT_TTL_MS;
   const expired = chatCreatedAt !== null && remainingMs <= 0;
 
@@ -550,7 +550,7 @@ export default function BarterDetailScreen() {
                 variant="outline"
                 className="flex-1 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/10"
                 onClick={() => updateOfferStatus('accept')}
-                disabled={updatingOffer}
+                disabled={!!updatingOffer}
               >
                 {updatingOffer === 'accept' ? (
                   <Loader2 className="size-4 animate-spin" />
@@ -562,7 +562,7 @@ export default function BarterDetailScreen() {
                 variant="outline"
                 className="flex-1 text-red-500 border-red-500/30 hover:bg-red-500/10"
                 onClick={() => updateOfferStatus('reject')}
-                disabled={updatingOffer}
+                disabled={!!updatingOffer}
               >
                 {updatingOffer === 'reject' ? (
                   <Loader2 className="size-4 animate-spin" />
@@ -574,7 +574,7 @@ export default function BarterDetailScreen() {
                 variant="outline"
                 className="flex-1 text-muted-foreground"
                 onClick={() => updateOfferStatus('cancel')}
-                disabled={updatingOffer}
+                disabled={!!updatingOffer}
               >
                 {updatingOffer === 'cancel' ? (
                   <Loader2 className="size-4 animate-spin" />

@@ -91,7 +91,6 @@ export async function POST(request: NextRequest) {
       const response = NextResponse.json({
         success: true,
         isNewUser: false,
-        token,
         user: sanitizeUser(user),
       });
       setTokenCookie(response, token);
@@ -194,7 +193,6 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json({
       success: true,
       isNewUser: true,
-      token,
       user: sanitizeUser(newUser),
     });
     setTokenCookie(response, token);

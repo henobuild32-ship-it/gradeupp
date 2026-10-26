@@ -35,6 +35,8 @@ yarn-error.log*
 
 # Local database backups contain sensitive production data.
 /backup/
+/db/*.db
+/prisma/db/*.db
 
 # vercel
 .vercel

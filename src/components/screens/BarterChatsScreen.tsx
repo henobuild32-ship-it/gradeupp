@@ -174,7 +174,7 @@ export default function BarterChatsScreen() {
                       isUnreadFromOther ? 'text-foreground font-medium' : 'text-muted-foreground'
                     }`}
                   >
-                    {c.lastMessage?.senderId === user?.id && !c.lastMessage.hasImage ? 'Vous : ' : ''}
+                    {c.lastMessage?.senderId === user?.id && !c.lastMessage?.hasImage ? 'Vous : ' : ''}
                     {preview}
                   </p>
 

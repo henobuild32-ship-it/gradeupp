@@ -37,7 +37,7 @@ export default function WithdrawScreen() {
   const { t } = useTranslation();
   const [amount, setAmount] = useState('');
   const [agentNumber, setAgentNumber] = useState('');
-  const [currency, setCurrency] = useState(preferredCurrency || 'USD');
+  const [currency, setCurrency] = useState<'USD' | 'FC'>(preferredCurrency || 'USD');
   const [method, setMethod] = useState('agent');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -262,7 +262,7 @@ export default function WithdrawScreen() {
             {/* Currency */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">Devise</Label>
-              <Select value={currency} onValueChange={(v) => { setCurrency(v); setPreferredCurrency(v as 'USD' | 'FC'); }}>
+              <Select value={currency} onValueChange={(v) => { const next = v as 'USD' | 'FC'; setCurrency(next); setPreferredCurrency(next); }}>
                 <SelectTrigger className="w-full h-11"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="USD">USD - Dollar US</SelectItem>

@@ -90,7 +90,7 @@ export default function AuthScreen() {
   }, [pageParams?.mode, pageParams?.role]);
 
   // Login fields
-  const [loginCountryCode, setLoginCountryCode] = useState('+228');
+  const [loginCountryCode, setLoginCountryCode] = useState('+243');
   const [loginPhone, setLoginPhone] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
@@ -98,7 +98,7 @@ export default function AuthScreen() {
   // Register fields
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
-  const [regCountryCode, setRegCountryCode] = useState('+228');
+  const [regCountryCode, setRegCountryCode] = useState('+243');
   const [regPhone, setRegPhone] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [showRegPassword, setShowRegPassword] = useState(false);
@@ -154,7 +154,7 @@ export default function AuthScreen() {
       }
       const loggedInUser = data.user as AppUser;
       if (loggedInUser.role !== selectedRole) {
-        const roleLabel = loggedInUser.role === 'agent' ? 'Agent' : loggedInUser.role === 'seller' ? 'Service' : 'Client';
+        const roleLabel = loggedInUser.role === 'agent' ? 'Agent' : loggedInUser.role === 'seller' ? 'Commerçant' : 'Client';
         toast.error(`Ce compte est un compte ${roleLabel}. Veuillez sélectionner le bon rôle.`);
         return;
       }
@@ -189,7 +189,7 @@ export default function AuthScreen() {
       toast.error(t('validation.phone_required'));
       return;
     }
-    if (!regPassword.trim() || regPassword.trim().length < 4) {
+    if (!regPassword.trim() || regPassword.trim().length < 8) {
       toast.error(t('validation.password_min'));
       return;
     }
@@ -281,7 +281,7 @@ export default function AuthScreen() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.1 }}
-        className="flex-1 flex flex-col px-6 pt-2 pb-8 overflow-y-auto"
+        className="flex-1 w-full max-w-lg mx-auto flex flex-col px-6 pt-2 pb-8 overflow-y-auto"
       >
         {/* TRAIT Logo */}
         <div className="flex flex-col items-center gap-2 mb-6">
@@ -337,7 +337,7 @@ export default function AuthScreen() {
         <div className="flex gap-2 mb-6 p-1 bg-muted rounded-xl">
           {(['client', 'agent', 'seller'] as const).map((role) => {
             const Icon = role === 'client' ? User : role === 'agent' ? Building2 : Store;
-            const label = role === 'client' ? t('auth.client') : role === 'agent' ? t('auth.agent') : 'Service';
+            const label = role === 'client' ? t('auth.client') : role === 'agent' ? t('auth.agent') : 'Commerçant';
             return (
               <button
                 key={role}
@@ -515,7 +515,7 @@ export default function AuthScreen() {
                     <div className="flex flex-col gap-1">
                       <p className="text-sm text-pink-800 font-semibold">Validation requise</p>
                       <ul className="text-xs text-pink-700 space-y-0.5">
-                        <li>• Les comptes Service doivent être validés manuellement par les administrateurs.</li>
+                        <li>• Les comptes commerçant doivent être validés manuellement par les administrateurs.</li>
                         <li>• Après validation, vous pourrez gérer vos produits et recevoir des paiements.</li>
                         <li>• Un seul formulaire complet : identité, commerce, localisation et sécurité.</li>
                       </ul>

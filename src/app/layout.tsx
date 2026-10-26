@@ -1,21 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { I18nProviderWrapper } from "@/components/providers/I18nProviderWrapper";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://trait-rho.vercel.app"),
   title: "TRAIT v2.0 - Transfert, Paiement QR, Marketplace & Troc",
   description: "Plateforme numérique innovante combinant transfert d'argent, paiement par QR, troc digital et marketplace. Version 2.0 — Accessible avec ou sans internet via USSD.",
   keywords: ["Trait", "transfert", "argent", "troc", "marketplace", "USSD", "fintech", "mobile money", "RDC", "Congo", "QR payment"],
@@ -48,8 +38,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   themeColor: "#0D5C63",
 };
 
@@ -69,7 +57,7 @@ export default function RootLayout({
         <link rel="apple-touch-startup-image" href="/icon-512.png?v=2" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground font-sans`}
+        className="antialiased bg-background text-foreground font-sans"
       >
         <ThemeProvider>
           <I18nProviderWrapper>

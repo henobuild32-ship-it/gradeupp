@@ -47,8 +47,13 @@ export default function ReferralScreen() {
   }, [user?.id]);
 
   async function fetchReferralData() {
+    const userId = user?.id;
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
     try {
-      const res = await fetch(`/api/referral?userId=${user.id}`, { credentials: 'include' });
+      const res = await fetch(`/api/referral?userId=${userId}`, { credentials: 'include' });
       const data = await res.json();
       if (data.success) {
         setReferralCode(data.code || '');

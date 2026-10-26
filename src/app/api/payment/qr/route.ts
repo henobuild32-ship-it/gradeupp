@@ -1,164 +1,76 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { verifyAndMigratePin, requireUser } from '@/lib/auth'
+import { requireUser } from '@/lib/auth'
 import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { QRPaymentSchema, validateRequest } from '@/lib/validations'
-import { safeDeductWithFee } from '@/lib/balance'
-import { updateBalanceAndNotify } from '@/lib/notifications'
 
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireUser(request)
     if (auth instanceof NextResponse) return auth
 
-    // Rate limit: 10 payments per minute per user
-    const rateLimit = checkRateLimit({
-      windowMs: 60 * 1000,
-      maxRequests: 10,
-      key: `qr:${auth.userId}`,
-    })
-    if (!rateLimit.allowed) {
-      return rateLimitResponse(rateLimit.resetIn)
-    }
+    const rateLimit = checkRateLimit({ windowMs: 60_000, maxRequests: 10, key: `qr:${auth.userId}` })
+    if (!rateLimit.allowed) return rateLimitResponse(rateLimit.resetIn)
 
-    const body = await request.json()
-    const validation = validateRequest(QRPaymentSchema, body)
+    const validation = validateRequest(QRPaymentSchema, await request.json())
     if (!validation.success) {
       return NextResponse.json({ success: false, message: validation.error }, { status: 400 })
     }
-
-    const { sellerId, qrCode, amount: payAmount, currency, pin } = validation.data
-
-    if (auth.userId !== sellerId) {
-      return NextResponse.json({ success: false, message: 'Non autorisé' }, { status: 403 })
+    const { sellerId, qrCode, amount, currency = 'USD' } = validation.data
+    if (!Number.isFinite(amount) || amount > 1_000_000) {
+      return NextResponse.json({ success: false, message: 'Montant invalide ou supérieur à la limite autorisée.' }, { status: 400 })
     }
+    if (auth.userId !== sellerId) return NextResponse.json({ success: false, message: 'Non autorisé' }, { status: 403 })
 
-    // Verify Seller
     const seller = await db.user.findUnique({ where: { id: sellerId } })
-    if (!seller || seller.role !== 'seller' || seller.validationStatus !== 'validated') {
+    if (!seller || seller.role !== 'seller' || seller.validationStatus !== 'validated' || seller.suspended || seller.tempBlocked) {
       return NextResponse.json({ success: false, message: 'Service non autorisé' }, { status: 403 })
     }
 
-    // Verify Client via QR Code
-    const traitCard = await db.traitCard.findFirst({
-      where: { qrCode, status: 'active' },
-      include: { user: true }
+    const card = await db.traitCard.findFirst({ where: { qrCode, status: 'active' }, include: { user: true } })
+    if (!card?.user) return NextResponse.json({ success: false, message: 'Carte invalide' }, { status: 400 })
+
+    const client = card.user
+    if (client.id === seller.id) return NextResponse.json({ success: false, message: 'Vous ne pouvez pas payer votre propre compte.' }, { status: 400 })
+    if (client.suspended || client.tempBlocked) return NextResponse.json({ success: false, message: 'Le compte client ne peut pas recevoir cette demande.' }, { status: 403 })
+
+    // Le commerçant peut demander un montant, mais seul le client peut l’autoriser et être débité.
+    const paymentRequest = await db.paymentRequest.create({
+      data: {
+        requesterId: seller.id,
+        targetId: client.id,
+        targetPhone: client.phone,
+        amount,
+        currency,
+        description: `Paiement QR — ${seller.businessName || 'Commerçant'}`,
+      },
+      select: { id: true },
     })
-
-    if (!traitCard || !traitCard.user) {
-      return NextResponse.json({ success: false, message: 'Carte invalide' }, { status: 400 })
-    }
-
-    const client = traitCard.user
-    
-    // Prevent self-payment
-    if (client.id === seller.id) {
-      return NextResponse.json({ success: false, message: 'Vous ne pouvez pas payer vous-même' }, { status: 400 })
-    }
-
-    const isUSD = (currency || 'USD') === 'USD'
-
-    const isChild = client.parentId !== null
-    if (isChild) {
-      if (!pin) {
-        return NextResponse.json({
-          success: false,
-          requirePin: true,
-          message: "Le code PIN de l'enfant est obligatoire pour valider cet achat."
-        }, { status: 400 })
-      }
-      const pinOk = await verifyAndMigratePin(client.id, pin, client.pin)
-      if (!pinOk) {
-        return NextResponse.json({
-          success: false,
-          message: "Code PIN de l'enfant incorrect."
-        }, { status: 400 })
-      }
-    }
-    const fee = isChild ? Math.round(payAmount * 0.007 * 100) / 100 : 0
-
-    // Atomic balance check + deduction (race-condition safe)
-    const cur = currency || 'USD'
-    const deductResult = await safeDeductWithFee(client.id, payAmount, fee, cur)
-    if (!deductResult.success) {
-      return NextResponse.json({ success: false, message: deductResult.message }, { status: 400 })
-    }
-
-    // Credit seller and record
-    await db.$transaction(async (tx) => {
-      await tx.user.update({
-        where: { id: seller.id },
-        data: isUSD ? { realBalance: { increment: payAmount } } : { realBalanceFC: { increment: payAmount } }
-      })
-
-      await tx.transaction.create({
-        data: {
-          type: 'qr_payment',
-          amount: payAmount,
-          fee,
-          currency: cur,
-          status: 'completed',
-          senderId: client.id,
-          receiverId: seller.id,
-          description: `Paiement QR chez ${seller.businessName || 'Service'}${isChild ? ` (Commission Enfant: ${fee} ${cur})` : ''}`,
-        }
-      })
-
-      await tx.notification.create({
-        data: {
-          userId: seller.id,
-          title: 'Paiement reçu',
-          message: `Paiement de ${payAmount.toFixed(2)} ${cur} reçu via QR code.`,
-          type: 'transfer_received',
-        },
-      })
-
-      await tx.notification.create({
-        data: {
-          userId: client.id,
-          title: 'Paiement effectué',
-          message: `Paiement de ${payAmount.toFixed(2)} ${cur} effectué chez ${seller.businessName || 'Service'}.`,
-          type: 'transfer_sent',
-        },
-      })
+    await db.notification.create({
+      data: {
+        userId: client.id,
+        title: 'Demande de paiement QR',
+        message: `${seller.businessName || 'Un commerçant'} demande ${amount.toFixed(2)} ${currency}. Ouvrez Demandes de paiement pour accepter ou refuser.`,
+        type: 'payment_request',
+      },
     })
-
-    // Real-time balance update via WebSocket for both buyer and seller
-    const updatedClient = await db.user.findUnique({
-      where: { id: client.id },
-      select: { realBalance: true, realBalanceFC: true },
-    })
-    updateBalanceAndNotify(client.id, updatedClient?.realBalance, updatedClient?.realBalanceFC).catch(() => {})
-
-    const updatedSeller = await db.user.findUnique({
-      where: { id: seller.id },
-      select: { realBalance: true, realBalanceFC: true },
-    })
-    updateBalanceAndNotify(seller.id, updatedSeller?.realBalance, updatedSeller?.realBalanceFC).catch(() => {})
-
-    // Push notification to seller
-    try {
-      const { sendPushToUser } = await import('@/lib/push')
-      await sendPushToUser(seller.id, {
-        title: 'Paiement reçu',
-        body: `Paiement de ${payAmount.toFixed(2)} ${cur} reçu via QR code.`,
-        url: '/history',
-      })
-    } catch {}
-
-    // Push notification to buyer
     try {
       const { sendPushToUser } = await import('@/lib/push')
       await sendPushToUser(client.id, {
-        title: 'Paiement effectué',
-        body: `Paiement de ${payAmount.toFixed(2)} ${cur} effectué chez ${seller.businessName || 'Service'}.`,
+        title: 'Demande de paiement QR',
+        body: `${seller.businessName || 'Un commerçant'} demande ${amount.toFixed(2)} ${currency}.`,
         url: '/history',
       })
     } catch {}
 
-    return NextResponse.json({ success: true, message: 'Paiement réussi' })
+    return NextResponse.json({
+      success: true,
+      pendingApproval: true,
+      requestId: paymentRequest.id,
+      message: 'Demande envoyée. Le client doit la confirmer depuis son compte.',
+    }, { status: 201 })
   } catch (error) {
-    console.error('QR Payment error:', error)
-    return NextResponse.json({ success: false, message: 'Erreur lors du paiement' }, { status: 500 })
+    console.error('QR payment request error:', error)
+    return NextResponse.json({ success: false, message: 'Erreur lors de la demande de paiement' }, { status: 500 })
   }
 }

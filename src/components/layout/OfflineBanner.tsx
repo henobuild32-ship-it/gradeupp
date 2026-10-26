@@ -85,7 +85,7 @@ export function OfflineBanner() {
           <WifiOff className="w-5 h-5 shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold">Vous êtes hors ligne</p>
-            <p className="text-xs text-white/80">Les transactions seront synchronisées automatiquement</p>
+            <p className="text-xs text-white/80">Les opérations financières nécessitent une connexion active.</p>
           </div>
           {syncing ? (
             <RefreshCw className="w-4 h-4 animate-spin shrink-0" />

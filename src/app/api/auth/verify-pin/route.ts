@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { verifyAndMigratePin, requireUser } from '@/lib/auth'
+import { verifyPinWithAttempts, requireUser } from '@/lib/auth'
 import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit'
 
 export async function POST(request: NextRequest) {
@@ -47,38 +47,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const isValid = await verifyAndMigratePin(user.id, pin, user.pin)
+    const pinResult = await verifyPinWithAttempts(user.id, pin)
 
-    if (!isValid) {
-      const newAttempts = user.pinAttempts + 1
-
-      if (newAttempts >= 5) {
-        await db.user.update({
-          where: { id: userId },
-          data: { tempBlocked: true, pinAttempts: 0 },
-        })
+    if (!pinResult.valid) {
+      if (pinResult.blocked) {
         return NextResponse.json(
           { success: false, message: 'Trop de tentatives. Compte bloqué temporairement.' },
           { status: 429 }
         )
       }
-
-      await db.user.update({
-        where: { id: userId },
-        data: { pinAttempts: newAttempts },
-      })
-
       return NextResponse.json(
-        { success: false, message: `Code PIN incorrect. ${5 - newAttempts} tentative(s) restante(s).` },
+        { success: false, message: `Code PIN incorrect. ${5 - pinResult.attempts} tentative(s) restante(s).` },
         { status: 400 }
       )
-    }
-
-    if (user.pinAttempts > 0) {
-      await db.user.update({
-        where: { id: userId },
-        data: { pinAttempts: 0 },
-      })
     }
 
     return NextResponse.json({ success: true, message: 'Code PIN vérifié' })

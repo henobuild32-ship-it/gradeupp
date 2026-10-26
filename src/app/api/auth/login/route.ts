@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { logSecurityEvent } from '@/lib/security'
-import { verifyAndMigratePassword, signToken, setTokenCookie, clearTokenCookie } from '@/lib/auth'
+import { verifyAndMigratePassword, signToken, signLoginChallengeToken, setTokenCookie, clearTokenCookie } from '@/lib/auth'
 import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { LoginSchema, validateRequest } from '@/lib/validations'
 
@@ -83,15 +83,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (user.pinAttempts > 0 || user.tempBlocked) {
-      await db.user.update({
-        where: { id: user.id },
-        data: { pinAttempts: 0, tempBlocked: false },
-      }).catch(() => {})
-      user.pinAttempts = 0
-      user.tempBlocked = false
-    }
-
     if (user.role === 'agent') {
       if (user.validationStatus === 'pending') {
         return NextResponse.json(
@@ -133,12 +124,15 @@ export async function POST(request: NextRequest) {
     const token = await signToken({ userId: user.id, role: user.role })
 
     const requiresTwoFactor = user.twoFactorEnabled
+    const challengeToken = requiresTwoFactor
+      ? await signLoginChallengeToken({ userId: user.id, role: user.role })
+      : null
 
     const response = NextResponse.json({
       success: true,
-      token: requiresTwoFactor ? null : token,
+      challengeToken,
       requiresTwoFactor,
-      user: {
+      user: requiresTwoFactor ? null : {
         id: user.id,
         phone: user.phone,
         name: user.name,
@@ -169,7 +163,8 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    setTokenCookie(response, token)
+    if (requiresTwoFactor) clearTokenCookie(response)
+    else setTokenCookie(response, token)
     return response
   } catch (error) {
     console.error('Login error:', error)

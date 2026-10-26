@@ -25,15 +25,15 @@ export const localeForLanguage: Record<Language, string> = {
 // ─── Translation Dictionaries ───────────────────────────────────
 type TranslationDict = Record<string, string>;
 
-const translations: Record<Language, TranslationDict> = {
+const translations: Record<string, TranslationDict> = {
   fr: {
     'welcome.service_transfer_title': 'Transferts', 'welcome.service_transfer_desc': 'Argent instantané', 'welcome.service_mobile_title': 'Mobile Money', 'welcome.service_mobile_desc': 'Payez partout', 'welcome.service_cards_title': 'Cartes', 'welcome.service_cards_desc': 'USD et FC', 'welcome.service_barter_title': 'Troc', 'welcome.service_barter_desc': 'Échangez facilement', 'welcome.service_marketplace_title': 'Marketplace', 'welcome.service_marketplace_desc': 'Achetez et vendez', 'welcome.service_api_title': 'API', 'welcome.service_api_desc': 'Intégrez TRAIT',
     'notifications.load_error': 'Erreur lors du chargement', 'notifications.copied': 'Message copié', 'notifications.copy_error': 'Erreur lors de la copie', 'notifications.marked_all': '{count} notification(s) marquée(s) comme lue(s)', 'notifications.mark_all': 'Tout marquer lu', 'notifications.empty_title': 'Aucune notification', 'notifications.empty_desc': "Vous n’avez pas encore de notifications", 'notifications.admin_messages': 'Messages de l’Admin',
-    'profile.title': 'Mon Profil', 'profile.not_connected': 'Non connecté', 'profile.name_required': 'Le nom est obligatoire', 'profile.updated': 'Profil mis à jour avec succès !', 'profile.update_error': 'Erreur lors de la mise à jour', 'profile.name_placeholder': 'Votre nom complet', 'profile.pseudo_placeholder': 'Votre pseudo', 'profile.phone_readonly': 'Le numéro ne peut pas être modifié', 'profile.country_placeholder': 'Votre pays', 'profile.saving': 'Enregistrement...', 'profile.save': 'Sauvegarder',
-    'deposit.success': 'Dépôt effectué avec succès !', 'deposit.error': 'Erreur lors du dépôt', 'deposit.balance': 'Solde', 'deposit.success_title': 'Dépôt réussi !', 'deposit.back_home': "Retour à l’accueil", 'deposit.confirm_title': 'Confirmer le dépôt',
-    'withdraw.agent_required': 'Code agent obligatoire', 'withdraw.agent_required_desc': "Tout retrait nécessite le code d’un agent TRAIT autorisé.", 'withdraw.insufficient': 'Solde insuffisant. Solde réel : {amount}', 'withdraw.success': 'Retrait effectué avec succès !', 'withdraw.error': 'Erreur lors du retrait', 'withdraw.title': "Retirer de l’argent", 'withdraw.available': 'Solde disponible',
-    'send.phone_required': 'Veuillez entrer le numéro du destinataire', 'send.amount_required': 'Veuillez entrer un montant valide', 'send.insufficient': 'Solde insuffisant en {currency}. Disponible : {amount}', 'send.success': 'Transfert envoyé avec succès !', 'send.error': 'Erreur lors du transfert', 'send.title': "Envoyer de l’argent", 'send.available': 'Solde disponible', 'send.pin_required': 'Code PIN requis pour confirmer', 'send.currency': 'Devise', 'send.recipient_phone': 'Numéro du destinataire',     'send.account_found': 'compte TRAIT trouvé', 'send.account_not_found': 'Aucun compte TRAIT trouvé pour ce numéro', 'send.new_account': 'Nouveau compte sera créé automatiquement', 'send.amount': 'Montant', 'send.note': 'Note', 'send.optional': 'optionnel', 'send.note_placeholder': 'Ajouter une note...', 'send.fees': 'Frais', 'send.total': 'Total', 'send.insufficient_short': 'Solde insuffisant', 'send.sending': 'Envoi en cours...', 'send.confirm_title': 'Confirmer le transfert', 'send.confirm_desc': "Vous êtes sur le point d’envoyer de l’argent.", 'send.recipient': 'Destinataire', 'send.pin_confirm': 'Votre code PIN sera demandé pour confirmer', 'send.cancel': 'Annuler', 'send.confirm': 'Confirmer',
-    'welcome.services_title': 'Nos services', 'welcome.services_desc': 'Tout ce dont vous avez besoin pour gérer votre argent.', 'welcome.how_title': 'Comment ça marche', 'welcome.how_desc': 'Commencez en 3 étapes simples.', 'welcome.security_title': 'Sécurité maximale', 'welcome.security_desc': 'Vos transactions sont protégées par des technologies fiables et vos données sont sécurisées de bout en bout.', 'welcome.agent_desc': 'Devenez agent de transfert', 'welcome.developer_desc': 'Intégrez TRAIT dans vos applications', 'welcome.faq_title': 'Questions fréquentes', 'welcome.download_title': "Téléchargez l’application", 'welcome.download_desc': 'Disponible sur Android et iOS. Emportez TRAIT partout avec vous.', 'welcome.final_title': 'Prêt à commencer ?', 'welcome.final_desc': 'Rejoignez les utilisateurs qui font confiance à TRAIT pour leurs transactions financières.',
+     'profile.not_connected': 'Non connecté', 'profile.name_required': 'Le nom est obligatoire', 'profile.updated': 'Profil mis à jour avec succès !', 'profile.update_error': 'Erreur lors de la mise à jour', 'profile.name_placeholder': 'Votre nom complet', 'profile.pseudo_placeholder': 'Votre pseudo', 'profile.phone_readonly': 'Le numéro ne peut pas être modifié', 'profile.country_placeholder': 'Votre pays', 'profile.saving': 'Enregistrement...',
+     'deposit.error': 'Erreur lors du dépôt', 'deposit.balance': 'Solde', 'deposit.success_title': 'Dépôt réussi !', 'deposit.back_home': "Retour à l’accueil", 'deposit.confirm_title': 'Confirmer le dépôt',
+    'withdraw.agent_required': 'Code agent obligatoire', 'withdraw.agent_required_desc': "Tout retrait nécessite le code d’un agent TRAIT autorisé.", 'withdraw.insufficient': 'Solde insuffisant. Solde réel : {amount}',  'withdraw.error': 'Erreur lors du retrait',  'withdraw.available': 'Solde disponible',
+    'send.phone_required': 'Veuillez entrer le numéro du destinataire', 'send.amount_required': 'Veuillez entrer un montant valide', 'send.insufficient': 'Solde insuffisant en {currency}. Disponible : {amount}',  'send.error': 'Erreur lors du transfert',  'send.available': 'Solde disponible', 'send.pin_required': 'Code PIN requis pour confirmer',  'send.recipient_phone': 'Numéro du destinataire',     'send.account_found': 'compte TRAIT trouvé', 'send.account_not_found': 'Aucun compte TRAIT trouvé pour ce numéro', 'send.new_account': 'Nouveau compte sera créé automatiquement',   'send.optional': 'optionnel', 'send.note_placeholder': 'Ajouter une note...', 'send.fees': 'Frais', 'send.total': 'Total', 'send.insufficient_short': 'Solde insuffisant',  'send.confirm_title': 'Confirmer le transfert', 'send.confirm_desc': "Vous êtes sur le point d’envoyer de l’argent.",  'send.pin_confirm': 'Votre code PIN sera demandé pour confirmer', 'send.cancel': 'Annuler', 'send.confirm': 'Confirmer',
+    'welcome.services_title': 'Nos services', 'welcome.services_desc': 'Tout ce dont vous avez besoin pour gérer votre argent.', 'welcome.how_title': 'Comment ça marche', 'welcome.how_desc': 'Commencez en 3 étapes simples.', 'welcome.security_title': 'Sécurité maximale', 'welcome.security_desc': 'Vos connexions utilisent HTTPS; la vérification en deux étapes peut être activée.', 'welcome.agent_desc': 'Devenez agent de transfert', 'welcome.developer_desc': 'Intégrez TRAIT dans vos applications', 'welcome.faq_title': 'Questions fréquentes',  'welcome.download_desc': 'Installez TRAIT depuis votre navigateur sur Android ou iOS.', 'welcome.final_title': 'Prêt à commencer ?', 'welcome.final_desc': 'Rejoignez les utilisateurs qui font confiance à TRAIT pour leurs transactions financières.',
     // ── Welcome Screen ──
     'welcome.tagline': 'Transférez. Payez. Échangez.',
     'welcome.subtitle': 'La solution financière complète pour l\'Afrique',
@@ -111,7 +111,7 @@ const translations: Record<Language, TranslationDict> = {
     'auth.password': 'Mot de passe',
     'auth.confirm_password': 'Confirmer le mot de passe',
     'auth.password_placeholder': 'Entrez votre mot de passe',
-    'auth.password_min': 'Minimum 4 caractères',
+    'auth.password_min': '8 caractères minimum',
     'auth.confirm_placeholder': 'Retapez votre mot de passe',
     'auth.connecting': 'Connexion...',
     'auth.creating': 'Création...',
@@ -131,7 +131,7 @@ const translations: Record<Language, TranslationDict> = {
     'auth.male': 'Masculin',
     'auth.female': 'Féminin',
     'auth.other_gender': 'Autre',
-    'auth.create_my_account': 'Créer mon compte',
+
     'auth.registration_client': 'Inscription Client',
     'auth.registration_agent': 'Inscription Agent',
     'auth.enter_info': 'Entrez vos informations de connexion',
@@ -145,7 +145,7 @@ const translations: Record<Language, TranslationDict> = {
     // ── Validation Messages ──
     'validation.phone_required': 'Veuillez entrer un numéro de téléphone valide',
     'validation.password_required': 'Veuillez entrer votre mot de passe',
-    'validation.password_min': 'Le mot de passe doit contenir au moins 4 caractères',
+    'validation.password_min': 'Le mot de passe doit contenir au moins 8 caractères',
     'validation.password_mismatch': 'Les mots de passe ne correspondent pas',
     'validation.name_required': 'Veuillez entrer votre nom complet',
     'validation.pseudo_required': 'Veuillez entrer un pseudo',
@@ -206,6 +206,7 @@ const translations: Record<Language, TranslationDict> = {
     'home.cat_recurring': 'Paiements récurrents',
     'home.cat_topup': 'Recharge',
     'home.cat_payment_links': 'Liens de paiement',
+    'home.cat_payment_requests': 'Demandes de paiement',
     'home.cat_referral': 'Parrainage',
     'home.cat_contacts': 'Contacts',
     'home.cat_analytics': 'Analytics',
@@ -296,7 +297,7 @@ const translations: Record<Language, TranslationDict> = {
     'home.extra_support': 'Support',
     'action.orders': 'Commandes',
     'action.barter': 'Troc',
-    'marketplace.sell': 'Vendre',
+
     'home.seller_space': 'Espace Vendeur',
     'home.start_send': 'Commencez par envoyer de l\'argent',
     'home.need_help': 'Besoin d\'aide ?',
@@ -550,7 +551,7 @@ const translations: Record<Language, TranslationDict> = {
     'welcome.contact': 'Nous contacter',
     'welcome.features': 'Pourquoi TRAIT ?',
     'welcome.feature_secure': 'Sécurité maximale',
-    'welcome.feature_secure_desc': 'Vos transactions sont protégées par un chiffrement de bout en bout',
+    'welcome.feature_secure_desc': 'Vos connexions sont protégées; activez la vérification en deux étapes dans les paramètres.',
     'welcome.feature_fast': 'Transferts rapides',
     'welcome.feature_fast_desc': 'Envoyez de l\'argent instantanément, 24h/24 et 7j/7',
     'welcome.feature_bonus': 'Bonus de bienvenue',
@@ -778,15 +779,15 @@ const translations: Record<Language, TranslationDict> = {
   en: {
     'welcome.service_transfer_title': 'Transfers', 'welcome.service_transfer_desc': 'Instant money', 'welcome.service_mobile_title': 'Mobile Money', 'welcome.service_mobile_desc': 'Pay everywhere', 'welcome.service_cards_title': 'Cards', 'welcome.service_cards_desc': 'USD and FC', 'welcome.service_barter_title': 'Barter', 'welcome.service_barter_desc': 'Trade easily', 'welcome.service_marketplace_title': 'Marketplace', 'welcome.service_marketplace_desc': 'Buy and sell', 'welcome.service_api_title': 'API', 'welcome.service_api_desc': 'Integrate TRAIT',
     'notifications.load_error': 'Loading error', 'notifications.copied': 'Message copied', 'notifications.copy_error': 'Copy error', 'notifications.marked_all': '{count} notification(s) marked as read', 'notifications.mark_all': 'Mark all as read', 'notifications.empty_title': 'No notifications', 'notifications.empty_desc': 'You do not have any notifications yet', 'notifications.admin_messages': 'Admin messages',
-    'profile.title': 'My Profile', 'profile.not_connected': 'Not connected', 'profile.name_required': 'Name is required', 'profile.updated': 'Profile updated successfully!', 'profile.update_error': 'Update error', 'profile.name_placeholder': 'Your full name', 'profile.pseudo_placeholder': 'Your username', 'profile.phone_readonly': 'This number cannot be changed', 'profile.country_placeholder': 'Your country', 'profile.saving': 'Saving...', 'profile.save': 'Save',
+     'profile.not_connected': 'Not connected', 'profile.name_required': 'Name is required', 'profile.updated': 'Profile updated successfully!', 'profile.update_error': 'Update error', 'profile.name_placeholder': 'Your full name', 'profile.pseudo_placeholder': 'Your username', 'profile.phone_readonly': 'This number cannot be changed', 'profile.country_placeholder': 'Your country', 'profile.saving': 'Saving...', 'profile.save': 'Save',
     'profile.balance_info': 'Balance Information',
     'profile.real_balance': 'Real Balance',
     'profile.bonus_balance': 'Bonus Balance',
     'profile.bonus_not_withdrawable': 'Non-withdrawable, non-transferable',
     'deposit.success': 'Deposit completed successfully!', 'deposit.error': 'Deposit error', 'deposit.balance': 'Balance', 'deposit.success_title': 'Deposit successful!', 'deposit.back_home': 'Back to home', 'deposit.confirm_title': 'Confirm deposit',
-    'withdraw.agent_required': 'Agent code required', 'withdraw.agent_required_desc': 'Every withdrawal requires the code of an authorized TRAIT agent.', 'withdraw.insufficient': 'Insufficient balance. Real balance: {amount}', 'withdraw.success': 'Withdrawal completed successfully!', 'withdraw.error': 'Withdrawal error', 'withdraw.title': 'Withdraw money', 'withdraw.available': 'Available balance',
-    'send.phone_required': 'Enter the recipient phone number', 'send.amount_required': 'Enter a valid amount', 'send.insufficient': 'Insufficient {currency} balance. Available: {amount}', 'send.success': 'Transfer sent successfully!', 'send.error': 'Transfer failed', 'send.title': 'Send money', 'send.available': 'Available balance', 'send.pin_required': 'PIN required to confirm', 'send.currency': 'Currency', 'send.recipient_phone': 'Recipient phone number',     'send.account_found': 'TRAIT account found', 'send.account_not_found': 'No TRAIT account found for this number', 'send.new_account': 'A new account will be created automatically', 'send.amount': 'Amount', 'send.note': 'Note', 'send.optional': 'optional', 'send.note_placeholder': 'Add a note...', 'send.fees': 'Fees', 'send.total': 'Total', 'send.insufficient_short': 'Insufficient balance', 'send.sending': 'Sending...', 'send.confirm_title': 'Confirm transfer', 'send.confirm_desc': 'You are about to send money.', 'send.recipient': 'Recipient', 'send.pin_confirm': 'Your PIN will be requested to confirm', 'send.cancel': 'Cancel', 'send.confirm': 'Confirm',
-    'welcome.services_title': 'Our services', 'welcome.services_desc': 'Everything you need to manage your money.', 'welcome.how_title': 'How it works', 'welcome.how_desc': 'Get started in 3 simple steps.', 'welcome.security_title': 'Maximum security', 'welcome.security_desc': 'Your transactions are protected by reliable technology and your data is secured end to end.', 'welcome.agent_desc': 'Become a transfer agent', 'welcome.developer_desc': 'Integrate TRAIT into your applications', 'welcome.faq_title': 'Frequently asked questions', 'welcome.download_title': 'Download the app', 'welcome.download_desc': 'Available on Android and iOS. Take TRAIT everywhere.', 'welcome.final_title': 'Ready to get started?', 'welcome.final_desc': 'Join users who trust TRAIT for their financial transactions.',
+    'withdraw.agent_required': 'Agent code required', 'withdraw.agent_required_desc': 'Every withdrawal requires the code of an authorized TRAIT agent.', 'withdraw.insufficient': 'Insufficient balance. Real balance: {amount}', 'withdraw.success': 'Withdrawal completed successfully!', 'withdraw.error': 'Withdrawal error',  'withdraw.available': 'Available balance',
+    'send.phone_required': 'Enter the recipient phone number', 'send.amount_required': 'Enter a valid amount', 'send.insufficient': 'Insufficient {currency} balance. Available: {amount}', 'send.success': 'Transfer sent successfully!', 'send.error': 'Transfer failed',  'send.available': 'Available balance', 'send.pin_required': 'PIN required to confirm', 'send.currency': 'Currency', 'send.recipient_phone': 'Recipient phone number',     'send.account_found': 'TRAIT account found', 'send.account_not_found': 'No TRAIT account found for this number', 'send.new_account': 'A new account will be created automatically', 'send.amount': 'Amount', 'send.note': 'Note', 'send.optional': 'optional', 'send.note_placeholder': 'Add a note...', 'send.fees': 'Fees', 'send.total': 'Total', 'send.insufficient_short': 'Insufficient balance', 'send.sending': 'Sending...', 'send.confirm_title': 'Confirm transfer', 'send.confirm_desc': 'You are about to send money.', 'send.recipient': 'Recipient', 'send.pin_confirm': 'Your PIN will be requested to confirm', 'send.cancel': 'Cancel', 'send.confirm': 'Confirm',
+    'welcome.services_title': 'Our services', 'welcome.services_desc': 'Everything you need to manage your money.', 'welcome.how_title': 'How it works', 'welcome.how_desc': 'Get started in 3 simple steps.', 'welcome.security_title': 'Maximum security', 'welcome.security_desc': 'Your connection uses HTTPS, and optional two-step verification is available.', 'welcome.agent_desc': 'Become a transfer agent', 'welcome.developer_desc': 'Integrate TRAIT into your applications', 'welcome.faq_title': 'Frequently asked questions',  'welcome.download_desc': 'Install TRAIT from your browser on Android or iOS.', 'welcome.final_title': 'Ready to get started?', 'welcome.final_desc': 'Join users who trust TRAIT for their financial transactions.',
     // ── Welcome Screen ──
     'welcome.tagline': 'Transfer. Pay. Exchange.',
     'welcome.subtitle': 'The complete financial solution for Africa',
@@ -864,7 +865,7 @@ const translations: Record<Language, TranslationDict> = {
     'auth.password': 'Password',
     'auth.confirm_password': 'Confirm Password',
     'auth.password_placeholder': 'Enter your password',
-    'auth.password_min': 'Minimum 4 characters',
+    'auth.password_min': 'At least 8 characters',
     'auth.confirm_placeholder': 'Re-enter your password',
     'auth.connecting': 'Connecting...',
     'auth.creating': 'Creating...',
@@ -884,7 +885,7 @@ const translations: Record<Language, TranslationDict> = {
     'auth.male': 'Male',
     'auth.female': 'Female',
     'auth.other_gender': 'Other',
-    'auth.create_my_account': 'Create My Account',
+
     'auth.registration_client': 'Client Registration',
     'auth.registration_agent': 'Agent Registration',
     'auth.enter_info': 'Enter your login information',
@@ -898,7 +899,7 @@ const translations: Record<Language, TranslationDict> = {
     // ── Validation Messages ──
     'validation.phone_required': 'Please enter a valid phone number',
     'validation.password_required': 'Please enter your password',
-    'validation.password_min': 'Password must be at least 4 characters',
+    'validation.password_min': 'Password must be at least 8 characters',
     'validation.password_mismatch': 'Passwords do not match',
     'validation.name_required': 'Please enter your full name',
     'validation.pseudo_required': 'Please enter a username',
@@ -959,6 +960,7 @@ const translations: Record<Language, TranslationDict> = {
     'home.cat_recurring': 'Recurring Payments',
     'home.cat_topup': 'Top-up',
     'home.cat_payment_links': 'Payment Links',
+    'home.cat_payment_requests': 'Payment Requests',
     'home.cat_referral': 'Referral',
     'home.cat_contacts': 'Contacts',
     'home.cat_analytics': 'Analytics',
@@ -1206,7 +1208,7 @@ const translations: Record<Language, TranslationDict> = {
     'welcome.contact': 'Contact Us',
     'welcome.features': 'Why TRAIT?',
     'welcome.feature_secure': 'Maximum Security',
-    'welcome.feature_secure_desc': 'Your transactions are protected by end-to-end encryption',
+    'welcome.feature_secure_desc': 'Your connection is protected; enable two-step verification in settings.',
     'welcome.feature_fast': 'Fast Transfers',
     'welcome.feature_fast_desc': 'Send money instantly, 24/7',
     'welcome.feature_bonus': 'Welcome Bonus',
@@ -1320,7 +1322,7 @@ const translations: Record<Language, TranslationDict> = {
     'auth.select_country': 'Pona esanga ya yo',
     'validation.phone_required': 'SVP tomba nméro ya telephoni ya malamu',
     'validation.password_required': 'SVP tomba mot de passe ya yo',
-    'validation.password_min': 'Mot de passe elonga kominisa 4 ba caractères',
+    'validation.password_min': 'Mot de passe elonga kominisa 8 ba caractères',
     'validation.password_mismatch': 'Mabala ya mot de passe ezali pete',
     'validation.name_required': 'SVP tomba nkombo ya mobimba',
     'validation.pseudo_required': 'SVP tomba pseudo',
@@ -1470,7 +1472,7 @@ const translations: Record<Language, TranslationDict> = {
     'auth.select_country': 'Chagua nchi yako',
     'validation.phone_required': 'Tafadhali ingiza nambari halisi ya simu',
     'validation.password_required': 'Tafadhali ingiza nenosiri lako',
-    'validation.password_min': 'Nenosiri lazima kiwe na herufi 4 au zaidi',
+    'validation.password_min': 'Nenosiri lazima kiwe na herufi 8 au zaidi',
     'validation.password_mismatch': 'Nenosiri hazilingani',
     'validation.name_required': 'Tafadhali ingiza jina lako kamili',
     'validation.pseudo_required': 'Tafadhali ingiza jina la mtumiaji',
@@ -1619,7 +1621,7 @@ const translations: Record<Language, TranslationDict> = {
     'auth.create_profile': 'Kujula buku wa mutu',
     'validation.phone_required': 'Tomba muinzu wa telefonu wa malamu',
     'validation.password_required': 'Tomba mutshi wa kulonga',
-    'validation.password_min': 'Mutshi wa kulonga elonga kumona 4',
+    'validation.password_min': 'Mutshi wa kulonga elonga kumona 8',
     'validation.password_mismatch': 'Mipata ya mutshi eza pete',
     'validation.name_required': 'Tomba dijina dya mbongi',
     'validation.pseudo_required': 'Tomba dijina',
@@ -1747,7 +1749,7 @@ const translations: Record<Language, TranslationDict> = {
     'auth.create_profile': 'Kujula buku wa mutu',
     'validation.phone_required': 'Tomba muinzu wa telefonu wa malamu',
     'validation.password_required': 'Tomba mutshi wa kulonga',
-    'validation.password_min': 'Mutshi wa kulonga elonga kumona 4',
+    'validation.password_min': 'Mutshi wa kulonga elonga kumona 8',
     'validation.password_mismatch': 'Mipata ya mutshi eza pete',
     'validation.name_required': 'Tomba dijina dya mbongi',
     'validation.pseudo_required': 'Tomba dijina',
@@ -1838,14 +1840,14 @@ const translations: Record<Language, TranslationDict> = {
 
 // Text added by the simplified public homepage. Keep it here so every supported
 // language stays complete without scattering one-off strings through components.
-const homepageTranslations: Record<Language, TranslationDict> = {
+const homepageTranslations: Record<string, TranslationDict> = {
   fr: {
-    'welcome.badge': 'Transferts simples, avec ou sans Internet',
-    'welcome.hero': 'Envoyez et recevez votre argent simplement, même sans Internet.',
+    'welcome.badge': 'Transferts simples et sécurisés',
+    'welcome.hero': 'Envoyez et recevez votre argent en quelques étapes simples.',
     'welcome.hero_desc': "Un portefeuille conçu pour envoyer de l'argent, payer par QR et garder le contrôle de vos transactions.",
     'welcome.benefit_transfer': "Transfert d’argent|Envoyez et recevez en quelques étapes.",
     'welcome.benefit_qr': 'Paiement par QR|Payez chez les vendeurs sans saisir de numéro.',
-    'welcome.benefit_offline': 'Avec ou sans Internet|Continuez à utiliser les services disponibles hors ligne.',
+    'welcome.benefit_offline': 'Accès mobile|Utilisez les services disponibles dans votre compte.',
     'welcome.preview_label': 'Une vue claire de votre argent',
     'welcome.preview_title': "Tout l’essentiel, au même endroit.",
     'welcome.preview_desc': "Consultez votre solde, envoyez de l’argent et ouvrez le paiement QR depuis un écran simple, pensé pour le mobile.",
@@ -1854,7 +1856,7 @@ const homepageTranslations: Record<Language, TranslationDict> = {
     'welcome.profile_client': 'Je suis un particulier|Envoyez, recevez et payez simplement.', 'welcome.profile_agent': 'Je suis un agent|Développez votre activité de transfert.', 'welcome.profile_seller': 'Je suis un vendeur|Acceptez les paiements QR.', 'welcome.discover': 'Découvrir',
   },
   en: {
-    'welcome.badge': 'Simple transfers, online or offline', 'welcome.hero': 'Send and receive your money simply, even without Internet.', 'welcome.hero_desc': 'A wallet designed to send money, pay by QR and keep control of your transactions.', 'welcome.benefit_transfer': 'Money transfer|Send and receive in a few steps.', 'welcome.benefit_qr': 'QR payment|Pay merchants without entering a number.', 'welcome.benefit_offline': 'Online or offline|Keep using available services without Internet.', 'welcome.preview_label': 'A clear view of your money', 'welcome.preview_title': 'Everything essential, in one place.', 'welcome.preview_desc': 'Check your balance, send money and open QR payments from a simple mobile-first screen.', 'welcome.wallet': 'My wallet', 'welcome.available': 'Available balance', 'welcome.qr': 'QR payment', 'welcome.currencies': 'Available in USD and FC', 'welcome.profiles_title': 'TRAIT adapts to your activity', 'welcome.profiles_desc': 'Choose the space that fits you.', 'welcome.profile_client': 'I am an individual|Send, receive and pay simply.', 'welcome.profile_agent': 'I am an agent|Grow your transfer business.', 'welcome.profile_seller': 'I am a seller|Accept QR payments.', 'welcome.discover': 'Discover',
+    'welcome.badge': 'Simple money transfers', 'welcome.hero': 'Send and receive money in a few simple steps.', 'welcome.hero_desc': 'A wallet designed to send money, pay by QR and keep control of your transactions.', 'welcome.benefit_transfer': 'Money transfer|Send and receive in a few steps.', 'welcome.benefit_qr': 'QR payment|Pay merchants without entering a number.', 'welcome.benefit_offline': 'Mobile access|Use the services available in your account.', 'welcome.preview_label': 'A clear view of your money', 'welcome.preview_title': 'Everything essential, in one place.', 'welcome.preview_desc': 'Check your balance, send money and open QR payments from a simple mobile-first screen.', 'welcome.wallet': 'My wallet', 'welcome.available': 'Available balance', 'welcome.qr': 'QR payment', 'welcome.currencies': 'Available in USD and FC', 'welcome.profiles_title': 'TRAIT adapts to your activity', 'welcome.profiles_desc': 'Choose the space that fits you.', 'welcome.profile_client': 'I am an individual|Send, receive and pay simply.', 'welcome.profile_agent': 'I am an agent|Grow your transfer business.', 'welcome.profile_seller': 'I am a seller|Accept QR payments.', 'welcome.discover': 'Discover',
   },
   ln: {
     'welcome.badge': 'Botindisi ya pete, na to Internet to te', 'welcome.hero': 'Tindela mpe zua mbongo na yo na pete, ata soki Internet ezali te.', 'welcome.hero_desc': 'Portefeuille mpo na kotinda mbongo, kofuta na QR mpe kotambwisa misala na yo.', 'welcome.benefit_transfer': 'Kotinda mbongo|Tindela mpe zua na makambo moke.', 'welcome.benefit_qr': 'Kofuta na QR|Futa epai ya bateki kozanga kokoma nimero.', 'welcome.benefit_offline': 'Na Internet to te|Salela misala oyo ezali kaka.', 'welcome.preview_label': 'Emoniseli ya polele ya mbongo na yo', 'welcome.preview_title': 'Makambo nyonso na esika moko.', 'welcome.preview_desc': 'Tala solde, tindela mbongo mpe fungola kofuta na QR.', 'welcome.wallet': 'Portefeuille na ngai', 'welcome.available': 'Solde oyo ezali', 'welcome.qr': 'Kofuta na QR', 'welcome.currencies': 'Ezali na USD mpe FC', 'welcome.profiles_title': 'TRAIT ebongisami mpo na yo', 'welcome.profiles_desc': 'Pona esika oyo ebongi na yo.', 'welcome.profile_client': 'Nazali moto moko|Tindela, zua mpe futa na pete.', 'welcome.profile_agent': 'Nazali agent|Kolisá mosala na yo ya botindisi.', 'welcome.profile_seller': 'Nazali moteki|Zwá kofuta na QR.', 'welcome.discover': 'Tala',

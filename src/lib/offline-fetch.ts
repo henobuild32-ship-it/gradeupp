@@ -1,11 +1,4 @@
-import { savePendingTransaction } from '@/lib/offline-queue'
-
-interface FetchOptions extends RequestInit {
-  offlineKey?: string
-}
-
-export async function offlineFetch(url: string, options: FetchOptions = {}): Promise<Response> {
-  const { offlineKey, ...fetchOptions } = options
+export async function offlineFetch(url: string, fetchOptions: RequestInit = {}): Promise<Response> {
 
   try {
     if (!navigator.onLine) throw new Error('offline')
@@ -13,28 +6,12 @@ export async function offlineFetch(url: string, options: FetchOptions = {}): Pro
     return response
   } catch (error) {
     if (fetchOptions.method === 'POST' || fetchOptions.method === 'PUT' || fetchOptions.method === 'DELETE') {
-      const body = typeof fetchOptions.body === 'string' ? fetchOptions.body : JSON.stringify(fetchOptions.body || {})
-      const headers: Record<string, string> = {}
-      if (fetchOptions.headers) {
-        const h = new Headers(fetchOptions.headers)
-        h.forEach((value, key) => {
-          headers[key] = value
-        })
-      }
-
-      await savePendingTransaction({
-        url,
-        method: fetchOptions.method || 'POST',
-        body,
-        headers: JSON.stringify(headers),
-      })
-
       return new Response(JSON.stringify({
-        success: true,
+        success: false,
         offline: true,
-        message: 'Transaction enregistrée. Elle sera traitée automatiquement une fois connecté.',
+        message: 'Connexion indisponible. Cette opération n’a pas été envoyée; réessayez lorsque vous serez en ligne.',
       }), {
-        status: 202,
+        status: 503,
         headers: { 'Content-Type': 'application/json' },
       })
     }

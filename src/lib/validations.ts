@@ -39,7 +39,7 @@ export const RegisterSchema = z.object({
     .refine((v) => v === undefined || (v.length >= 4 && v.length <= 6), {
       message: 'PIN invalide',
     }),
-  password: z.string().min(4).max(128),
+  password: z.string().min(8).max(128),
   email: z.string().email().optional(),
   gender: z.string().optional(),
   city: z.string().optional(),

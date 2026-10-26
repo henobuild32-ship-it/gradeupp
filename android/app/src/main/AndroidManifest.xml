@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -48,17 +48,7 @@
     <uses-permission android:name="android.permission.CAMERA" />
 
     <!-- Storage / Media (photo upload, KYC, attachments) -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
-
-    <!-- Location (agent location, fraud detection, maps) -->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-
-    <!-- Contacts (contact pay, phone lookup) -->
-    <uses-permission android:name="android.permission.READ_CONTACTS" />
 
     <!-- Notifications (push notifications) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -67,31 +57,6 @@
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.USE_FINGERPRINT" />
 
-    <!-- Phone / USSD (dial USSD codes like *1709#) -->
-    <uses-permission android:name="android.permission.CALL_PHONE" />
-    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
-
     <!-- Vibration (haptic feedback) -->
     <uses-permission android:name="android.permission.VIBRATE" />
-
-    <!-- Microphone (future voice features) -->
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
-
-    <!-- Bluetooth (future beacon/P2P features) -->
-    <uses-permission android:name="android.permission.BLUETOOTH" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-
-    <!-- Wake lock (keep alive, background sync) -->
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-
-    <!-- Foreground service (background sync) -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-
-    <!-- Schedule exact alarm (recurring payments) -->
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-
-    <!-- NFC (future NFC payments) -->
-    <uses-permission android:name="android.permission.NFC" />
 </manifest>

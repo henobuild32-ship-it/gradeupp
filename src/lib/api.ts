@@ -2,26 +2,8 @@
 
 const originalFetch = typeof window !== 'undefined' ? window.fetch.bind(window) : null;
 
-function readPersistedToken(): string | null {
-  try {
-    const raw = localStorage.getItem('trait-app-storage');
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return parsed?.state?.token ?? null;
-  } catch {
-    return null;
-  }
-}
-
 export function getAuthToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  const storeToken = useAppStore.getState().token;
-  if (storeToken) return storeToken;
-  const persisted = readPersistedToken();
-  if (persisted) {
-    useAppStore.getState().setToken(persisted);
-    return persisted;
-  }
+  // Web sessions are authenticated with HttpOnly cookies and credentials: include.
   return null;
 }
 

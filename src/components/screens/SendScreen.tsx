@@ -39,7 +39,7 @@ export default function SendScreen() {
   const [lookingUp, setLookingUp] = useState(false);
   const [lookupDone, setLookupDone] = useState(false);
   const [amount, setAmount] = useState('');
-  const [currency, setCurrency] = useState(preferredCurrency || 'USD');
+  const [currency, setCurrency] = useState<'USD' | 'FC'>(preferredCurrency || 'USD');
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -101,7 +101,7 @@ export default function SendScreen() {
     const payCurrency = pageParams?.payCurrency
     if (payCurrency === 'USD' || payCurrency === 'FC' || payCurrency === 'CDF') {
       const cur = payCurrency === 'CDF' ? 'FC' : payCurrency
-      setCurrency(cur)
+      setCurrency(cur as 'USD' | 'FC')
       setPreferredCurrency(cur)
     }
   }, [pageParams?.payAmount, pageParams?.payCurrency])
@@ -236,7 +236,7 @@ export default function SendScreen() {
             {/* Currency - first so user picks before entering amount */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">{t('send.currency')}</Label>
-              <Select value={currency} onValueChange={(v) => { setCurrency(v); setPreferredCurrency(v as 'USD' | 'FC'); }}>
+              <Select value={currency} onValueChange={(v) => { const next = v as 'USD' | 'FC'; setCurrency(next); setPreferredCurrency(next); }}>
                 <SelectTrigger className="w-full h-11">
                   <SelectValue />
                 </SelectTrigger>

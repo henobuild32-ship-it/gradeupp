@@ -54,9 +54,14 @@ export default function AnalyticsScreen() {
   }, [user?.id, period]);
 
   async function fetchData() {
+    const userId = user?.id;
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
-      const res = await fetch(`/api/analytics?userId=${user.id}&period=${period}`, { credentials: 'include' });
+      const res = await fetch(`/api/analytics?userId=${userId}&period=${period}`, { credentials: 'include' });
       const result = await res.json();
       if (result.success) setData(result.data);
     } catch { toast.error('Erreur de chargement'); }

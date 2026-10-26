@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuthenticationResponse } from '@simplewebauthn/server';
+import type { AuthenticationResponseJSON, AuthenticatorTransport } from '@simplewebauthn/server';
 import { db } from '@/lib/db';
 import { signToken, setTokenCookie } from '@/lib/auth';
-import { resolveRp, verifySignedChallenge, base64urlDecode } from '@/lib/webauthn';
+import { resolveRp, verifySignedChallengeClaim, base64urlDecode } from '@/lib/webauthn';
 import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
+import { consumeWebAuthnChallenge } from '@/lib/webauthn-challenge-store';
 
 /**
  * POST /api/biometric/auth/verify
@@ -28,8 +30,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Paramètres manquants' }, { status: 400 });
     }
 
-    const storedChallenge = verifySignedChallenge(challengeToken, 'biometric-auth');
-    if (!storedChallenge) {
+    const challenge = verifySignedChallengeClaim(challengeToken, 'biometric-auth');
+    if (!challenge) {
       return NextResponse.json(
         { success: false, message: 'Session de déverrouillage expirée. Réessayez.' },
         { status: 400 }
@@ -46,6 +48,9 @@ export async function POST(request: NextRequest) {
         { success: false, message: 'Déverrouillage biométrique introuvable' },
         { status: 404 }
       );
+    }
+    if (challenge.subject !== credential.userId) {
+      return NextResponse.json({ success: false, message: 'Challenge biométrique lié à un autre compte.' }, { status: 401 });
     }
 
     const user = credential.user;
@@ -67,7 +72,7 @@ export async function POST(request: NextRequest) {
 
     const verification = await verifyAuthenticationResponse({
       response,
-      expectedChallenge: storedChallenge,
+      expectedChallenge: challenge.challenge,
       expectedOrigin: origins,
       expectedRPID: [rpID],
       requireUserVerification: true,
@@ -76,7 +81,7 @@ export async function POST(request: NextRequest) {
         publicKey: base64urlDecode(credential.publicKey),
         counter: credential.counter,
         transports: credential.transports
-          ? (credential.transports.split(',') as AuthenticatorTransportFuture[])
+          ? (credential.transports.split(',') as AuthenticatorTransport[])
           : undefined,
       },
     });
@@ -86,6 +91,11 @@ export async function POST(request: NextRequest) {
         { success: false, message: 'Vérification biométrique échouée' },
         { status: 401 }
       );
+    }
+
+    const challengeConsumed = await consumeWebAuthnChallenge('biometric-auth', challenge.challenge, user.id);
+    if (!challengeConsumed) {
+      return NextResponse.json({ success: false, message: 'Cette demande biométrique a déjà été utilisée. Recommencez.' }, { status: 409 });
     }
 
     await db.biometricCredential.update({
@@ -101,7 +111,6 @@ export async function POST(request: NextRequest) {
     const res = NextResponse.json({
       success: true,
       message: 'Déverrouillé',
-      token,
       user: {
         id: user.id,
         phone: user.phone,

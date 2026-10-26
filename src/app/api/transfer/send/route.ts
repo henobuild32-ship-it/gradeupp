@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { checkChildBalanceLimit } from '@/lib/security'
-import { requireUser } from '@/lib/auth'
+import { requireUser, verifyPinWithAttempts } from '@/lib/auth'
 import { SendMoneySchema, validateRequest } from '@/lib/validations'
 import { updateBalanceAndNotify } from '@/lib/notifications'
 import { findUserByPhone } from '@/lib/phone'
@@ -49,9 +49,9 @@ export async function POST(request: NextRequest) {
     if (!sender.pin || !pin) {
       return NextResponse.json({ success: false, message: 'PIN requis pour effectuer un transfert' }, { status: 400 })
     }
-    const { verifyAndMigratePin } = await import('@/lib/auth')
-    if (!(await verifyAndMigratePin(sender.id, pin, sender.pin))) {
-      return NextResponse.json({ success: false, message: 'PIN incorrect' }, { status: 401 })
+    const pinResult = await verifyPinWithAttempts(sender.id, pin)
+    if (!pinResult.valid) {
+      return NextResponse.json({ success: false, message: pinResult.blocked ? 'Trop de tentatives. Compte bloqué temporairement.' : 'PIN incorrect' }, { status: pinResult.blocked ? 429 : 401 })
     }
 
     const fee = Math.round(amount * 0.007 * 100) / 100

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireAdmin } from '@/lib/auth'
+import { decryptKycDocument } from '@/lib/kyc-storage'
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,7 +31,14 @@ export async function GET(request: NextRequest) {
       orderBy: { kycSubmittedAt: 'asc' },
     })
 
-    return NextResponse.json({ success: true, users })
+    return NextResponse.json({
+      success: true,
+      users: users.map((user) => ({
+        ...user,
+        kycDocumentUrl: decryptKycDocument(user.kycDocumentUrl),
+        kycSelfieUrl: decryptKycDocument(user.kycSelfieUrl),
+      })),
+    })
   } catch (error) {
     console.error('Admin KYC list error:', error)
     return NextResponse.json({ success: false, message: 'Erreur serveur' }, { status: 500 })

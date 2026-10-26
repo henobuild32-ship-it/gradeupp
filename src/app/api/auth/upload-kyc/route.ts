@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
 
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
-        { success: false, message: 'Fichier trop volumineux. Maximum 4 MB.' },
+        { success: false, message: 'Fichier trop volumineux. Maximum 3 MB.' },
         { status: 400 }
       );
     }
@@ -44,6 +44,14 @@ export async function POST(request: NextRequest) {
     // Convert to base64 data URL
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    const matchesSignature = file.type === 'image/jpeg' || file.type === 'image/jpg'
+      ? buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff
+      : file.type === 'image/png'
+        ? buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+        : buffer.length >= 12 && buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP';
+    if (!matchesSignature) {
+      return NextResponse.json({ success: false, message: 'Le contenu du fichier ne correspond pas à son format.' }, { status: 400 });
+    }
     const base64 = buffer.toString('base64');
     const mimeType = file.type || 'image/jpeg';
     const dataUrl = `data:${mimeType};base64,${base64}`;

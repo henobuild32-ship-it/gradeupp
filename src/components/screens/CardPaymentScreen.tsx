@@ -89,8 +89,8 @@ export default function CardPaymentScreen() {
       toast.error('Veuillez remplir tous les champs obligatoires');
       return;
     }
-    if (user?.parentId && (!pin || pin.length !== 4)) {
-      toast.error('Votre code PIN à 4 chiffres est obligatoire pour valider ce paiement.');
+    if (!pin || pin.length < 4 || pin.length > 8) {
+      toast.error('Votre code PIN à 4 à 8 chiffres est obligatoire pour valider ce paiement.');
       return;
     }
 
@@ -105,7 +105,7 @@ export default function CardPaymentScreen() {
           amount: numericAmount,
           currency: selectedCurrency,
           description: description || undefined,
-          pin: user.parentId ? pin : undefined,
+          pin,
         }),
       });
       const data = await res.json();
@@ -358,18 +358,19 @@ export default function CardPaymentScreen() {
                 />
               </div>
 
-              {/* PIN Code for Child */}
-              {user?.parentId && (
+              {/* PIN Code */}
+              {(
                 <div className="space-y-2">
                   <Label htmlFor="payPin" className="text-sm font-medium text-foreground flex items-center gap-1.5">
                     <Lock className="size-3.5 text-muted-foreground" />
-                    Code PIN Enfant <span className="text-red-500">*</span>
+                    Code PIN <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="payPin"
                     type="password"
-                    maxLength={4}
-                    placeholder="Entrez votre PIN à 4 chiffres"
+                    inputMode="numeric"
+                    maxLength={8}
+                    placeholder="Entrez votre PIN"
                     value={pin}
                     onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
                     className="h-11 font-mono tracking-widest text-center text-lg"

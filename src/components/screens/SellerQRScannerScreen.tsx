@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { ArrowLeft, Camera, CameraOff, CheckCircle2, Loader2, QrCode, XCircle, Lock, ShieldAlert } from 'lucide-react'
+import { ArrowLeft, Camera, CameraOff, CheckCircle2, Clock, Loader2, QrCode, XCircle, ShieldAlert } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAppStore } from '@/lib/store'
 import {
@@ -40,10 +40,9 @@ export default function SellerQRScannerScreen() {
   const [currency, setCurrency] = useState<'USD' | 'FC'>('USD')
   const [cameraActive, setCameraActive] = useState(false)
   const [cameraError, setCameraError] = useState('')
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [status, setStatus] = useState<'idle' | 'loading' | 'pending' | 'success' | 'error'>('idle')
   const [message, setMessage] = useState('')
-  const [showPinPrompt, setShowPinPrompt] = useState(false)
-  const [clientPin, setClientPin] = useState('')
+  const [pendingRequestId, setPendingRequestId] = useState<string | null>(null)
   const [showPermissionPrompt, setShowPermissionPrompt] = useState(false)
   const [scanMethod, setScanMethod] = useState<'native' | 'web'>('native')
 
@@ -64,6 +63,42 @@ export default function SellerQRScannerScreen() {
   }
 
   useEffect(() => stopCamera, [])
+
+  useEffect(() => {
+    if (status !== 'pending' || !pendingRequestId) return
+    let stopped = false
+    const checkRequest = async () => {
+      try {
+        const res = await fetch('/api/payments/request', { credentials: 'include' })
+        const data = await res.json()
+        const current = data.requests?.find((request: { id: string }) => request.id === pendingRequestId)
+        if (stopped || !current) return
+        if (current.status === 'accepted') {
+          setStatus('success')
+          setMessage('Paiement confirmé par le client.')
+          setQrCodeData('')
+          setAmount('')
+          setPendingRequestId(null)
+        } else if (current.status === 'rejected' || current.status === 'cancelled') {
+          setStatus('error')
+          setMessage('Le client a refusé ou la demande a expiré.')
+          setPendingRequestId(null)
+        }
+      } catch {}
+    }
+    void checkRequest()
+    const interval = setInterval(checkRequest, 4000)
+    const timeout = setTimeout(() => {
+      setStatus('error')
+      setMessage('La demande a expiré. Relancez le paiement avec le client.')
+      setPendingRequestId(null)
+    }, 5 * 60 * 1000)
+    return () => {
+      stopped = true
+      clearInterval(interval)
+      clearTimeout(timeout)
+    }
+  }, [status, pendingRequestId])
 
   useEffect(() => {
     if (cameraActive && videoRef.current && pendingStreamRef.current) {
@@ -187,7 +222,7 @@ export default function SellerQRScannerScreen() {
 
   // ─── Payment ──────────────────────────────────────────────────────
 
-  const handleScanAndPay = async (pinOverride?: string) => {
+  const handleScanAndPay = async () => {
     if (!user?.id) {
       toast.error('Erreur', { description: 'Session service introuvable' })
       return
@@ -196,7 +231,6 @@ export default function SellerQRScannerScreen() {
       toast.error('Erreur', { description: 'Scannez le QR Code et saisissez un montant' })
       return
     }
-    const pinToSubmit = pinOverride || clientPin
     setStatus('loading')
     try {
       const res = await fetch('/api/payment/qr', {
@@ -205,23 +239,16 @@ export default function SellerQRScannerScreen() {
         body: JSON.stringify({
           sellerId: user.id,
           qrCode: qrCodeData.trim(),
-          amount,
+          amount: Number(amount),
           currency,
-          pin: pinToSubmit || undefined,
         }),
       })
       const data = await res.json()
-      if (data.success) {
-        setStatus('success')
-        setMessage(data.message || 'Paiement réussi')
-        setQrCodeData('')
-        setAmount('')
-        setClientPin('')
-        setShowPinPrompt(false)
-      } else if (data.requirePin) {
-        setStatus('idle')
-        setShowPinPrompt(true)
-        toast('PIN requis', { description: "Demandez le code PIN à l'enfant." })
+      if (data.success && data.pendingApproval && data.requestId) {
+        setPendingRequestId(data.requestId)
+        setStatus('pending')
+        setMessage('Demande envoyée. Attendez la confirmation du client.')
+        toast('Confirmation du client requise', { description: 'Le client autorise le débit depuis son propre compte.' })
       } else {
         setStatus('error')
         setMessage(data.message || 'Erreur de paiement')
@@ -321,11 +348,13 @@ export default function SellerQRScannerScreen() {
             />
             <Button
               onClick={() => handleScanAndPay()}
-              disabled={status === 'loading'}
+              disabled={status === 'loading' || status === 'pending'}
               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-6"
             >
               {status === 'loading' ? (
                 <span className="inline-flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Traitement...</span>
+              ) : status === 'pending' ? (
+                <span className="inline-flex items-center gap-2"><Clock className="w-4 h-4" />En attente du client...</span>
               ) : 'Confirmer le paiement'}
             </Button>
           </div>
@@ -334,6 +363,13 @@ export default function SellerQRScannerScreen() {
         {status === 'success' && (
           <div className="flex items-center gap-3 text-green-600 bg-green-50 px-6 py-4 rounded-xl border border-green-100">
             <CheckCircle2 className="w-6 h-6" />
+            <span className="font-semibold">{message}</span>
+          </div>
+        )}
+
+        {status === 'pending' && (
+          <div className="flex items-center gap-3 text-amber-700 bg-amber-50 px-6 py-4 rounded-xl border border-amber-200">
+            <Clock className="w-6 h-6 shrink-0" />
             <span className="font-semibold">{message}</span>
           </div>
         )}
@@ -390,39 +426,6 @@ export default function SellerQRScannerScreen() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialogue PIN Enfant */}
-      <Dialog open={showPinPrompt} onOpenChange={setShowPinPrompt}>
-        <DialogContent className="mx-4 rounded-2xl max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Lock className="size-5 text-indigo-600" />
-              Code PIN Enfant requis
-            </DialogTitle>
-            <DialogDescription>
-              Cette carte appartient à un compte enfant. Saisissez son code PIN 4 chiffres.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Input
-              type="password"
-              maxLength={4}
-              placeholder="Code PIN"
-              value={clientPin}
-              onChange={(e) => setClientPin(e.target.value.replace(/\D/g, ''))}
-              className="h-12 font-mono tracking-widest text-center text-xl"
-              required
-            />
-          </div>
-          <DialogFooter className="flex gap-2">
-            <Button variant="outline" className="flex-1 rounded-xl" onClick={() => { setShowPinPrompt(false); setClientPin('') }}>
-              Annuler
-            </Button>
-            <Button className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl" disabled={clientPin.length !== 4} onClick={() => handleScanAndPay()}>
-              Confirmer
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

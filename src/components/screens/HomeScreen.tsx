@@ -74,6 +74,7 @@ const serviceCategories = [
       { labelKey: 'home.cat_recurring', icon: Repeat, page: 'recurring-payments' as const, color: '#7C3AED' },
       { labelKey: 'home.cat_topup', icon: Radio, page: 'bundle-catalog' as const, color: '#E11D48' },
       { labelKey: 'home.cat_payment_links', icon: Link, page: 'payment-links' as const, color: '#0D9488' },
+      { labelKey: 'home.cat_payment_requests', icon: Handshake, page: 'payment-requests' as const, color: '#7C3AED' },
       { labelKey: 'QR Code', icon: QrCode, page: 'my-qr-code' as const, color: '#4F46E5' },
       { labelKey: 'home.cat_cards', icon: CreditCard, page: 'card' as const, color: '#0D5C63' },
     ],

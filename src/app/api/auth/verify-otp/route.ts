@@ -81,7 +81,6 @@ export async function POST(request: NextRequest) {
       const response = NextResponse.json({
         success: true,
         message: 'Code vǸrifiǸ',
-        token,
         user: {
           id: user.id,
           phone: user.phone,
@@ -211,7 +210,6 @@ export async function POST(request: NextRequest) {
     const token = await signToken({ userId: updatedUser.id, role: updatedUser.role });
     const response = NextResponse.json({
       success: true,
-      token,
       user: {
         id: updatedUser.id,
         phone: updatedUser.phone,

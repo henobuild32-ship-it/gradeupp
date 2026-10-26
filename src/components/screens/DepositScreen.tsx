@@ -34,7 +34,7 @@ export default function DepositScreen() {
   const { t } = useTranslation()
   const [selectedMethod, setSelectedMethod] = useState('mobile_money')
   const [amount, setAmount] = useState('')
-  const [currency, setCurrency] = useState(preferredCurrency || 'USD')
+  const [currency, setCurrency] = useState<'USD' | 'FC'>(preferredCurrency || 'USD')
   const [loading, setLoading] = useState(false)
   const [step, setStep] = useState<'form' | 'confirm' | 'success'>('form')
   const [copied, setCopied] = useState(false)
@@ -335,7 +335,7 @@ export default function DepositScreen() {
                     <label className="text-sm font-medium text-foreground block mb-1.5">Devise</label>
                     <select
                       value={currency}
-                      onChange={(e) => { setCurrency(e.target.value); setPreferredCurrency(e.target.value as 'USD' | 'FC'); }}
+                      onChange={(e) => { const next = e.target.value as 'USD' | 'FC'; setCurrency(next); setPreferredCurrency(next); }}
                       className="h-12 px-3 bg-muted/30 border-2 border-gray-200 rounded-xl text-sm font-semibold focus:border-[#0D5C63] outline-none"
                     >
                       <option value="USD">USD $</option>

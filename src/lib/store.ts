@@ -219,7 +219,7 @@ interface VersionState {
 export interface AppStore extends NavigationState, AuthState, AuthFormState, PinState, NotificationState, ThemeState, LanguageState, CurrencyState, VersionState {}
 
 // Store version for migration
-const STORE_VERSION = 2;
+const STORE_VERSION = 3;
 
 export const useAppStore = create<AppStore>()(
   persist(
@@ -262,13 +262,18 @@ export const useAppStore = create<AppStore>()(
       preferredCurrency: 'USD' as const,
 
       setUser: (user) => set({ user }),
-      setAdmin: (admin) => set({ admin }),
+      setAdmin: (admin) => {
+        if (!admin) return set({ admin: null });
+        const { token: _token, ...safeAdmin } = admin;
+        set({ admin: safeAdmin });
+      },
       setSelectedRole: (role) => set({ selectedRole: role }),
-      setToken: (token) => set({ token }),
+      setToken: () => set({ token: null }),
       setPreferredCurrency: (currency) => set({ preferredCurrency: currency }),
 
       logout: () => {
         if (typeof document !== 'undefined') {
+          void fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
           document.cookie = 'trait_token=; Path=/; Max-Age=0; SameSite=Lax';
         }
         set({
@@ -284,6 +289,7 @@ export const useAppStore = create<AppStore>()(
 
       adminLogout: () => {
         if (typeof document !== 'undefined') {
+          void fetch('/api/admin/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
           document.cookie = 'trait_admin_token=; Path=/; Max-Age=0; SameSite=Lax';
         }
         set({
@@ -352,6 +358,13 @@ export const useAppStore = create<AppStore>()(
         // Migration from v1 (old store with PIN in user object) to v2
         let state = { ...persistedState };
 
+        // Session credentials are held in HttpOnly cookies, never in browser storage.
+        state.token = null;
+        if (state.admin) {
+          const { token: _adminToken, ...safeAdmin } = state.admin;
+          state.admin = safeAdmin;
+        }
+
         if (version < 2) {
           // Strip PIN from persisted user data
           if (state.user && state.user.pin) {
@@ -367,7 +380,6 @@ export const useAppStore = create<AppStore>()(
       partialize: (state) => ({
         user: state.user,
         admin: state.admin,
-        token: state.token,
         isDarkMode: state.isDarkMode,
         selectedRole: state.selectedRole,
         language: state.language,

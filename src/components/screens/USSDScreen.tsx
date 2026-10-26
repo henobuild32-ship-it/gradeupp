@@ -311,7 +311,7 @@ export default function USSDScreen() {
       const res = await fetch(apiEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, pin: pinInput }),
       });
       const data = await res.json();
       if (data.success) {
@@ -322,9 +322,7 @@ export default function USSDScreen() {
         setPinInput('');
       }
     } catch {
-      queueOfflineTransaction(apiEndpoint, 'POST', body);
-      setResultMessage('Transaction enregistrée hors ligne. Elle sera traitée automatiquement.');
-      setStep(nextStep);
+      toast.error('Connexion indisponible. Aucune transaction n’a été envoyée; réessayez quand vous serez en ligne.');
     }
     finally { setLoading(false); }
   }, [pinInput, user?.id]);
@@ -896,15 +894,13 @@ export default function USSDScreen() {
                   });
                   const data = await res.json();
                   if (data.success) {
-                    setResultMessage(`Dépôt de ${tx.amount} ${currency}\nAgent: ${tx.agentName || tx.agentCode}\nCompte crédité.`);
+                    setResultMessage(`Demande de dépôt de ${tx.amount} ${currency} envoyée à ${tx.agentName || tx.agentCode}.\nVotre solde sera crédité après validation par l’agent.`);
                     setStep('deposit-done');
                   } else {
                     toast.error(data.message || 'Erreur');
                   }
                 } catch {
-                  queueOfflineTransaction('/api/ussd/deposit', 'POST', { userId: user.id, agentCode: tx.agentCode, amount: parseFloat(tx.amount), currency });
-                  setResultMessage(`Dépôt de ${tx.amount} ${currency} enregistré hors ligne.`);
-                  setStep('deposit-done');
+                  toast.error('Connexion indisponible. Le dépôt n’a pas été envoyé; réessayez quand vous serez en ligne.');
                 }
                 finally { setLoading(false); }
               }}

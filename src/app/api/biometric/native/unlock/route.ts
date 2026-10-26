@@ -66,7 +66,6 @@ export async function POST(request: NextRequest) {
     const res = NextResponse.json({
       success: true,
       message: 'Déverrouillé',
-      token,
       user: {
         id: user.id,
         phone: user.phone,

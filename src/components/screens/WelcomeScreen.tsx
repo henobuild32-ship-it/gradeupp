@@ -34,17 +34,17 @@ const steps = [
 ]
 
 const faq = [
-  { q: 'Quels sont les frais ?', a: 'Seulement 0,7% par transaction. Aucun frais caché.' },
-  { q: 'Est-ce sécurisé ?', a: 'Chiffrement SSL/TLS, JWT, et authentification à deux facteurs.' },
+  { q: 'Quels sont les frais ?', a: 'Les frais applicables sont affichés avant la confirmation de chaque opération.' },
+  { q: 'Est-ce sécurisé ?', a: 'Les connexions utilisent HTTPS. Vous pouvez activer la vérification en deux étapes dans les paramètres.' },
   { q: 'Quelles devises ?', a: 'USD et Franc Congolais (FC), avec conversion automatique.' },
-  { q: 'Comment contacter le support ?', a: 'Disponible 24/7 via chat, email ou téléphone.' },
+  { q: 'Comment contacter le support ?', a: 'Ouvrez la rubrique Assistance depuis votre compte pour envoyer une demande.' },
 ]
 
 const stats = [
-  { value: '10k+', label: 'Utilisateurs actifs', icon: Users },
-  { value: '5M+', label: 'Transactions traitées', icon: TrendingUp },
-  { value: '99.9%', label: 'Disponibilité', icon: Zap },
-  { value: '24/7', label: 'Support client', icon: Headphones },
+  { value: 'USD · FC', label: 'Deux devises', icon: Users, color: '#0D5C63' },
+  { value: 'QR', label: 'Paiement commerçant', icon: TrendingUp, color: '#14888F' },
+  { value: 'PIN · 2FA', label: 'Options de protection', icon: Zap, color: '#00A98F' },
+  { value: '3', label: 'Profils disponibles', icon: Headphones, color: '#6366F1' },
 ]
 
 export default function WelcomeScreen() {
@@ -199,19 +199,19 @@ export default function WelcomeScreen() {
             <div className="flex flex-wrap justify-center gap-5 mb-8">
               {[{
                 icon: Shield,
-                label: 'Sécurité de niveau bancaire',
+                label: 'Sessions sécurisées',
                 variant: 'security'
               }, {
                 icon: Award,
-                label: 'Conforme aux normes internationales',
+                label: 'PIN et 2FA disponibles',
                 variant: 'compliance'
               }, {
                 icon: Sparkles,
-                label: 'Communauté vérifiée & certifiée',
+                label: 'Espaces client, agent et commerçant',
                 variant: 'community'
               }, {
                 icon: Settings,
-                label: 'Technologie de pointe',
+                label: 'Paiement par QR code',
                 variant: 'technology'
               }].map((badge, index) => (
                 <motion.div
@@ -287,8 +287,8 @@ export default function WelcomeScreen() {
                   transition={{ duration: 0.5, delay: index * 0.06 }}
                   className="flex flex-col items-center gap-2"
                 >
-                  <div className="flex items-center gap-2 bg-[${stat.icon === Users ? '#0D5C63' : stat.icon === TrendingUp ? '#14888F' : stat.icon === Zap ? '#00D4AA' : '#6366F1'}]/10 rounded-xl p-3">
-                    <stat.icon className="w-6 h-6 text-[${stat.icon === Users ? '#0D5C63' : stat.icon === TrendingUp ? '#14888F' : stat.icon === Zap ? '#00D4AA' : '#6366F1'}]" />
+                  <div className="flex items-center gap-2 rounded-xl p-3" style={{ backgroundColor: `${stat.color}18` }}>
+                    <stat.icon className="w-6 h-6" style={{ color: stat.color }} />
                   </div>
                   <p className="text-3xl font-black text-foreground tracking-tight">{stat.value}</p>
                   <p className="text-xs text-muted-foreground tracking-wider uppercase letter-spacing-[0.5px]">{stat.label}</p>
@@ -474,10 +474,10 @@ export default function WelcomeScreen() {
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
                 {[
-                  { icon: Lock, label: 'SSL/TLS', desc: 'Chiffrement de bout en bout', color: '#00D4AA' },
-                  { icon: Shield, label: 'JWT', desc: 'Authentification sécurisée', color: '#00D4AA' },
-                  { icon: CheckCircle, label: '2FA', desc: 'Authentification à deux facteurs', color: '#00D4AA' },
-                  { icon: Banknote, label: 'Fonds sécurisés', desc: 'Protection des avoirs garantie', color: '#00D4AA' },
+                  { icon: Lock, label: 'HTTPS', desc: 'Connexion chiffrée', color: '#00D4AA' },
+                  { icon: Shield, label: 'Session', desc: 'Cookie inaccessible au JavaScript', color: '#00D4AA' },
+                  { icon: CheckCircle, label: '2FA', desc: 'Vérification en deux étapes activable', color: '#00D4AA' },
+                  { icon: Banknote, label: 'PIN', desc: 'Confirmation dans les parcours concernés', color: '#00D4AA' },
                 ].map((sec, index) => (
                   <motion.div
                     key={index}

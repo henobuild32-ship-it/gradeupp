@@ -458,7 +458,7 @@ async function main() {
         await db.transaction.deleteMany({ where: { OR: [{ senderId: { in: ids } }, { receiverId: { in: ids } }] } }).catch(() => {})
         await db.order.deleteMany({ where: { OR: [{ buyerId: { in: ids } }, { sellerId: { in: ids } }] } }).catch(() => {})
         await db.barterOffer.deleteMany({ where: { offeredBy: { in: ids } } }).catch(() => {})
-        await db.purchase.deleteMany({ where: { userId: { in: ids } } }).catch(() => {})
+        await db.purchase.deleteMany({ where: { buyerId: { in: ids } } }).catch(() => {})
         await db.userSettings.deleteMany({ where: { userId: { in: ids } } }).catch(() => {})
         await db.user.deleteMany({ where: { id: { in: ids } } }).catch(() => {})
       }

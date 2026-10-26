@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireUser } from '@/lib/auth';
+import { encryptKycDocument } from '@/lib/kyc-storage';
 
 // ─── Constants ───────────────────────────────────────────────────────
 
@@ -181,12 +182,7 @@ export async function POST(request: NextRequest) {
 
     const now = new Date();
     const kycData = {
-      name: user.name,
-      phone: user.phone,
-      email: user.email,
       documentType,
-      documentUrl,
-      selfieUrl,
       submittedAt: now.toISOString(),
       verificationMode: 'automatic_document_and_selfie_presence_check',
     };
@@ -199,8 +195,8 @@ export async function POST(request: NextRequest) {
         kycVerifiedAt: null,
         kycRejectReason: null,
         kycDocumentType: documentType,
-        kycDocumentUrl: documentUrl,
-        kycSelfieUrl: selfieUrl,
+        kycDocumentUrl: encryptKycDocument(documentUrl),
+        kycSelfieUrl: encryptKycDocument(selfieUrl),
         kycData: JSON.stringify(kycData),
       },
     });
@@ -209,7 +205,7 @@ export async function POST(request: NextRequest) {
       data: {
         userId,
         action: 'kyc_submitted',
-        details: JSON.stringify(kycData),
+        details: JSON.stringify({ documentType, submittedAt: now.toISOString(), verificationMode: kycData.verificationMode }),
         riskLevel: 'low',
       },
     });
