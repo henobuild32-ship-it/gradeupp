@@ -17,12 +17,14 @@ import {
   Lock,
   DollarSign,
   Smartphone,
-  Users
+  Users,
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAppStore } from '@/lib/store';
 import { toast } from 'sonner';
 import TraitCard from '@/components/trait/TraitCard';
@@ -31,11 +33,15 @@ import { formatLoadCap, formatCardAmount, loadCapFor, relationLabel, type CardCu
 interface CardData {
   id: string;
   cardType: 'USD' | 'FC';
-  cardNumber: string;
-  cvv: string;
+  cardNumber: string | null;
   qrCode: string;
-  expiryDate: string;
+  expiryDate: string | null;
   status: string;
+  holderName?: string | null;
+  jobTitle?: string | null;
+  birthDate?: string | null;
+  holderPhoto?: string | null;
+  requestStatus?: string | null;
   createdAt: string;
 }
 
@@ -50,15 +56,18 @@ interface PendingRequest {
 interface ChildCardData {
   id: string;
   cardType: 'USD' | 'FC';
-  cardNumber: string;
-  cvv: string;
+  cardNumber: string | null;
   qrCode: string;
-  expiryDate: string;
+  expiryDate: string | null;
   status: string;
   createdAt: string;
   holderName?: string | null;
   relation?: string | null;
   maxLoadAmount?: number | null;
+  jobTitle?: string | null;
+  birthDate?: string | null;
+  holderPhoto?: string | null;
+  requestStatus?: string | null;
 }
 
 interface ChildUser {
@@ -115,6 +124,9 @@ export default function CardScreen() {
   const [rechargeCurrency, setRechargeCurrency] = useState<'USD' | 'FC'>('USD');
   const [parentConfirmCode, setParentConfirmCode] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [rotatingCardId, setRotatingCardId] = useState<string | null>(null);
+  const [rotationPin, setRotationPin] = useState('');
+  const [rotatingQr, setRotatingQr] = useState(false);
 
   // Fetch all cards and child profiles
   const fetchAllCardData = async () => {
@@ -222,6 +234,32 @@ export default function CardScreen() {
       toast.error("Erreur réseau");
     } finally {
       setProcessing(false);
+    }
+  };
+
+  const handleRotateQr = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!rotatingCardId || !/^\d{4,8}$/.test(rotationPin)) {
+      toast.error('Entrez votre code PIN de 4 à 8 chiffres');
+      return;
+    }
+    setRotatingQr(true);
+    try {
+      const response = await fetch('/api/cards/qr/rotate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardId: rotatingCardId, pin: rotationPin }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message || 'Renouvellement impossible');
+      setCards(current => current.map(card => card.id === rotatingCardId ? { ...card, qrCode: result.qrCode } : card));
+      setRotationPin('');
+      setRotatingCardId(null);
+      toast.success('QR renouvelé', { description: 'L’ancien code est invalidé. Téléchargez à nouveau la carte si vous l’aviez enregistrée.' });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erreur de connexion');
+    } finally {
+      setRotatingQr(false);
     }
   };
 
@@ -370,7 +408,7 @@ export default function CardScreen() {
                   <div className="space-y-6">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-semibold text-foreground">
-                        Cartes actives ({cards.length})
+                        Mes cartes TRAIT ({cards.length})
                       </p>
                       <Button
                         variant="ghost"
@@ -394,15 +432,20 @@ export default function CardScreen() {
                             <TraitCard
                               cardType={card.cardType}
                               cardNumber={card.cardNumber}
-                              cardHolder={user?.name || 'TITULAIRE'}
+                              cardHolder={card.holderName || user?.name || 'TITULAIRE'}
                               expiryDate={card.expiryDate}
-                              cvv={card.cvv}
                               qrCode={card.qrCode}
+                              jobTitle={card.jobTitle}
+                              birthDate={card.birthDate}
+                              holderPhoto={card.holderPhoto}
+                              cardId={card.id}
+                              requestStatus={card.requestStatus}
                               balance={balance}
                               status={card.status}
                             />
 
                             <div className="mt-3 space-y-2">
+                              {card.status === 'active' ? <>
                               <Button
                                 className="w-full h-11 rounded-xl font-semibold text-sm bg-[#0f1b2d] hover:bg-[#0f1b2d]/90 text-white dark:bg-[#3ddc97] dark:text-[#0f1b2d] dark:hover:bg-[#3ddc97]/90"
                                 onClick={() => navigateTo('virtual-card', { cardId: card.id })}
@@ -424,6 +467,17 @@ export default function CardScreen() {
                                 Paiement par carte {card.cardType}
                                 <ChevronRight className="w-4 h-4 ml-auto" />
                               </Button>
+                              <Button
+                                variant="outline"
+                                className="w-full h-10 rounded-xl font-medium text-xs"
+                                onClick={() => { setRotatingCardId(card.id); setRotationPin(''); }}
+                              >
+                                <RefreshCw className="w-3.5 h-3.5 mr-2" />
+                                Renouveler le QR de paiement
+                              </Button>
+                              </> : <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300">
+                                {card.status === 'pending_retrieval' ? 'Aperçu uniquement. La carte sera activée après validation et remise par l’administration.' : `Carte ${card.status}. Les paiements sont désactivés.`}
+                              </div>}
                             </div>
                           </div>
                         );
@@ -544,10 +598,14 @@ export default function CardScreen() {
                         cardNumber={card.cardNumber}
                         cardHolder={card.holderName || child.name}
                         expiryDate={card.expiryDate}
-                        cvv={card.cvv}
                         qrCode={card.qrCode}
+                                jobTitle={card.jobTitle}
+                                birthDate={card.birthDate}
+                                holderPhoto={card.holderPhoto}
+                                cardId={card.id}
+                                requestStatus={card.requestStatus}
                         balance={card.cardType === 'USD' ? child.realBalance : child.realBalanceFC}
-                        status={card.status === 'pending_retrieval' || card.status === 'delivered' ? 'active' : card.status}
+                                status={card.status}
                       />
                       
                       <div className="flex items-center justify-between bg-muted/40 p-2.5 rounded-xl border border-border/60">
@@ -739,6 +797,40 @@ export default function CardScreen() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <Dialog open={!!rotatingCardId} onOpenChange={(open) => { if (!open && !rotatingQr) { setRotatingCardId(null); setRotationPin(''); } }}>
+        <DialogContent className="mx-4 rounded-2xl sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Renouveler le QR de la carte</DialogTitle>
+            <DialogDescription>
+              L’ancien QR sera invalidé immédiatement. Les paiements resteront soumis à la vérification du montant et à votre confirmation PIN.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleRotateQr} className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="rotate-card-pin" className="text-sm font-medium">Confirmez avec votre code PIN</label>
+              <Input
+                id="rotate-card-pin"
+                type="password"
+                inputMode="numeric"
+                autoComplete="current-password"
+                maxLength={8}
+                value={rotationPin}
+                onChange={(event) => setRotationPin(event.target.value.replace(/\D/g, '').slice(0, 8))}
+                placeholder="4 à 8 chiffres"
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" disabled={rotatingQr} onClick={() => { setRotatingCardId(null); setRotationPin(''); }}>Annuler</Button>
+              <Button type="submit" disabled={rotatingQr || !/^\d{4,8}$/.test(rotationPin)}>
+                {rotatingQr ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                {rotatingQr ? 'Renouvellement…' : 'Renouveler le QR'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

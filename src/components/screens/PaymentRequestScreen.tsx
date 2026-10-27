@@ -14,6 +14,7 @@ import {
   Send,
   Inbox,
   Clock,
+  Receipt,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -45,6 +46,8 @@ interface PaymentRequest {
   amount: number;
   currency: string;
   description: string;
+  invoiceNumber: string | null;
+  transactionId: string | null;
   status: 'pending' | 'accepted' | 'rejected' | 'cancelled';
   createdAt: string;
   requester: { id: string; name: string; phone: string };
@@ -147,9 +150,15 @@ export default function PaymentRequestScreen() {
         const data = await res.json();
         if (data.success) {
           toast.success('Paiement accepté !');
-        } else toast.error(data.message || 'Erreur');
+          navigateTo('receipt', { transactionId: data.transaction.id });
+        } else {
+          toast.error(data.message || 'Erreur');
+          navigateTo('payment-requests');
+        }
+      } catch {
+        toast.error('Erreur de connexion');
         navigateTo('payment-requests');
-      } catch { toast.error('Erreur de connexion'); }
+      }
     });
     navigateTo('pin-verify');
   }
@@ -248,11 +257,19 @@ export default function PaymentRequestScreen() {
                             {req.description && (
                               <p className="text-xs text-muted-foreground mt-0.5">{req.description}</p>
                             )}
+                            {req.invoiceNumber && (
+                              <p className="mt-1 text-[10px] font-semibold text-[#0D5C63]">Pré-facture {req.invoiceNumber}{req.status === 'accepted' ? ' · payée' : ''}</p>
+                            )}
                             <p className="text-[10px] text-muted-foreground mt-1">{new Date(req.createdAt).toLocaleDateString('fr-FR')}</p>
                           </div>
 
-                          {tab === 'received' && req.status === 'pending' && (
-                            <div className="flex gap-2">
+                          <div className="flex flex-wrap justify-end gap-2">
+                            {req.status === 'accepted' && req.transactionId && (
+                              <Button size="sm" variant="outline" className="h-9 rounded-xl text-xs" onClick={() => navigateTo('receipt', { transactionId: req.transactionId })}>
+                                <Receipt className="mr-1 h-3.5 w-3.5" />Voir le reçu
+                              </Button>
+                            )}
+                            {tab === 'received' && req.status === 'pending' && <>
                               <Button size="sm" variant="outline" className="h-9 text-xs rounded-xl text-red-600 border-red-200 hover:bg-red-50"
                                 onClick={() => handleReject(req)}>
                                 <X className="h-3.5 w-3.5 mr-1" />Refuser
@@ -261,8 +278,8 @@ export default function PaymentRequestScreen() {
                                 onClick={() => handleAccept(req)}>
                                 <Check className="h-3.5 w-3.5 mr-1" />Accepter
                               </Button>
-                            </div>
-                          )}
+                            </>}
+                          </div>
                         </div>
                       </CardContent>
                     </Card>

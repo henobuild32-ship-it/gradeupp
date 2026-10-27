@@ -16,10 +16,14 @@ import TraitCard from '@/components/trait/TraitCard';
 interface CardData {
   id: string;
   cardType: 'USD' | 'FC';
-  cardNumber: string;
-  cvv: string;
+  cardNumber: string | null;
   qrCode: string;
-  expiryDate: string;
+  expiryDate: string | null;
+  holderName?: string | null;
+  jobTitle?: string | null;
+  birthDate?: string | null;
+  holderPhoto?: string | null;
+  requestStatus?: string | null;
   status: string;
   createdAt: string;
 }
@@ -78,9 +82,8 @@ export default function CardPaymentScreen() {
     setSelectedCard(cardForCurrency || null);
   }, [selectedCurrency, cards]);
 
-  function formatMaskedNumber(cardNumber: string) {
-    const last4 = cardNumber.slice(-4);
-    return `•••• •••• •••• ${last4}`;
+  function formatMaskedNumber(cardNumber: string | null) {
+    return cardNumber || '•••• •••• ••••';
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -236,10 +239,14 @@ export default function CardPaymentScreen() {
               <TraitCard
                 cardType={selectedCard.cardType}
                 cardNumber={selectedCard.cardNumber}
-                cardHolder={user?.name || 'TITULAIRE'}
+                cardHolder={selectedCard.holderName || user?.name || 'TITULAIRE'}
                 expiryDate={selectedCard.expiryDate}
-                cvv={selectedCard.cvv}
                 qrCode={selectedCard.qrCode}
+                jobTitle={selectedCard.jobTitle}
+                birthDate={selectedCard.birthDate}
+                holderPhoto={selectedCard.holderPhoto}
+                cardId={selectedCard.id}
+                requestStatus={selectedCard.requestStatus}
                 balance={currencyBalance}
                 status={selectedCard.status}
               />

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { toast } from 'sonner';
@@ -38,7 +38,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -77,29 +76,19 @@ interface TraitCardData {
   id: string;
   cardType: string;
   cardNumber: string;
-  cvv: string;
+  last4: string | null;
   qrCode: string;
-  expiryDate: string;
+  expiryDate: string | null;
+  holderName: string | null;
+  jobTitle: string | null;
+  birthDate: string | null;
+  holderPhoto: string | null;
   status: string;
   createdAt: string;
   updatedAt: string;
   user: CardUser;
   request: { id: string; status: string; createdAt: string };
   _count: { payments: number };
-}
-
-interface ClientForCard {
-  id: string;
-  name: string | null;
-  phone: string;
-  email: string | null;
-  photoId: string | null;
-  isVerified: boolean;
-  realBalance: number;
-  realBalanceFC: number;
-  suspended: boolean;
-  createdAt: string;
-  _count: { cards: number };
 }
 
 interface CardStats {
@@ -109,9 +98,10 @@ interface CardStats {
   blocked: number;
   usd: number;
   fc: number;
+  pendingRetrieval?: number;
 }
 
-type FilterTab = 'all' | 'active' | 'suspended' | 'blocked';
+type FilterTab = 'all' | 'active' | 'suspended' | 'blocked' | 'pending_retrieval';
 
 // ─── Helpers ──────────────────────────────────────────────────────────
 
@@ -156,6 +146,8 @@ function getStatusBadge(status: string) {
           Bloquée
         </Badge>
       );
+    case 'pending_retrieval':
+      return <Badge className="text-[10px] bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/40 dark:text-amber-400">Retrait requis</Badge>;
     default:
       return null;
   }
@@ -179,7 +171,7 @@ function getCardTypeBadge(cardType: string) {
 // ─── Component ────────────────────────────────────────────────────────
 
 export default function AdminCardsScreen() {
-  const { goBack, admin } = useAppStore();
+  const { goBack, navigateTo, admin } = useAppStore();
 
   // ─── State ───────────────────────────────────────────────────────
   const [cards, setCards] = useState<TraitCardData[]>([]);
@@ -189,22 +181,9 @@ export default function AdminCardsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
 
-  // Generate card dialog
-  const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
-  const [clients, setClients] = useState<ClientForCard[]>([]);
-  const [clientsLoading, setClientsLoading] = useState(false);
-  const [selectedClient, setSelectedClient] = useState<ClientForCard | null>(null);
-  const [selectedCardType, setSelectedCardType] = useState<'USD' | 'FC'>('USD');
-  const [clientSearch, setClientSearch] = useState('');
-  const [generating, setGenerating] = useState(false);
-  const [generatedCard, setGeneratedCard] = useState<any>(null);
-
   // Card detail dialog
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedCard, setSelectedCard] = useState<TraitCardData | null>(null);
-
-  // Print ref
-  const printRef = useRef<HTMLDivElement>(null);
 
   // ─── Fetch cards ─────────────────────────────────────────────────
 
@@ -234,32 +213,6 @@ export default function AdminCardsScreen() {
     fetchCards();
   }, [fetchCards]);
 
-  // ─── Fetch clients ──────────────────────────────────────────────
-
-  async function fetchClients() {
-    setClientsLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (clientSearch.trim()) params.set('search', clientSearch.trim());
-
-      const res = await fetch(`/api/admin/clients?${params.toString()}`);
-      const data = await res.json();
-      if (data.success) {
-        setClients(data.clients || []);
-      }
-    } catch {
-      toast.error('Erreur de connexion');
-    } finally {
-      setClientsLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    if (generateDialogOpen) {
-      fetchClients();
-    }
-  }, [generateDialogOpen, clientSearch]);
-
   // ─── Filtered cards ─────────────────────────────────────────────
 
   const filteredCards = activeTab === 'all'
@@ -270,42 +223,6 @@ export default function AdminCardsScreen() {
 
   function setActionLoadingState(id: string, isLoading: boolean) {
     setActionLoading((prev) => ({ ...prev, [id]: isLoading }));
-  }
-
-  // ─── Generate card ──────────────────────────────────────────────
-
-  async function handleGenerateCard() {
-    if (!admin?.id || !selectedClient) {
-      toast.error('Sélectionnez un client');
-      return;
-    }
-
-    setGenerating(true);
-    try {
-      const res = await fetch('/api/cards/admin/cards', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          adminId: admin.id,
-          userId: selectedClient.id,
-          cardType: selectedCardType,
-          action: 'generate',
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success('Carte générée avec succès !');
-        setGeneratedCard(data.card);
-        fetchCards();
-        fetchClients();
-      } else {
-        toast.error(data.message || 'Erreur lors de la génération');
-      }
-    } catch {
-      toast.error('Erreur de connexion');
-    } finally {
-      setGenerating(false);
-    }
   }
 
   // ─── Suspend / Activate / Block card ────────────────────────────
@@ -364,6 +281,21 @@ export default function AdminCardsScreen() {
     }
   }
 
+  async function handleConfirmDelivery(card: TraitCardData) {
+    if (!admin?.id) return;
+    setActionLoadingState(card.id, true);
+    try {
+      const res = await fetch('/api/cards/admin/requests', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminId: admin.id, requestId: card.request.id, action: 'confirm-delivery' }),
+      });
+      const data = await res.json();
+      if (data.success) { toast.success('Remise confirmée, carte activée'); await fetchCards(); }
+      else toast.error(data.message || 'Erreur lors de la remise');
+    } catch { toast.error('Erreur réseau'); }
+    finally { setActionLoadingState(card.id, false); }
+  }
+
   // ─── Send card info ─────────────────────────────────────────────
 
   async function handleSendCardInfo(cardId: string) {
@@ -396,286 +328,20 @@ export default function AdminCardsScreen() {
   // ─── Print card ─────────────────────────────────────────────────
 
   function handlePrintCard(card: TraitCardData) {
-    setSelectedCard(card);
-    setTimeout(() => {
-      const printWindow = window.open('', '_blank');
-      if (!printWindow) {
-        toast.error('Impossible d\'ouvrir la fenêtre d\'impression');
-        return;
-      }
-
-    const isUSD = card.cardType === 'USD';
-    const accentColor = isUSD ? '#00C9A7' : '#FF6B6B';
-    const accentLight = isUSD ? '#00C9A730' : '#FF6B6B30';
-    const accentBorder = isUSD ? '#00C9A740' : '#FF6B6B40';
-    const bgColor = isUSD
-      ? 'linear-gradient(135deg, #0B0E1A 0%, #121A3A 30%, #0D1528 60%, #081020 100%)'
-      : 'linear-gradient(135deg, #1A0A10 0%, #2D1020 30%, #200810 60%, #180510 100%)';
-    const formattedNumber = card.cardNumber.replace(/(.{4})/g, '$1 ').trim();
-    const cardHolderName = card.user?.name || 'TITULAIRE';
-
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Carte TRAIT - ${card.cardNumber}</title>
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            background: #f8fafc;
-          }
-          .card-container {
-            width: 430px;
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
-            background: ${bgColor};
-            color: white;
-            position: relative;
-            border: 1px solid ${accentBorder};
-          }
-          .card-grid {
-            position: absolute;
-            inset: 0;
-            opacity: 0.03;
-            background-image: linear-gradient(${accentColor} 1px, transparent 1px),
-                              linear-gradient(90deg, ${accentColor} 1px, transparent 1px);
-            background-size: 40px 40px;
-          }
-          .card-glow-1 {
-            position: absolute;
-            top: -80px; right: -80px;
-            width: 240px; height: 240px;
-            border-radius: 50%;
-            background: radial-gradient(circle, ${accentColor}, transparent 70%);
-            opacity: 0.15;
-          }
-          .card-glow-2 {
-            position: absolute;
-            bottom: -64px; left: -64px;
-            width: 192px; height: 192px;
-            border-radius: 50%;
-            background: radial-gradient(circle, ${accentColor}, transparent 70%);
-            opacity: 0.08;
-          }
-          .card-content {
-            position: relative;
-            z-index: 1;
-            padding: 28px;
-          }
-          .card-top {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 28px;
-          }
-          .card-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-          }
-          .card-logo {
-            width: 36px; height: 36px;
-            border-radius: 10px;
-            background: ${accentLight};
-            border: 1px solid ${accentBorder};
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-          }
-          .card-logo img { width: 28px; height: 28px; filter: brightness(0) invert(1); }
-          .card-brand { font-size: 15px; font-weight: 900; letter-spacing: 3px; }
-          .card-sub { font-size: 7px; color: rgba(255,255,255,0.3); font-weight: 500; letter-spacing: 2px; margin-top: 2px; }
-          .card-currency {
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 1.5px;
-            background: ${accentLight};
-            color: ${accentColor};
-            border: 1px solid ${accentBorder};
-          }
-          .card-number-label { font-size: 9px; color: rgba(255,255,255,0.3); font-weight: 600; letter-spacing: 2px; margin-bottom: 6px; }
-          .card-number { font-size: 22px; font-family: 'Courier New', monospace; font-weight: 700; letter-spacing: 4px; margin-bottom: 24px; }
-          .card-bottom { display: flex; align-items: flex-end; justify-content: space-between; }
-          .card-name-label { font-size: 8px; color: rgba(255,255,255,0.3); font-weight: 600; letter-spacing: 1.5px; margin-bottom: 4px; }
-          .card-name { font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
-          .card-qr {
-            width: 72px; height: 72px;
-            border-radius: 12px;
-            background: rgba(255,255,255,0.95);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 4px;
-          }
-          .card-qr img { width: 56px; height: 56px; border-radius: 4px; }
-          .card-footer {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-top: 16px;
-            padding-top: 16px;
-            border-top: 1px solid rgba(255,255,255,0.06);
-          }
-          .expiry-label { font-size: 8px; color: rgba(255,255,255,0.3); font-weight: 600; letter-spacing: 1.5px); }
-          .expiry-value { font-size: 14px; font-family: 'Courier New', monospace; font-weight: 700; letter-spacing: 2px; }
-          .security-badge {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-          }
-          .security-text { font-size: 8px; font-weight: 700; letter-spacing: 1.5px; color: ${accentColor}; opacity: 0.6; }
-          .back-section {
-            margin-top: 20px;
-            padding: 20px 28px;
-            background: ${isUSD ? '#0D1528' : '#200810'};
-            border-radius: 12px;
-            color: white;
-            border: 1px solid ${accentBorder};
-          }
-          .back-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 14px;
-          }
-          .back-logo {
-            width: 36px; height: 36px;
-            border-radius: 10px;
-            background: ${accentLight};
-            border: 1px solid ${accentBorder};
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-          }
-          .back-logo img { width: 28px; height: 28px; filter: brightness(0) invert(1); }
-          .back-brand { font-size: 15px; font-weight: 900; letter-spacing: 3px; }
-          .back-ownership { font-size: 8px; color: rgba(255,255,255,0.4); font-style: italic; line-height: 1.6; margin-bottom: 14px; padding-left: 4px; }
-          .back-ownership strong { color: rgba(255,255,255,0.7); font-weight: 600; font-style: normal; }
-          .back-signature {
-            height: 32px;
-            border-radius: 6px;
-            background: linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.1), rgba(255,255,255,0.06));
-            border: 1px solid rgba(255,255,255,0.08);
-            display: flex;
-            align-items: center;
-            padding: 0 12px;
-            margin-bottom: 14px;
-          }
-          .back-signature-text { font-size: 10px; color: rgba(255,255,255,0.3); font-family: monospace; font-style: italic; letter-spacing: 1px; }
-          .back-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
-          .back-label { font-size: 10px; color: rgba(255,255,255,0.5); }
-          .back-value { font-size: 10px; font-weight: 600; }
-          .back-cvv { font-size: 20px; font-family: 'Courier New', monospace; font-weight: 700; letter-spacing: 5px; }
-          .print-footer {
-            text-align: center;
-            margin-top: 16px;
-            font-size: 10px;
-            color: #94a3b8;
-          }
-          @media print {
-            body { background: white; }
-          }
-        </style>
-      </head>
-      <body>
-        <div>
-          <div class="card-container">
-            <div class="card-grid"></div>
-            <div class="card-glow-1"></div>
-            <div class="card-glow-2"></div>
-            <div class="card-content">
-              <div class="card-top">
-                <div class="card-header">
-                  <div class="card-logo">
-                    <img src="/trait-logo.png" alt="TRAIT" />
-                  </div>
-                  <div>
-                    <div class="card-brand">TRAIT</div>
-                    <div class="card-sub">CARTE NUMÉRIQUE</div>
-                  </div>
-                </div>
-                <div class="card-currency">${card.cardType}</div>
-              </div>
-              <div class="card-number-label">NUMÉRO DE CARTE</div>
-              <div class="card-number">${formattedNumber}</div>
-              <div class="card-bottom">
-                <div>
-                  <div class="card-name-label">TITULAIRE</div>
-                  <div class="card-name">${cardHolderName}</div>
-                </div>
-                <div class="card-qr">
-                  <img src="https://api.qrserver.com/v1/create-qr-code/?size=112x112&data=${encodeURIComponent(card.qrCode)}&bgcolor=ffffff&color=${encodeURIComponent(isUSD ? '0B0E1A' : '1A0A10')}&format=png" alt="QR Code" />
-                </div>
-              </div>
-              <div class="card-footer">
-                <div>
-                  <div class="expiry-label">EXPIRE</div>
-                  <div class="expiry-value">${card.expiryDate}</div>
-                </div>
-                <div class="security-badge">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${accentColor}" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-                  <span class="security-text">SÉCURISÉE PAR TRAIT</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="back-section">
-            <div class="back-header">
-              <div class="back-logo">
-                <img src="/trait-logo.png" alt="TRAIT" />
-              </div>
-              <div class="back-brand">TRAIT</div>
-            </div>
-            <div class="back-ownership">
-              Cette carte est la propriété de <strong>${cardHolderName}</strong>. Si vous la trouvez, veuillez la retourner.
-            </div>
-            <div class="back-signature">
-              <span class="back-signature-text">TRAIT CARD</span>
-            </div>
-            <div class="back-row">
-              <span class="back-label">Code de sécurité (CCV)</span>
-              <span class="back-cvv">${card.cvv}</span>
-            </div>
-            <div class="back-row">
-              <span class="back-label">Date d'expiration</span>
-              <span class="back-value">${card.expiryDate}</span>
-            </div>
-            <div class="back-row">
-              <span class="back-label">Type de carte</span>
-              <span class="back-value">TRAIT ${card.cardType}</span>
-            </div>
-            <div class="back-row">
-              <span class="back-label">ID Carte</span>
-              <span class="back-value">${card.id.slice(0, 10).toUpperCase()}</span>
-            </div>
-          </div>
-          <div class="print-footer">
-            TRAIT – Carte numérique sécurisée | Imprimé le ${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-          </div>
-        </div>
-        <script>
-          window.onload = function() {
-            window.print();
-          };
-        </script>
-      </body>
-      </html>
-    `);
-    printWindow.document.close();
-    }, 100);
+    const popup = window.open('', '_blank');
+    if (!popup) { toast.error('Autorisez la fenêtre d’impression pour continuer'); return; }
+    const escapeHtml = (value: string) => value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] || char));
+    const holder = escapeHtml(card.holderName || card.user?.name || 'TITULAIRE');
+    const job = escapeHtml(card.jobTitle || 'Membre TRAIT');
+    const birth = card.birthDate ? new Date(card.birthDate).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', timeZone: 'UTC' }) + '/XXXX' : '••/••/XXXX';
+    const photo = card.holderPhoto ? `<img class="portrait" src="${card.holderPhoto}" alt="Portrait" />` : '<div class="portrait placeholder">Portrait</div>';
+    const qr = document.getElementById(`trait-card-qr-${card.id}`)?.querySelector('svg')?.outerHTML || '<div class="qr-empty">QR indisponible</div>';
+    const ref = card.last4 || card.id.slice(-4).toUpperCase();
+    popup.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Carte TRAIT — ${holder}</title><style>
+      *{box-sizing:border-box}body{margin:0;padding:32px;background:#eef2f7;font-family:Arial,sans-serif;color:#fff}.sheet{max-width:760px;margin:auto;display:grid;gap:22px}.side{position:relative;overflow:hidden;aspect-ratio:1.586/1;border:1px solid #ffffff30;border-radius:22px;padding:28px;background:linear-gradient(135deg,#102b35,#102c45 55%,#111827);box-shadow:0 20px 45px #0f172a30}.side:after{content:"";position:absolute;width:270px;height:270px;border-radius:50%;right:-90px;top:-120px;background:#5eead4;opacity:.13;filter:blur(12px)}.top,.brand{display:flex;align-items:center;gap:12px}.top{position:relative;z-index:1;justify-content:space-between}.brand strong{letter-spacing:5px;font-size:23px}.brand small{display:block;font-size:8px;letter-spacing:2px;color:#ffffff88;margin-top:3px}.type{border:1px solid #ffffff44;border-radius:18px;padding:7px 14px;font-size:11px;font-weight:bold}.front-body{position:absolute;z-index:1;left:28px;right:28px;bottom:28px;display:grid;grid-template-columns:125px 1fr;gap:22px;align-items:end}.portrait{width:125px;height:154px;object-fit:cover;border-radius:14px;border:1px solid #ffffff77;background:#ffffff16}.placeholder{display:grid;place-items:center;color:#ffffff77;font-size:11px}.label{font-size:8px;letter-spacing:2px;color:#ffffff88;margin-bottom:4px}.name{font-size:21px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;margin-bottom:13px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.value{font-size:12px;font-weight:bold}.meta{position:absolute;bottom:12px;right:25px;font-size:8px;letter-spacing:1px;color:#ffffff88}.back{background:linear-gradient(145deg,#111827,#172637 60%,#0a111b)}.stripe{position:absolute;top:28%;left:0;right:0;height:18%;background:#05080e}.back-body{position:absolute;z-index:1;inset:26px;display:flex;justify-content:space-between;align-items:flex-end}.backcopy{max-width:66%}.backcopy p{font-size:9px;line-height:1.6;color:#ffffff9c}.owned{font-size:16px;font-weight:bold;text-transform:uppercase}.qr{width:105px;height:105px;background:#fff;padding:7px;border-radius:12px;display:grid;place-items:center}.qr svg{width:100%;height:100%}.qr-empty{color:#475569;font-size:8px;text-align:center}.footer{font-size:8px;color:#ffffff70;letter-spacing:1px;margin-top:10px}@media print{body{padding:0;background:#fff}.sheet{gap:12mm}.side{box-shadow:none;break-inside:avoid}}
+      </style></head><body><main class="sheet"><section class="side"><div class="top"><div class="brand"><strong>TRAIT</strong><small>IDENTITÉ & PORTEFEUILLE</small></div><span class="type">${escapeHtml(card.cardType)}</span></div><div class="front-body">${photo}<div><div class="label">NOM DU TITULAIRE</div><div class="name">${holder}</div><div class="grid"><div><div class="label">POSTE / RÔLE</div><div class="value">${job}</div></div><div><div class="label">NAISSANCE</div><div class="value">${birth}</div></div><div><div class="label">IDENTIFIANT</div><div class="value">•••• ${escapeHtml(ref)}</div></div><div><div class="label">STATUT</div><div class="value">${escapeHtml(card.status.toUpperCase())}</div></div></div></div></div><div class="meta">SANS CVV NI NUMÉRO BANCAIRE</div></section><section class="side back"><div class="stripe"></div><div class="top"><div class="brand"><strong>TRAIT</strong><small>CARTE D’IDENTITÉ & PORTEFEUILLE</small></div><span class="type">${escapeHtml(card.cardType)}</span></div><div class="back-body"><div class="backcopy"><div class="label">CARTE PERSONNELLE — PROPRIÉTÉ DE</div><div class="owned">${holder}</div><p>Cette carte reste la propriété de TRAIT et de son titulaire. En cas de perte, contactez l’administration. Le QR identifie uniquement le portefeuille et ne contient aucun secret de paiement.</p><div class="footer">TRAIT · Portefeuille interne</div></div><div class="qr">${qr}</div></div></section></main><script>window.onload=()=>window.print()</script></body></html>`);
+    popup.document.close();
   }
-
   // ─── Open card detail ───────────────────────────────────────────
 
   function openCardDetail(card: TraitCardData) {
@@ -720,15 +386,10 @@ export default function AdminCardsScreen() {
             <Button
               size="sm"
               className="h-9 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-full px-4 gap-1.5"
-              onClick={() => {
-                setSelectedClient(null);
-                setGeneratedCard(null);
-                setSelectedCardType('USD');
-                setGenerateDialogOpen(true);
-              }}
+              onClick={() => navigateTo('admin-card-requests')}
             >
               <Plus className="h-3.5 w-3.5" />
-              Générer
+              Demandes
             </Button>
           </div>
         </div>
@@ -750,6 +411,7 @@ export default function AdminCardsScreen() {
               { label: 'Bloquées', value: stats.blocked, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-100 dark:bg-red-900/40', icon: Ban },
               { label: 'USD', value: stats.usd, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/30', icon: Wallet },
               { label: 'FC', value: stats.fc, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/30', icon: Wallet },
+              { label: 'Retrait requis', value: stats.pendingRetrieval || 0, color: 'text-amber-700 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/30', icon: Clock },
             ].map((stat, i) => {
               const Icon = stat.icon;
               return (
@@ -792,7 +454,7 @@ export default function AdminCardsScreen() {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Rechercher par nom, téléphone ou numéro..."
+            placeholder="Rechercher par titulaire, téléphone ou référence..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9 h-10 rounded-xl text-sm bg-muted/50 border-border"
@@ -801,7 +463,7 @@ export default function AdminCardsScreen() {
 
         {/* ─── Filter Tabs ────────────────────────────────────────── */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as FilterTab)}>
-          <TabsList className="w-full grid grid-cols-4">
+          <TabsList className="w-full grid grid-cols-5">
             <TabsTrigger value="all" className="text-xs gap-1">
               Tous
               {stats && stats.total > 0 && (
@@ -822,10 +484,14 @@ export default function AdminCardsScreen() {
               <Ban className="h-3 w-3" />
               Bloquées
             </TabsTrigger>
+            <TabsTrigger value="pending_retrieval" className="text-[10px] gap-1 px-1">
+              Retrait
+              {stats?.pendingRetrieval ? <span className="ml-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-800">{stats.pendingRetrieval}</span> : null}
+            </TabsTrigger>
           </TabsList>
 
           {/* ─── Cards List ───────────────────────────────────────── */}
-          {['all', 'active', 'suspended', 'blocked'].map((tab) => (
+          {['all', 'active', 'suspended', 'blocked', 'pending_retrieval'].map((tab) => (
             <TabsContent key={tab} value={tab} className="mt-3">
               {loading ? (
                 <div className="space-y-3">
@@ -903,7 +569,7 @@ export default function AdminCardsScreen() {
                                   {getStatusBadge(card.status)}
                                 </div>
                                 <p className="text-xs font-mono text-muted-foreground mt-0.5 tracking-wider">
-                                  {card.cardNumber.replace(/(.{4})/g, '$1 ').trim()}
+                                  {card.cardNumber}
                                 </p>
                               </div>
                             </div>
@@ -916,7 +582,7 @@ export default function AdminCardsScreen() {
                               </div>
                               <div className="flex items-center gap-1.5">
                                 <Calendar className="h-3 w-3 shrink-0" />
-                                <span>Exp: {card.expiryDate}</span>
+                                <span>{card.status === 'pending_retrieval' ? 'À retirer après validation' : 'Portefeuille TRAIT'}</span>
                               </div>
                               {card.user?.email && (
                                 <div className="flex items-center gap-1.5">
@@ -1011,6 +677,12 @@ export default function AdminCardsScreen() {
                                   </Button>
                                 </>
                               )}
+                              {card.status === 'pending_retrieval' && card.request.status === 'approved' && (
+                                <Button size="sm" className="h-8 px-2.5 text-[11px] gap-1 bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => handleConfirmDelivery(card)} disabled={actionLoading[card.id]}>
+                                  {actionLoading[card.id] ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                                  Confirmer la remise
+                                </Button>
+                              )}
 
                               {(card.status === 'suspended' || card.status === 'blocked') && (
                                 <Button
@@ -1041,287 +713,6 @@ export default function AdminCardsScreen() {
         </Tabs>
       </div>
 
-      {/* ─── Generate Card Dialog ────────────────────────────────── */}
-      <Dialog open={generateDialogOpen} onOpenChange={setGenerateDialogOpen}>
-        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-lg">
-              <CreditCard className="h-5 w-5 text-emerald-600" />
-              Générer une carte TRAIT
-            </DialogTitle>
-            <DialogDescription>
-              Sélectionnez un client et le type de carte à générer
-            </DialogDescription>
-          </DialogHeader>
-
-          {generatedCard ? (
-            /* ─── Generated Card Preview ──────────────────────────── */
-            <div className="space-y-4 py-2">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.4, type: 'spring' }}
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <BadgeCheck className="h-5 w-5 text-emerald-600" />
-                  <p className="text-sm font-semibold text-emerald-600">
-                    Carte générée avec succès !
-                  </p>
-                </div>
-
-                <TraitCard
-                  cardType={generatedCard.cardType as 'USD' | 'FC'}
-                  cardNumber={generatedCard.cardNumber}
-                  cardHolder={selectedClient?.name || 'TITULAIRE'}
-                  expiryDate={generatedCard.expiryDate}
-                  cvv={generatedCard.cvv}
-                  qrCode={generatedCard.qrCode}
-                  balance={generatedCard.cardType === 'USD'
-                    ? (selectedClient?.realBalance ?? 0)
-                    : (selectedClient?.realBalanceFC ?? 0)
-                  }
-                  status="active"
-                />
-              </motion.div>
-
-              <Card className="bg-muted/30 border-dashed">
-                <CardContent className="p-3">
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div>
-                      <p className="text-muted-foreground">Numéro</p>
-                      <p className="font-mono font-semibold">{generatedCard.cardNumber}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">CCV</p>
-                      <p className="font-mono font-semibold">{generatedCard.cvv}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Expiration</p>
-                      <p className="font-semibold">{generatedCard.expiryDate}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">QR Code</p>
-                      <p className="font-mono text-[10px] truncate">{generatedCard.qrCode}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/30">
-                <Send className="h-4 w-4 text-emerald-600 shrink-0" />
-                <p className="text-xs text-emerald-700 dark:text-emerald-400">
-                  Les informations de la carte ont été automatiquement envoyées au client via notifications et messages.
-                </p>
-              </div>
-            </div>
-          ) : (
-            /* ─── Client Selection ────────────────────────────────── */
-            <div className="space-y-4 py-2">
-              {/* Card type selection */}
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">Type de carte</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => setSelectedCardType('USD')}
-                    className={`p-3 rounded-xl border-2 transition-all text-center ${
-                      selectedCardType === 'USD'
-                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
-                        : 'border-border hover:border-emerald-300'
-                    }`}
-                  >
-                    <p className="text-sm font-bold text-emerald-600">USD</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">Dollar US</p>
-                  </button>
-                  <button
-                    onClick={() => setSelectedCardType('FC')}
-                    className={`p-3 rounded-xl border-2 transition-all text-center ${
-                      selectedCardType === 'FC'
-                        ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
-                        : 'border-border hover:border-red-300'
-                    }`}
-                  >
-                    <p className="text-sm font-bold text-red-600">FC</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">Franc Congolais</p>
-                  </button>
-                </div>
-              </div>
-
-              {/* Client search */}
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">Rechercher un client</Label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Nom, téléphone ou email..."
-                    value={clientSearch}
-                    onChange={(e) => setClientSearch(e.target.value)}
-                    className="pl-9 h-10 rounded-xl text-sm"
-                  />
-                </div>
-              </div>
-
-              {/* Client list */}
-              <div className="space-y-1.5 max-h-60 overflow-y-auto">
-                {clientsLoading ? (
-                  <div className="space-y-2 py-4">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                      <div key={i} className="flex items-center gap-3 p-2">
-                        <Skeleton className="h-9 w-9 rounded-full" />
-                        <div className="flex-1 space-y-1">
-                          <Skeleton className="h-4 w-28" />
-                          <Skeleton className="h-3 w-36" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : clients.length === 0 ? (
-                  <p className="text-center text-sm text-muted-foreground py-6">
-                    Aucun client trouvé
-                  </p>
-                ) : (
-                  clients.map((client) => {
-                    const isSelected = selectedClient?.id === client.id;
-                    return (
-                      <button
-                        key={client.id}
-                        onClick={() => setSelectedClient(client)}
-                        className={`w-full flex items-center gap-3 p-2.5 rounded-xl border-2 transition-all text-left ${
-                          isSelected
-                            ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
-                            : 'border-transparent hover:bg-muted/50 hover:border-border'
-                        }`}
-                      >
-                        {client.photoId ? (
-                          <div className="h-9 w-9 rounded-full overflow-hidden shrink-0 border border-border">
-                            <Image
-                              src={client.photoId}
-                              alt={client.name || 'Client'}
-                              width={36}
-                              height={36}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        ) : (
-                          <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center shrink-0">
-                            <User className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-semibold truncate">
-                              {client.name || 'Sans nom'}
-                            </p>
-                            {client.isVerified && (
-                              <BadgeCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {client.phone}
-                            {client.email && ` • ${client.email}`}
-                          </p>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <p className="text-[10px] text-muted-foreground">
-                            {client._count.cards} carte(s)
-                          </p>
-                          {client.suspended && (
-                            <Badge className="text-[9px] bg-red-100 text-red-600 mt-0.5">Suspendu</Badge>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-
-              {/* Selected client details */}
-              {selectedClient && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="p-3 rounded-xl bg-muted/50 border border-border"
-                >
-                  <p className="text-xs font-semibold mb-2 text-foreground">Informations du client</p>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1.5">
-                      <User className="h-3 w-3" />
-                      <span className="truncate">{selectedClient.name || '-'}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Phone className="h-3 w-3" />
-                      <span className="truncate">{selectedClient.phone}</span>
-                    </div>
-                    {selectedClient.email && (
-                      <div className="flex items-center gap-1.5 col-span-2">
-                        <Mail className="h-3 w-3" />
-                        <span className="truncate">{selectedClient.email}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-1.5">
-                      <Wallet className="h-3 w-3 text-emerald-600" />
-                      <span className="font-semibold text-emerald-600">
-                        ${selectedClient.realBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Wallet className="h-3 w-3 text-red-600" />
-                      <span className="font-semibold text-red-600">
-                        {selectedClient.realBalanceFC.toLocaleString('en-US', { minimumFractionDigits: 2 })} FC
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Calendar className="h-3 w-3" />
-                      <span>Inscrit le {formatDateShort(selectedClient.createdAt)}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <CreditCard className="h-3 w-3" />
-                      <span>{selectedClient._count.cards} carte(s)</span>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </div>
-          )}
-
-          <DialogFooter>
-            {!generatedCard ? (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={() => setGenerateDialogOpen(false)}
-                >
-                  Annuler
-                </Button>
-                <Button
-                  onClick={handleGenerateCard}
-                  disabled={!selectedClient || generating || selectedClient.suspended}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                >
-                  {generating ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Génération...
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Générer la carte {selectedCardType}
-                    </>
-                  )}
-                </Button>
-              </>
-            ) : (
-              <Button
-                onClick={() => setGenerateDialogOpen(false)}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
-              >
-                Terminer
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* ─── Card Detail Dialog ──────────────────────────────────── */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
@@ -1333,7 +724,7 @@ export default function AdminCardsScreen() {
                   Détails de la carte
                 </DialogTitle>
                 <DialogDescription>
-                  {selectedCard.cardNumber.replace(/(.{4})/g, '$1 ').trim()}
+                  {selectedCard.cardNumber}
                 </DialogDescription>
               </DialogHeader>
 
@@ -1342,10 +733,14 @@ export default function AdminCardsScreen() {
                 <TraitCard
                   cardType={selectedCard.cardType as 'USD' | 'FC'}
                   cardNumber={selectedCard.cardNumber}
-                  cardHolder={selectedCard.user?.name || 'TITULAIRE'}
+                  cardHolder={selectedCard.holderName || selectedCard.user?.name || 'TITULAIRE'}
                   expiryDate={selectedCard.expiryDate}
-                  cvv={selectedCard.cvv}
                   qrCode={selectedCard.qrCode}
+                  jobTitle={selectedCard.jobTitle}
+                  birthDate={selectedCard.birthDate ? new Date(selectedCard.birthDate).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', timeZone: 'UTC' }) + '/XXXX' : null}
+                  holderPhoto={selectedCard.holderPhoto}
+                  cardId={selectedCard.id}
+                  requestStatus={selectedCard.request.status}
                   balance={selectedCard.cardType === 'USD'
                     ? (selectedCard.user?.realBalance ?? 0)
                     : (selectedCard.user?.realBalanceFC ?? 0)
@@ -1405,7 +800,7 @@ export default function AdminCardsScreen() {
                     </p>
                     <div className="grid grid-cols-2 gap-3 text-xs">
                       <div>
-                        <p className="text-muted-foreground">Numéro de carte</p>
+                        <p className="text-muted-foreground">Référence de portefeuille</p>
                         <p className="font-mono font-semibold">{selectedCard.cardNumber}</p>
                       </div>
                       <div>
@@ -1413,13 +808,10 @@ export default function AdminCardsScreen() {
                         <p className="font-semibold">{selectedCard.cardType}</p>
                       </div>
                       <div>
-                        <p className="text-muted-foreground">CCV</p>
-                        <p className="font-mono font-semibold">{selectedCard.cvv}</p>
+                        <p className="text-muted-foreground">Poste / rôle</p>
+                        <p className="font-semibold">{selectedCard.jobTitle || '—'}</p>
                       </div>
-                      <div>
-                        <p className="text-muted-foreground">Expiration</p>
-                        <p className="font-semibold">{selectedCard.expiryDate}</p>
-                      </div>
+                      <div><p className="text-muted-foreground">Naissance (administration)</p><p className="font-semibold">{selectedCard.birthDate ? new Date(selectedCard.birthDate).toLocaleDateString('fr-FR', { timeZone: 'UTC' }) : '—'}</p></div>
                       <div>
                         <p className="text-muted-foreground">ID Carte</p>
                         <p className="font-mono text-[10px] truncate">{selectedCard.id}</p>
@@ -1499,7 +891,6 @@ export default function AdminCardsScreen() {
         </DialogContent>
       </Dialog>
 
-      <div ref={printRef} />
     </div>
   );
 }

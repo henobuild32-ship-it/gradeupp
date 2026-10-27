@@ -1,28 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { hashPassword } from '@/lib/auth'
+import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit'
+import { z } from 'zod'
+
+const SellerRegisterSchema = z.object({
+  phone: z.string().regex(/^\+[1-9]\d{7,19}$/, 'Numéro de téléphone invalide'),
+  name: z.string().trim().min(1, 'Le nom complet est obligatoire').max(100),
+  email: z.string().trim().email('Adresse email invalide').max(254),
+  city: z.string().trim().min(1, 'La ville est obligatoire').max(100),
+  address: z.string().trim().max(200).optional().default(''),
+  businessName: z.string().trim().min(1, 'Le nom du commerce est obligatoire').max(120),
+  businessType: z.string().trim().min(1, 'Le type de commerce est obligatoire').max(80),
+  location: z.string().trim().min(1, 'La localisation est obligatoire').max(200),
+  password: z.string().min(8, 'Le mot de passe doit contenir au moins 8 caractères').max(128),
+})
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { phone, name, email, city, address, businessName, businessType, location, password } = body as {
-      phone: string
-      name: string
-      email?: string
-      city?: string
-      address?: string
-      businessName: string
-      businessType: string
-      location: string
-      password: string
-    }
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+    const rl = checkRateLimit({ windowMs: 60000, maxRequests: 3, key: `seller-register:${ip}` })
+    if (!rl.allowed) return rateLimitResponse(rl.resetIn)
 
-    if (!phone || !name || !businessName || !businessType || !location || !password) {
+    const body = await request.json()
+    const validation = SellerRegisterSchema.safeParse(body)
+    if (!validation.success) {
       return NextResponse.json(
-        { success: false, message: 'Tous les champs requis doivent être remplis' },
+        { success: false, message: validation.error.issues[0]?.message || 'Vérifiez les informations saisies' },
         { status: 400 }
       )
     }
+    const { phone, name, email, city, address, businessName, businessType, location, password } = validation.data
 
     const existingUser = await db.user.findUnique({
       where: { phone },
@@ -53,9 +61,9 @@ export async function POST(request: NextRequest) {
       data: {
         phone,
         name,
-        email: email?.trim().toLowerCase() || null,
-        city: city?.trim() || null,
-        address: address?.trim() || null,
+        email: email.toLowerCase(),
+        city,
+        address: address || null,
         country: 'CD',
         businessName,
         businessType,

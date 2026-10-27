@@ -18,8 +18,8 @@ import { useTranslation } from '@/lib/i18n';
 /**
  * VirtualCard — écran carte Trait (ratio ID-1 85,6 × 54 mm).
  *
- * SÉCURITÉ (maquette / démo) :
- * - Jamais de PAN/CVV réel. Mode SPÉCIMEN = 0000 0000 0000 0000.
+ * SÉCURITÉ :
+ * - Jamais de PAN/CVV réel ni de numéro bancaire fictif.
  * - En production, le PAN complet vient uniquement d'un SDK émetteur
  *   (panneau sécurisé) — jamais stocké ni loggé côté app Trait.
  */
@@ -32,6 +32,7 @@ export type VirtualCardState =
   | 'blocked';     // 4. Bloquée / perdue
 
 export interface VirtualCardData {
+  id?: string;
   /** Derniers 4 chiffres uniquement (ou '0000' en spécimen). */
   last4: string;
   /** Masqué par défaut : •••• •••• •••• 1234 */
@@ -74,19 +75,9 @@ interface VirtualCardProps {
   className?: string;
 }
 
-const IS_SPECIMEN = process.env.NEXT_PUBLIC_CARD_MODE !== 'live';
-
-function specimenPan(): string {
-  return '0000 0000 0000 0000';
-}
-
-function formatPan(pan: string): string {
-  return pan.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim();
-}
-
 function maskPan(last4: string): string {
-  const l = (last4 || '0000').replace(/\D/g, '').padStart(4, '0').slice(-4);
-  return `•••• •••• •••• ${l}`;
+  const l = (last4 || '').replace(/\D/g, '').slice(-4);
+  return l ? `•••• •••• •••• ${l}` : '•••• •••• ••••';
 }
 
 export default function VirtualCard({
@@ -105,26 +96,10 @@ export default function VirtualCard({
   const night = '#0f1b2d';
   const isDimmed =
     data.state === 'pending' || data.state === 'frozen' || data.state === 'blocked';
-  const canReveal =
-    data.state === 'active' || data.state === 'shipping' || data.state === 'frozen';
-
-  // Numéro affiché : révélé (SDK) ou masqué / spécimen
-  const displayPan =
-    data.revealed && data.issuerPan && !IS_SPECIMEN
-      ? formatPan(data.issuerPan)
-      : data.revealed && IS_SPECIMEN
-        ? specimenPan()
-        : maskPan(data.last4);
-
-  const displayExpiry =
-    data.revealed && data.issuerExpiry && !IS_SPECIMEN
-      ? data.issuerExpiry
-      : data.revealed
-        ? '00/00'
-        : data.expiry || '••/••';
-
-  const displayCvv =
-    data.revealed && data.issuerCvv && !IS_SPECIMEN ? data.issuerCvv : '•••';
+  const canReveal = false;
+  const displayPan = maskPan(data.last4);
+  const displayExpiry = '••/••';
+  const displayCvv = '•••';
 
   const pendingSteps: PendingTrackingStep[] = [
     { id: 'kyc', labelKey: 'vcard.step_kyc', done: true },
@@ -250,14 +225,6 @@ export default function VirtualCard({
             >
               {displayPan}
             </p>
-            {IS_SPECIMEN && data.revealed && (
-              <p
-                className="mt-1 text-[9px] font-bold tracking-[0.2em] uppercase"
-                style={{ color: accent }}
-              >
-                Spécimen
-              </p>
-            )}
             {!data.revealed && (
               <p className="mt-1 text-[9px] text-white/45 uppercase tracking-wider">
                 {t('vcard.specimen_hint')}
@@ -379,16 +346,7 @@ export default function VirtualCard({
           )}
         </AnimatePresence>
 
-        {/* Badge SPÉCIMEN permanent hors révélation */}
-        {IS_SPECIMEN && (
-          <span
-            className="absolute bottom-2 right-3 z-10 text-[7px] font-black tracking-[0.25em] uppercase pointer-events-none"
-            style={{ color: 'rgba(61,220,151,0.45)' }}
-            aria-hidden
-          >
-            Spécimen
-          </span>
-        )}
+        <span className="absolute bottom-2 right-3 z-10 pointer-events-none text-[7px] font-black uppercase tracking-[0.2em] text-white/50" aria-hidden>PORTEFEUILLE TRAIT</span>
       </div>
 
       {/* ── Suivi (états pending / shipping) ── */}

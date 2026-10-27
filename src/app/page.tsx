@@ -17,7 +17,6 @@ import { routeAfterAuth } from '@/lib/route-after-auth';
 const WelcomeScreen = lazy(() => import('@/components/screens/WelcomeScreen'));
 const AuthRoleScreen = lazy(() => import('@/components/screens/AuthRoleScreen'));
 const AuthPhoneScreen = lazy(() => import('@/components/screens/AuthPhoneScreen'));
-const AuthLoginScreen = lazy(() => import('@/components/screens/AuthLoginScreen'));
 const AuthOtpScreen = lazy(() => import('@/components/screens/AuthOtpScreen'));
 const AuthProfileScreen = lazy(() => import('@/components/screens/AuthProfileScreen'));
 const PinSetupScreen = lazy(() => import('@/components/screens/PinSetupScreen'));
@@ -179,7 +178,7 @@ const screenMap: Record<PageName, React.LazyExoticComponent<React.ComponentType>
   welcome: WelcomeScreen,
   'auth-role': AuthRoleScreen,
   'auth-phone': AuthPhoneScreen,
-  'auth-login': AuthLoginScreen,
+  'auth-login': AuthScreen,
   'admin-login': AdminLoginScreen,
   'auth-otp': AuthOtpScreen,
   'auth-profile': AuthProfileScreen,

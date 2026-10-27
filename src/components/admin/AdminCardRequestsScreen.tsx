@@ -56,7 +56,8 @@ interface RequestUser {
 
 interface RequestCard {
   id: string;
-  cardNumber: string;
+  last4: string | null;
+  qrCode: string;
   status: string;
   createdAt: string;
 }
@@ -67,6 +68,10 @@ interface CardRequest {
   status: 'pending' | 'approved' | 'rejected' | 'suspended';
   createdAt: string;
   rejectReason: string | null;
+  holderName: string | null;
+  jobTitle: string | null;
+  birthDate: string | null;
+  photoData: string | null;
   user: RequestUser;
   card: RequestCard | null;
   admin: { id: string; name: string; username: string } | null;
@@ -236,6 +241,21 @@ export default function AdminCardRequestsScreen() {
     } finally {
       setActionLoadingState(requestId, false);
     }
+  }
+
+  async function handleConfirmDelivery(request: CardRequest) {
+    if (!admin?.id) return;
+    setActionLoadingState(request.id, true);
+    try {
+      const res = await fetch('/api/cards/admin/requests', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminId: admin.id, requestId: request.id, action: 'confirm-delivery' }),
+      });
+      const data = await res.json();
+      if (data.success) { toast.success('Remise confirmée, carte activée'); await fetchRequests(); }
+      else toast.error(data.message || 'Erreur lors de la remise');
+    } catch { toast.error('Erreur réseau'); }
+    finally { setActionLoadingState(request.id, false); }
   }
 
   // ─── Reject ──────────────────────────────────────────────────────
@@ -421,15 +441,24 @@ export default function AdminCardRequestsScreen() {
               </div>
             </div>
 
+            <div className="mb-3 grid grid-cols-[64px_1fr] gap-3 rounded-lg border bg-muted/30 p-3">
+              <div className="h-20 w-16 overflow-hidden rounded-md border bg-muted">
+                {request.photoData ? <img src={request.photoData} alt={`Portrait de ${request.holderName || request.user?.name || 'titulaire'}`} className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center text-[9px] text-muted-foreground">Sans photo</div>}
+              </div>
+              <div className="space-y-1 text-xs">
+                <p><span className="text-muted-foreground">Titulaire :</span> <strong>{request.holderName || request.user?.name}</strong></p>
+                <p><span className="text-muted-foreground">Poste :</span> {request.jobTitle || '—'}</p>
+                <p><span className="text-muted-foreground">Naissance :</span> {request.birthDate ? new Date(request.birthDate).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' }) : '—'}</p>
+              </div>
+            </div>
+
             {/* Card info (if approved) */}
             {request.card && (
               <div className="rounded-md bg-muted/50 border border-border px-3 py-2 mb-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <CreditCard className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-mono font-medium">
-                      {request.card.cardNumber}
-                    </span>
+                    <span className="text-xs font-medium">{request.card.status === 'pending_retrieval' ? 'En attente de retrait' : request.card.last4 ? `Référence •••• ${request.card.last4}` : 'Carte TRAIT interne'}</span>
                   </div>
                   {request.card.status === 'active' ? (
                     <Badge variant="outline" className="text-[10px] text-emerald-700 border-emerald-300 dark:text-emerald-400 dark:border-emerald-700">
@@ -439,6 +468,8 @@ export default function AdminCardRequestsScreen() {
                     <Badge variant="outline" className="text-[10px] text-orange-700 border-orange-300 dark:text-orange-400 dark:border-orange-700">
                       Suspendue
                     </Badge>
+                  ) : request.card.status === 'pending_retrieval' ? (
+                    <Badge variant="outline" className="text-[10px] text-amber-700 border-amber-300 dark:text-amber-400 dark:border-amber-700">Retrait requis</Badge>
                   ) : null}
                 </div>
               </div>
@@ -502,6 +533,13 @@ export default function AdminCardRequestsScreen() {
                     <Ban className="h-3.5 w-3.5 mr-1" />
                   )}
                   Suspendre
+                </Button>
+              )}
+
+              {isApproved && request.card?.status === 'pending_retrieval' && (
+                <Button size="sm" className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium" onClick={() => handleConfirmDelivery(request)} disabled={isLoading}>
+                  {isLoading ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1 h-3.5 w-3.5" />}
+                  Confirmer la remise
                 </Button>
               )}
 

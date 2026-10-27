@@ -28,7 +28,7 @@ async function getBarcodeScanner() {
 }
 
 export default function SellerQRScannerScreen() {
-  const { user, goBack } = useAppStore()
+  const { user, goBack, navigateTo } = useAppStore()
   const { permissionLoading, checkPermission, requestPermission } = useCameraPermission()
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -43,6 +43,7 @@ export default function SellerQRScannerScreen() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'pending' | 'success' | 'error'>('idle')
   const [message, setMessage] = useState('')
   const [pendingRequestId, setPendingRequestId] = useState<string | null>(null)
+  const [invoiceNumber, setInvoiceNumber] = useState<string | null>(null)
   const [showPermissionPrompt, setShowPermissionPrompt] = useState(false)
   const [scanMethod, setScanMethod] = useState<'native' | 'web'>('native')
 
@@ -74,6 +75,10 @@ export default function SellerQRScannerScreen() {
         const current = data.requests?.find((request: { id: string }) => request.id === pendingRequestId)
         if (stopped || !current) return
         if (current.status === 'accepted') {
+          if (current.transactionId) {
+            navigateTo('receipt', { transactionId: current.transactionId })
+            return
+          }
           setStatus('success')
           setMessage('Paiement confirmé par le client.')
           setQrCodeData('')
@@ -98,7 +103,7 @@ export default function SellerQRScannerScreen() {
       clearInterval(interval)
       clearTimeout(timeout)
     }
-  }, [status, pendingRequestId])
+  }, [status, pendingRequestId, navigateTo])
 
   useEffect(() => {
     if (cameraActive && videoRef.current && pendingStreamRef.current) {
@@ -246,9 +251,10 @@ export default function SellerQRScannerScreen() {
       const data = await res.json()
       if (data.success && data.pendingApproval && data.requestId) {
         setPendingRequestId(data.requestId)
+        setInvoiceNumber(data.invoiceNumber || null)
         setStatus('pending')
-        setMessage('Demande envoyée. Attendez la confirmation du client.')
-        toast('Confirmation du client requise', { description: 'Le client autorise le débit depuis son propre compte.' })
+        setMessage(data.message || 'Pré-facture créée. Attendez la confirmation du client.')
+        toast('Confirmation du client requise', { description: 'Le titulaire vérifie le montant et autorise le débit avec son PIN.' })
       } else {
         setStatus('error')
         setMessage(data.message || 'Erreur de paiement')
@@ -370,7 +376,10 @@ export default function SellerQRScannerScreen() {
         {status === 'pending' && (
           <div className="flex items-center gap-3 text-amber-700 bg-amber-50 px-6 py-4 rounded-xl border border-amber-200">
             <Clock className="w-6 h-6 shrink-0" />
-            <span className="font-semibold">{message}</span>
+            <div>
+              <p className="font-semibold">{message}</p>
+              {invoiceNumber && <p className="mt-1 text-xs">Référence {invoiceNumber}. La facture sera marquée payée et le reçu sera disponible après confirmation.</p>}
+            </div>
           </div>
         )}
 

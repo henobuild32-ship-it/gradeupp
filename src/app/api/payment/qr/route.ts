@@ -35,22 +35,30 @@ export async function POST(request: NextRequest) {
     if (client.suspended || client.tempBlocked) return NextResponse.json({ success: false, message: 'Le compte client ne peut pas recevoir cette demande.' }, { status: 403 })
 
     // Le commerçant peut demander un montant, mais seul le client peut l’autoriser et être débité.
-    const paymentRequest = await db.paymentRequest.create({
-      data: {
-        requesterId: seller.id,
-        targetId: client.id,
-        targetPhone: client.phone,
-        amount,
-        currency,
-        description: `Paiement QR — ${seller.businessName || 'Commerçant'}`,
-      },
-      select: { id: true },
+    const { paymentRequest, invoiceNumber } = await db.$transaction(async (tx) => {
+      const createdRequest = await tx.paymentRequest.create({
+        data: {
+          requesterId: seller.id,
+          targetId: client.id,
+          targetPhone: client.phone,
+          amount,
+          currency,
+          description: `Paiement QR — ${seller.businessName || 'Commerçant'}`,
+        },
+        select: { id: true },
+      })
+      const reference = `FAC-${createdRequest.id.toUpperCase()}`
+      await tx.paymentRequest.update({
+        where: { id: createdRequest.id },
+        data: { description: `Paiement QR — ${seller.businessName || 'Commerçant'} — ${reference}` },
+      })
+      return { paymentRequest: createdRequest, invoiceNumber: reference }
     })
     await db.notification.create({
       data: {
         userId: client.id,
         title: 'Demande de paiement QR',
-        message: `${seller.businessName || 'Un commerçant'} demande ${amount.toFixed(2)} ${currency}. Ouvrez Demandes de paiement pour accepter ou refuser.`,
+        message: `${seller.businessName || 'Un commerçant'} demande ${amount.toFixed(2)} ${currency}. Référence ${invoiceNumber}. Vérifiez le montant et confirmez avec votre PIN pour payer.`,
         type: 'payment_request',
       },
     })
@@ -58,7 +66,7 @@ export async function POST(request: NextRequest) {
       const { sendPushToUser } = await import('@/lib/push')
       await sendPushToUser(client.id, {
         title: 'Demande de paiement QR',
-        body: `${seller.businessName || 'Un commerçant'} demande ${amount.toFixed(2)} ${currency}.`,
+        body: `${seller.businessName || 'Un commerçant'} demande ${amount.toFixed(2)} ${currency}. Réf. ${invoiceNumber}. Confirmation PIN requise.`,
         url: '/history',
       })
     } catch {}
@@ -67,7 +75,8 @@ export async function POST(request: NextRequest) {
       success: true,
       pendingApproval: true,
       requestId: paymentRequest.id,
-      message: 'Demande envoyée. Le client doit la confirmer depuis son compte.',
+      invoiceNumber,
+      message: `Pré-facture ${invoiceNumber} créée. Le client doit vérifier le montant et confirmer avec son PIN.`,
     }, { status: 201 })
   } catch (error) {
     console.error('QR payment request error:', error)

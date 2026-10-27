@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getAuthUser } from '@/lib/auth'
-import crypto from 'crypto'
+
+const invoiceNumberFrom = (description: string | null | undefined) => description?.match(/\bFAC-[A-Z0-9]+\b/i)?.[0]?.toUpperCase() ?? null
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,7 +14,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { transactionId } = body
 
-    if (!transactionId) {
+    if (typeof transactionId !== 'string' || transactionId.length < 1 || transactionId.length > 128) {
       return NextResponse.json({ success: false, message: 'ID de transaction requis' }, { status: 400 })
     }
 
@@ -33,10 +34,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Non autorisé' }, { status: 403 })
     }
 
-    const receiptNumber = `RCP-${transaction.id.slice(0, 8).toUpperCase()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`
+    const paymentRequest = await prisma.paymentRequest.findUnique({
+      where: { transactionId: transaction.id },
+      select: { id: true, description: true },
+    })
+    const receiptNumber = `RCP-${transaction.id.toUpperCase()}`
 
     const receipt = {
       receiptNumber,
+      invoiceNumber: invoiceNumberFrom(paymentRequest?.description),
       transaction: {
         id: transaction.id,
         type: transaction.type,

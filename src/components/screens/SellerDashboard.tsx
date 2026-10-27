@@ -17,7 +17,6 @@ import {
 
 export default function SellerDashboard() {
   const { user, setUser, navigateTo, logout, unreadCount } = useAppStore()
-  const [requestingCard, setRequestingCard] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [showWelcome, setShowWelcome] = useState(!!(user && user.validationStatus === 'validated' && user.validationRejectReason))
   const [clearingWelcome, setClearingWelcome] = useState(false)
@@ -65,26 +64,7 @@ export default function SellerDashboard() {
     }
   }
 
-  const handleRequestCard = async () => {
-    setRequestingCard(true)
-    try {
-      const res = await fetch('/api/cards/admin/requests', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, cardType: 'USD' })
-      })
-      const data = await res.json()
-      if (data.success) {
-        toast('Succès', { description: 'Demande de Carte Trait envoyée à l\'administration.' })
-      } else {
-        toast.error('Erreur', { description: data.message || 'Erreur lors de la demande' })
-      }
-    } catch (error) {
-      toast.error('Erreur', { description: 'Erreur réseau' })
-    } finally {
-      setRequestingCard(false)
-    }
-  }
+  const handleRequestCard = () => navigateTo('card-request')
 
   return (
     <div className="flex flex-col h-full bg-gray-50 p-4 space-y-6">
@@ -144,7 +124,7 @@ export default function SellerDashboard() {
         <p className="text-blue-100 mb-1">Solde Service</p>
         <h2 className="text-4xl font-bold mb-4">${user.realBalance?.toFixed(2) || '0.00'}</h2>
         <div className="flex gap-2">
-          <Button onClick={handleRequestCard} disabled={requestingCard} variant="secondary" className="bg-white/20 hover:bg-white/30 border-none text-white">
+          <Button onClick={handleRequestCard} variant="secondary" className="bg-white/20 hover:bg-white/30 border-none text-white">
             <CreditCard className="w-4 h-4 mr-2" />
             Demander une Carte Trait
           </Button>

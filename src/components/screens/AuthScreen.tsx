@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   User, Building2, Store, ArrowLeft, Eye, EyeOff, Loader2,
-  Shield, Check
+  Shield, Check, LockKeyhole, Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -85,7 +85,7 @@ export default function AuthScreen() {
     }
     if (pageParams?.role === 'agent' || pageParams?.role === 'seller' || pageParams?.role === 'client') {
       setSelectedRole(pageParams.role as Role);
-      setMode('register');
+      if (!pageParams?.mode) setMode('register');
     }
   }, [pageParams?.mode, pageParams?.role]);
 
@@ -94,6 +94,8 @@ export default function AuthScreen() {
   const [loginPhone, setLoginPhone] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [challengeToken, setChallengeToken] = useState<string | null>(null);
+  const [twoFactorCode, setTwoFactorCode] = useState('');
 
   // Register fields
   const [regName, setRegName] = useState('');
@@ -118,7 +120,7 @@ export default function AuthScreen() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanedPhone = loginPhone.replace(/\s/g, '');
+    const cleanedPhone = loginPhone.replace(/\D/g, '');
     if (!cleanedPhone || cleanedPhone.length < 6) {
       toast.error(t('validation.phone_required'));
       return;
@@ -133,10 +135,16 @@ export default function AuthScreen() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: fullPhone, password: loginPassword.trim(), role: selectedRole }),
+        body: JSON.stringify({ phone: fullPhone, password: loginPassword, role: selectedRole }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
+        if (data.verificationRequired && data.email) {
+          setPhoneNumber(fullPhone);
+          toast.info('Vérifiez votre adresse email pour terminer la connexion.');
+          navigateTo('auth-otp', { email: data.email, mode: 'verify' });
+          return;
+        }
         if (data.validationStatus === 'pending') {
           toast.error(data.message || 'Compte en attente de validation');
           return;
@@ -150,6 +158,16 @@ export default function AuthScreen() {
           return;
         }
         toast.error(data.message || t('validation.login_error'));
+        return;
+      }
+      if (data.requiresTwoFactor) {
+        if (!data.challengeToken) {
+          toast.error('Impossible de lancer la vérification. Recommencez la connexion.');
+          return;
+        }
+        setChallengeToken(data.challengeToken);
+        setTwoFactorCode('');
+        setLoginPassword('');
         return;
       }
       const loggedInUser = data.user as AppUser;
@@ -170,13 +188,51 @@ export default function AuthScreen() {
     }
   };
 
+  const handleTwoFactorSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!challengeToken || !/^\d{6}$/.test(twoFactorCode)) {
+      toast.error('Saisissez le code à 6 chiffres de votre application d’authentification.');
+      return;
+    }
+
+    setLoginLoading(true);
+    try {
+      const res = await fetch('/api/auth/login/verify-2fa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ challengeToken, code: twoFactorCode }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success || !data.user) {
+        toast.error(data.message || 'Code invalide. Réessayez.');
+        return;
+      }
+
+      const loggedInUser = data.user as AppUser;
+      if (loggedInUser.role !== selectedRole) {
+        setChallengeToken(null);
+        toast.error('Ce compte ne correspond pas au profil sélectionné. Recommencez la connexion.');
+        return;
+      }
+      setUser(loggedInUser);
+      if (data.token) setToken(data.token);
+      setChallengeToken(null);
+      markFreshAuth();
+      routeAfterAuth(navigateTo, loggedInUser);
+    } catch {
+      toast.error(t('validation.connection_error'));
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedRole === 'seller') {
       navigateTo('seller-register');
       return;
     }
-    const cleanedPhone = regPhone.replace(/\s/g, '');
+    const cleanedPhone = regPhone.replace(/\D/g, '');
     if (!regName.trim()) {
       toast.error(t('validation.name_required'));
       return;
@@ -189,11 +245,11 @@ export default function AuthScreen() {
       toast.error(t('validation.phone_required'));
       return;
     }
-    if (!regPassword.trim() || regPassword.trim().length < 8) {
+    if (!regPassword.trim() || regPassword.length < 8) {
       toast.error(t('validation.password_min'));
       return;
     }
-    if (regPassword.trim() !== regConfirmPassword.trim()) {
+    if (regPassword !== regConfirmPassword) {
       toast.error(t('validation.password_mismatch'));
       return;
     }
@@ -212,7 +268,7 @@ export default function AuthScreen() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           phone: fullPhone,
-          password: regPassword.trim(),
+          password: regPassword,
           role: selectedRole,
           name: regName.trim(),
           email: regEmail.trim(),
@@ -227,14 +283,11 @@ export default function AuthScreen() {
         return;
       }
       setPhoneNumber(fullPhone);
-      setRegistrationPassword(regPassword.trim());
-      if (selectedRole === 'agent') {
-        toast.success('Compte Agent créé avec succès ! En attente de validation par l\'administrateur.');
-        navigateTo('agent-pending');
-      } else {
-        toast.success('Compte créé avec succès ! Vérifiez votre code OTP.');
-        navigateTo('auth-otp', { email: regEmail.trim(), mode: 'verify' });
-      }
+      setRegistrationPassword(regPassword);
+      toast.success(selectedRole === 'agent'
+        ? 'Compte créé. Vérifiez votre adresse email pour envoyer votre dossier à validation.'
+        : 'Compte créé. Vérifiez votre adresse email pour continuer.');
+      navigateTo('auth-otp', { email: regEmail.trim(), mode: 'verify' });
     } catch {
       toast.error(t('validation.connection_error'));
     } finally {
@@ -252,12 +305,12 @@ export default function AuthScreen() {
   } as const;
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#e5f3f1] via-background to-[#f5f7f7]">
       <motion.header
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="flex items-center px-4 py-4"
+        className="flex items-center w-full max-w-7xl mx-auto px-4 sm:px-6 py-4"
       >
         <Button
           variant="ghost"
@@ -267,24 +320,70 @@ export default function AuthScreen() {
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
         </Button>
+        <div className="ml-auto flex items-center gap-2">
         <button
           type="button"
           onClick={() => navigateTo('admin-login')}
-          className="ml-auto w-8 h-8 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors cursor-pointer"
-          aria-label="Administration"
+          aria-label="Accès réservé à l’administration"
+          title="Accès réservé à l’administration"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-border/80 bg-white/70 text-muted-foreground shadow-sm transition hover:bg-white hover:text-[#0D5C63] cursor-pointer"
         >
-          <span className="text-xs font-bold text-muted-foreground/60">$</span>
+          <Shield className="h-4 w-4" />
         </button>
+        </div>
       </motion.header>
 
       <motion.main
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.1 }}
-        className="flex-1 w-full max-w-lg mx-auto flex flex-col px-6 pt-2 pb-8 overflow-y-auto"
+        className="flex-1 w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] items-center gap-8 lg:gap-14 px-4 sm:px-6 pt-2 pb-8"
       >
+        <aside className="relative hidden min-h-[620px] flex-col justify-between overflow-hidden rounded-[2rem] bg-[#073f45] p-10 text-white shadow-2xl shadow-[#073f45]/15 lg:flex">
+          <div className="absolute -right-20 -top-24 h-80 w-80 rounded-full bg-[#16878b]/40 blur-3xl" />
+          <div className="absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-[#d2a65a]/20 blur-3xl" />
+          <div className="relative z-10">
+            <div className="mb-14 flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white p-1.5 shadow-lg">
+                <Image src="/trait-mark.png" alt="" width={48} height={34} className="h-9 w-10 object-contain" />
+              </div>
+              <div>
+                <p className="text-lg font-bold tracking-[0.18em]">TRAIT</p>
+                <p className="text-xs text-white/65">Votre quotidien, simplifié</p>
+              </div>
+            </div>
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-medium text-white/85">
+              <Sparkles className="h-3.5 w-3.5 text-[#e9c779]" />
+              {mode === 'login' ? 'Heureux de vous retrouver' : 'Rejoignez la communauté TRAIT'}
+            </div>
+            <h2 className="max-w-lg text-4xl font-semibold leading-tight tracking-tight">
+              {mode === 'login' ? 'Tout votre quotidien, au même endroit.' : 'Un compte. De nouvelles possibilités.'}
+            </h2>
+            <p className="mt-5 max-w-md text-base leading-7 text-white/70">
+              {selectedRole === 'agent'
+                ? 'Accédez à votre espace agent et accompagnez votre communauté en toute simplicité.'
+                : selectedRole === 'seller'
+                  ? 'Retrouvez votre espace commerçant pour présenter vos produits et suivre votre activité.'
+                  : 'Payez, transférez et retrouvez vos services essentiels dans un espace conçu pour vous.'}
+            </p>
+          </div>
+          <div className="relative z-10 space-y-4 rounded-2xl border border-white/10 bg-white/[0.07] p-5 backdrop-blur-sm">
+            {[
+              'Un espace adapté à votre profil',
+              'Une vérification supplémentaire si elle est activée',
+              'Un accompagnement à chaque étape',
+            ].map((item) => (
+              <div key={item} className="flex items-center gap-3 text-sm text-white/85">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#6bc4ae]/15 text-[#8de0c8]"><Check className="h-3.5 w-3.5" /></span>
+                {item}
+              </div>
+            ))}
+          </div>
+        </aside>
+
+        <section className="w-full max-w-xl mx-auto rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-xl shadow-[#073f45]/10 backdrop-blur-xl dark:border-border dark:bg-card sm:p-8">
         {/* TRAIT Logo */}
-        <div className="flex flex-col items-center gap-2 mb-6">
+        <div className="flex flex-col items-center gap-2 mb-5">
           <motion.div
             initial={{ scale: 0.7, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -297,9 +396,9 @@ export default function AuthScreen() {
                   <Image
                     src="/trait-logo.png"
                     alt="TRAIT"
-                    width={100}
-                    height={100}
-                    className="object-contain"
+                    width={76}
+                    height={76}
+                    className="h-[68px] w-[68px] object-contain"
                   />
                 </div>
               </div>
@@ -312,6 +411,8 @@ export default function AuthScreen() {
           <button
             type="button"
             onClick={() => setMode('login')}
+            aria-pressed={mode === 'login'}
+            disabled={Boolean(challengeToken)}
             className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer ${
               mode === 'login'
                 ? 'bg-[#0D5C63] text-white shadow-sm'
@@ -323,6 +424,8 @@ export default function AuthScreen() {
           <button
             type="button"
             onClick={() => setMode('register')}
+            aria-pressed={mode === 'register'}
+            disabled={Boolean(challengeToken)}
             className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer ${
               mode === 'register'
                 ? 'bg-[#0D5C63] text-white shadow-sm'
@@ -343,7 +446,9 @@ export default function AuthScreen() {
                 key={role}
                 type="button"
                 onClick={() => setSelectedRole(role)}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                aria-pressed={selectedRole === role}
+                disabled={Boolean(challengeToken)}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-2 sm:px-3 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed ${
                   selectedRole === role ? roleColors[role].active : roleColors[role].inactive
                 }`}
               >
@@ -353,6 +458,13 @@ export default function AuthScreen() {
             );
           })}
         </div>
+        <p className="-mt-4 mb-6 text-center text-xs text-muted-foreground">
+          {selectedRole === 'agent'
+            ? 'Espace partenaire · accès après validation de votre dossier'
+            : selectedRole === 'seller'
+              ? 'Espace commerçant · votre boutique sera vérifiée avant activation'
+              : 'Espace personnel · retrouvez vos services TRAIT'}
+        </p>
 
         <AnimatePresence mode="wait">
           {mode === 'login' ? (
@@ -363,8 +475,44 @@ export default function AuthScreen() {
               exit={{ opacity: 0, x: 20 }}
               transition={{ duration: 0.25 }}
             >
+              {challengeToken ? (
+                <form onSubmit={handleTwoFactorSubmit} className="flex flex-col gap-5">
+                  <div className="mb-2 flex items-center gap-3">
+                    <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#0D5C63]/10 text-[#0D5C63]"><LockKeyhole className="h-5 w-5" /></span>
+                    <div>
+                      <h1 className="text-xl font-bold text-foreground">Vérification en deux étapes</h1>
+                      <p className="mt-1 text-sm text-muted-foreground">Saisissez le code de votre application d’authentification.</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="login-2fa-code" className="font-medium">Code de vérification</Label>
+                    <Input
+                      id="login-2fa-code"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      pattern="[0-9]{6}"
+                      maxLength={6}
+                      value={twoFactorCode}
+                      onChange={(event) => setTwoFactorCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                      className="h-14 text-center text-2xl tracking-[0.5em]"
+                      aria-describedby="login-2fa-help"
+                      disabled={loginLoading}
+                      autoFocus
+                    />
+                    <p id="login-2fa-help" className="text-xs text-muted-foreground">Le code change régulièrement. Ne le partagez avec personne.</p>
+                  </div>
+                  <Button type="submit" disabled={loginLoading || twoFactorCode.length !== 6} className="h-12 w-full rounded-xl bg-[#0D5C63] text-base font-semibold text-white hover:bg-[#083A3E]">
+                    {loginLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Vérification…</> : 'Vérifier et continuer'}
+                  </Button>
+                  <button type="button" onClick={() => { setChallengeToken(null); setTwoFactorCode(''); }} className="self-center text-sm font-semibold text-[#0D5C63] hover:underline">
+                    Revenir à la connexion
+                  </button>
+                </form>
+              ) : (
+                <>
               <div className="flex flex-col gap-2 mb-6">
-                <h1 className="text-2xl font-bold text-foreground">{t('auth.welcome_back')}</h1>
+                <h1 className="text-2xl font-bold tracking-tight text-foreground">{t('auth.welcome_back')}</h1>
                 <p className="text-muted-foreground">{t('auth.login_subtitle')}</p>
               </div>
 
@@ -459,12 +607,19 @@ export default function AuthScreen() {
               <GoogleAuthButton
                 mode="login"
                 selectedRole={selectedRole}
-                onNeedsProfile={(data, idToken) => {
-                  setGoogleData(data);
-                  setGoogleIdToken(idToken);
-                  setGoogleModalOpen(true);
-                }}
+                  onNeedsProfile={(data, idToken) => {
+                    if (selectedRole === 'seller') {
+                      toast.info('Créez votre espace commerçant avec le formulaire complet.');
+                      navigateTo('seller-register');
+                      return;
+                    }
+                    setGoogleData(data);
+                    setGoogleIdToken(idToken);
+                    setGoogleModalOpen(true);
+                  }}
               />
+                </>
+              )}
             </motion.div>
           ) : (
             <motion.div
@@ -535,12 +690,13 @@ export default function AuthScreen() {
               <form onSubmit={handleRegister} className="flex flex-col gap-5">
                 {/* Name */}
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="reg-name" className="text-foreground font-medium">
+                    <Label htmlFor="reg-name" className="text-foreground font-medium">
                     {t('auth.full_name')}
                   </Label>
                   <Input
                     id="reg-name"
                     type="text"
+                    required
                     placeholder="Ex: Kofi Amegah"
                     value={regName}
                     onChange={(e) => setRegName(e.target.value)}
@@ -558,6 +714,7 @@ export default function AuthScreen() {
                   <Input
                     id="reg-email"
                     type="email"
+                    required
                     placeholder="Ex: user@email.com"
                     value={regEmail}
                     onChange={(e) => setRegEmail(e.target.value)}
@@ -588,6 +745,7 @@ export default function AuthScreen() {
                     <Input
                       id="reg-phone"
                       type="tel"
+                      required
                       placeholder={t('common.phone_placeholder')}
                       value={regPhone}
                       onChange={(e) => setRegPhone(e.target.value)}
@@ -608,6 +766,8 @@ export default function AuthScreen() {
                       id="reg-password"
                       type={showRegPassword ? 'text' : 'password'}
                       placeholder={t('auth.password_min')}
+                      minLength={8}
+                      required
                       value={regPassword}
                       onChange={(e) => setRegPassword(e.target.value)}
                       className="w-full h-12 focus-visible:border-blue-500 focus-visible:ring-blue-500/20 text-base pr-12"
@@ -618,6 +778,7 @@ export default function AuthScreen() {
                       type="button"
                       onClick={() => setShowRegPassword(!showRegPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                      aria-label={showRegPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                     >
                       {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -649,6 +810,8 @@ export default function AuthScreen() {
                     id="reg-confirm-password"
                     type={showRegPassword ? 'text' : 'password'}
                     placeholder={t('auth.confirm_placeholder')}
+                    minLength={8}
+                    required
                     value={regConfirmPassword}
                     onChange={(e) => setRegConfirmPassword(e.target.value)}
                     className="w-full h-12 focus-visible:border-blue-500 focus-visible:ring-blue-500/20 text-base"
@@ -674,32 +837,18 @@ export default function AuthScreen() {
                 </div>
 
                 {/* Terms Checkbox */}
-                <div className="flex items-start gap-3 mt-1 p-3 bg-amber-50/50 dark:bg-amber-950/10 border border-amber-200/50 dark:border-amber-800/30 rounded-lg">
-                  <button
-                    type="button"
-                    onClick={() => setAcceptTerms(!acceptTerms)}
-                    className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all cursor-pointer ${
-                      acceptTerms
-                        ? 'bg-[#0D5C63] border-[#0D5C63]'
-                        : 'border-gray-300 hover:border-[#0D5C63]/50'
-                    }`}
-                    aria-label="Accepter les conditions d'utilisation"
-                  >
-                    {acceptTerms && <Check className="w-3 h-3 text-white" />}
-                  </button>
+                <div className="flex items-start gap-3 mt-1 p-3 bg-[#eff7f5] dark:bg-[#0D5C63]/10 border border-[#0D5C63]/15 rounded-xl">
+                  <input
+                    id="accept-terms"
+                    type="checkbox"
+                    checked={acceptTerms}
+                    onChange={(event) => setAcceptTerms(event.target.checked)}
+                    className="mt-1 h-4 w-4 shrink-0 accent-[#0D5C63]"
+                  />
                   <div className="flex flex-col gap-1">
                     <p className="text-xs text-foreground font-medium">
-                      J&apos;accepte les{' '}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          window.open('/terms', '_blank')
-                        }}
-                        className="text-[#0D5C63] hover:underline font-semibold cursor-pointer"
-                      >
-                        Conditions Générales d&apos;Utilisation
-                      </button>
+                      <label htmlFor="accept-terms" className="cursor-pointer">J&apos;accepte les </label>
+                      <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-[#0D5C63] hover:underline font-semibold">Conditions Générales d&apos;Utilisation</a>
                     </p>
                     <p className="text-[11px] text-muted-foreground">
                       En cochant cette case, vous reconnaissez avoir lu et accepté nos conditions.
@@ -715,7 +864,7 @@ export default function AuthScreen() {
                     !regName.trim() ||
                     !regEmail.trim() ||
                     !regPhone.trim() ||
-                    !regPassword.trim() ||
+                    regPassword.length < 8 ||
                     !regConfirmPassword.trim() ||
                     !acceptTerms
                   }
@@ -734,6 +883,7 @@ export default function AuthScreen() {
               )}
 
               {/* Divider */}
+              {selectedRole !== 'seller' && <>
               <div className="flex items-center gap-3 my-5">
                 <div className="flex-1 h-px bg-border" />
                 <span className="text-xs text-muted-foreground font-medium">{t('auth.or')}</span>
@@ -750,6 +900,7 @@ export default function AuthScreen() {
                   setGoogleModalOpen(true);
                 }}
               />
+              </>}
             </motion.div>
           )}
         </AnimatePresence>
@@ -768,10 +919,9 @@ export default function AuthScreen() {
               </button>
             </p>
           )}
-          <p className="text-xs text-muted-foreground text-center max-w-xs">
-            {t('common.terms')}
-          </p>
+          <p className="text-xs text-muted-foreground text-center max-w-xs">{t('common.terms')}</p>
         </div>
+        </section>
       </motion.main>
 
       {/* Biometric scanner dialog removed */}

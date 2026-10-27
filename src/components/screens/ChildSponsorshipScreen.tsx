@@ -15,7 +15,10 @@ import {
   TrendingDown,
   DollarSign,
   Smartphone,
-  Users
+  Users,
+  Camera,
+  ImagePlus,
+  UserRound
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -28,13 +31,16 @@ import { formatLoadCap, formatCardAmount, loadCapFor, relationLabel, type CardRe
 interface ChildCardData {
   id: string;
   cardType: 'USD' | 'FC';
-  cardNumber: string;
-  cvv: string;
+  cardNumber: string | null;
   qrCode: string;
-  expiryDate: string;
+  expiryDate: string | null;
+  holderName?: string | null;
+  jobTitle?: string | null;
+  birthDate?: string | null;
+  holderPhoto?: string | null;
+  requestStatus?: string | null;
   status: string;
   createdAt: string;
-  holderName?: string | null;
   relation?: string | null;
   maxLoadAmount?: number | null;
 }
@@ -80,7 +86,32 @@ export default function ChildSponsorshipScreen() {
   const [createCardType, setCreateCardType] = useState<'USD' | 'FC'>('USD');
   const [childPin, setChildPin] = useState('');
   const [relation, setRelation] = useState<CardRelation>('child');
+  const [jobTitle, setJobTitle] = useState('');
+  const [birthDate, setBirthDate] = useState('');
+  const [photoData, setPhotoData] = useState('');
+  const importPhotoRef = useRef<HTMLInputElement>(null);
+  const cameraPhotoRef = useRef<HTMLInputElement>(null);
   const isFamily = relation === 'family';
+
+  const handleCardPhoto = async (file?: File) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/') || file.size > 12 * 1024 * 1024) {
+      toast.error('Choisissez une image de moins de 12 Mo');
+      return;
+    }
+    try {
+      const image = await createImageBitmap(file);
+      const scale = Math.min(1, 720 / Math.max(image.width, image.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+      canvas.getContext('2d')?.drawImage(image, 0, 0, canvas.width, canvas.height);
+      image.close();
+      const compressed = canvas.toDataURL('image/jpeg', 0.78);
+      if (compressed.length > 1_400_000) { toast.error('Photo trop volumineuse après compression'); return; }
+      setPhotoData(compressed);
+    } catch { toast.error('Impossible de lire cette photo'); }
+  };
   const nameHolderLabel = isFamily ? 'du membre de la famille' : "de l'enfant";
   
   // Recharge form states
@@ -153,6 +184,10 @@ export default function ChildSponsorshipScreen() {
       toast.error(`Le PIN ${nameHolderLabel} est obligatoire et doit contenir 4 chiffres`);
       return;
     }
+    if (!jobTitle.trim() || !birthDate || !photoData) {
+      toast.error('Ajoutez le poste, la date de naissance et une photo pour la carte');
+      return;
+    }
 
     setProcessing(true);
     setSuccessMessage(null);
@@ -166,6 +201,9 @@ export default function ChildSponsorshipScreen() {
           cardType: createCardType,
           pin: childPin || undefined,
           relation,
+          jobTitle,
+          birthDate,
+          photoData,
         }),
       });
 
@@ -176,6 +214,9 @@ export default function ChildSponsorshipScreen() {
         setChildName('');
         setChildPin('');
         setRelation('child');
+        setJobTitle('');
+        setBirthDate('');
+        setPhotoData('');
         await fetchData(); // Refresh data
       } else {
         toast.error(data.message || 'Erreur de création');
@@ -411,6 +452,29 @@ export default function ChildSponsorshipScreen() {
                           </div>
                         </div>
 
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <label className="space-y-2 text-xs font-semibold text-foreground">Poste / rôle sur la carte
+                            <Input placeholder={isFamily ? 'Membre de famille' : 'Élève, étudiant…'} value={jobTitle} onChange={e => setJobTitle(e.target.value)} maxLength={60} disabled={processing} required />
+                          </label>
+                          <label className="space-y-2 text-xs font-semibold text-foreground">Date de naissance
+                            <Input type="date" value={birthDate} onChange={e => setBirthDate(e.target.value)} max={new Date().toISOString().slice(0, 10)} disabled={processing} required />
+                          </label>
+                        </div>
+                        <div className="rounded-xl border bg-muted/20 p-3">
+                          <div className="flex items-center gap-3">
+                            <div className="grid h-16 w-14 shrink-0 place-items-center overflow-hidden rounded-lg border bg-muted">
+                              {photoData ? <img src={photoData} alt="Photo choisie pour la carte" className="h-full w-full object-cover" /> : <UserRound className="h-7 w-7 text-muted-foreground" />}
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              <input ref={importPhotoRef} type="file" accept="image/*" className="hidden" onChange={e => { void handleCardPhoto(e.target.files?.[0]); e.currentTarget.value = ''; }} />
+                              <input ref={cameraPhotoRef} type="file" accept="image/*" capture="user" className="hidden" onChange={e => { void handleCardPhoto(e.target.files?.[0]); e.currentTarget.value = ''; }} />
+                              <Button type="button" variant="outline" size="sm" onClick={() => importPhotoRef.current?.click()}><ImagePlus className="mr-1.5 h-4 w-4" />Importer</Button>
+                              <Button type="button" variant="outline" size="sm" onClick={() => cameraPhotoRef.current?.click()}><Camera className="mr-1.5 h-4 w-4" />Prendre une photo</Button>
+                            </div>
+                          </div>
+                          <p className="mt-2 text-[10px] text-muted-foreground">La date complète est réservée à l’administration; l’année sera masquée sur le recto.</p>
+                        </div>
+
                         <div className="space-y-2">
                           <label className="text-xs font-semibold text-foreground">
                             {isFamily ? 'Nom du membre' : "Nom de l'enfant"}
@@ -485,7 +549,7 @@ export default function ChildSponsorshipScreen() {
 
                         <Button
                           type="submit"
-                          disabled={processing}
+                          disabled={processing || !jobTitle.trim() || !birthDate || !photoData}
                           className="w-full bg-[#0D5C63] hover:bg-[#0D5C63]/90 text-white font-semibold h-11 rounded-xl mt-4"
                         >
                           {processing ? (
@@ -494,7 +558,7 @@ export default function ChildSponsorshipScreen() {
                               Création en cours...
                             </>
                           ) : (
-                            'Créer le compte et générer la carte'
+                            'Créer le compte et envoyer la demande de carte'
                           )}
                         </Button>
                       </form>
@@ -561,10 +625,14 @@ export default function ChildSponsorshipScreen() {
                                 cardNumber={card.cardNumber}
                                 cardHolder={card.holderName || child.name}
                                 expiryDate={card.expiryDate}
-                                cvv={card.cvv}
                                 qrCode={card.qrCode}
+                                jobTitle={card.jobTitle}
+                                birthDate={card.birthDate}
+                                holderPhoto={card.holderPhoto}
+                                cardId={card.id}
+                                requestStatus={card.requestStatus}
                                 balance={card.cardType === 'USD' ? child.realBalance : child.realBalanceFC}
-                                status={card.status === 'pending_retrieval' || card.status === 'delivered' ? 'active' : card.status} // Render as normal visual card style
+                                status={card.status}
                               />
                               
                               {/* Card Status Indicator */}

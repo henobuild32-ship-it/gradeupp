@@ -4,6 +4,7 @@ import { requireUser, verifyPinWithAttempts } from '@/lib/auth'
 import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit'
 
 const isPaymentError = (error: unknown, code: string) => error instanceof Error && error.message === code
+const invoiceNumberFrom = (description: string | null | undefined) => description?.match(/\bFAC-[A-Z0-9]+\b/i)?.[0]?.toUpperCase() ?? null
 
 export async function POST(
   request: NextRequest,
@@ -101,6 +102,7 @@ export async function POST(
           },
           select: { id: true, amount: true, currency: true, status: true, createdAt: true },
         })
+        await tx.paymentRequest.update({ where: { id }, data: { transactionId: created.id } })
         await tx.notification.createMany({
           data: [
             { userId: recipient.id, title: 'Paiement confirmé', message: `${paymentRequest.amount.toFixed(2)} ${paymentRequest.currency} envoyé.`, type: 'payment_request' },
@@ -125,6 +127,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       message: 'Demande acceptée et payée',
+      invoiceNumber: invoiceNumberFrom(paymentRequest.description),
       transaction: { id: transaction.id, amount: transaction.amount, currency: transaction.currency, status: transaction.status, createdAt: transaction.createdAt },
     })
   } catch (error) {

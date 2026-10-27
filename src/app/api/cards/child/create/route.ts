@@ -1,55 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { logSecurityEvent } from '@/lib/security';
-import { requireUser, hashPin } from '@/lib/auth';
-import { randomInt, randomBytes } from 'crypto';
+import { requireUser, hashPin, hashPassword } from '@/lib/auth';
+import { randomInt, randomBytes, randomUUID } from 'crypto';
+import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { createNotification } from '@/lib/notifications';
 import { CARD_LOAD_CAP, formatLoadCap, type CardRelation } from '@/lib/family-card';
-
-function maskCardNumber(num: string): string {
-  return num.length >= 4 ? `****${num.slice(-4)}` : num;
-}
-
-function generateCardNumber(): string {
-  const prefix = '4927';
-  let remaining = '';
-  for (let i = 0; i < 12; i++) {
-    remaining += randomInt(0, 10).toString();
-  }
-  return prefix + remaining;
-}
-
-function generateCVV(): string {
-  let cvv = '';
-  for (let i = 0; i < 3; i++) {
-    cvv += randomInt(0, 10).toString();
-  }
-  return cvv;
-}
-
-function generateExpiryDate(): string {
-  const now = new Date();
-  const expiry = new Date(now.getFullYear() + 3, now.getMonth(), 1);
-  const month = (expiry.getMonth() + 1).toString().padStart(2, '0');
-  const year = expiry.getFullYear().toString().slice(-2);
-  return `${month}/${year}`;
-}
-
-function generateQRCode(cardId: string): string {
-  return `TRAIT-QR-${cardId}-${Date.now()}-${randomBytes(4).toString('hex').toUpperCase()}`;
-}
 
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireUser(request);
     if (auth instanceof NextResponse) return auth;
+    const rateLimit = checkRateLimit({ windowMs: 60 * 60 * 1000, maxRequests: 5, key: `family-card-create:${auth.userId}` });
+    if (!rateLimit.allowed) return rateLimitResponse(rateLimit.resetIn);
     const body = await request.json();
-    const { parentId, childName, cardType, pin, relation } = body as {
+    const { parentId, childName, cardType, pin, relation, jobTitle, birthDate, photoData } = body as {
       parentId: string;
       childName: string;
       cardType: 'USD' | 'FC';
       pin?: string;
       relation?: CardRelation;
+      jobTitle?: string;
+      birthDate?: string;
+      photoData?: string;
     };
 
     const cardRelation: CardRelation = relation === 'family' ? 'family' : 'child';
@@ -91,6 +64,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const parsedBirthDate = birthDate ? new Date(`${birthDate}T00:00:00.000Z`) : null;
+    if (!parsedBirthDate || Number.isNaN(parsedBirthDate.getTime()) || parsedBirthDate >= new Date()) {
+      return NextResponse.json({ success: false, message: 'Une date de naissance valide est requise' }, { status: 400 });
+    }
+    const trimmedJobTitle = typeof jobTitle === 'string' ? jobTitle.trim().slice(0, 60) : '';
+    if (!trimmedJobTitle) return NextResponse.json({ success: false, message: 'Le poste ou rôle est requis' }, { status: 400 });
+    if (typeof photoData !== 'string' || photoData.length > 1_500_000 || !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(photoData)) {
+      return NextResponse.json({ success: false, message: 'Ajoutez une photo JPEG, PNG ou WebP de moins de 1 Mo' }, { status: 400 });
+    }
+
     // Verify parent exists
     const parent = await db.user.findUnique({
       where: { id: parentId },
@@ -108,7 +91,7 @@ export async function POST(request: NextRequest) {
     let isUnique = false;
     let attempts = 0;
     while (!isUnique && attempts < 50) {
-      const randomDigits = Math.floor(10000000 + Math.random() * 90000000).toString();
+      const randomDigits = randomInt(10000000, 100000000).toString();
       childPhone = `+24388${randomDigits}`;
       const existing = await db.user.findUnique({ where: { phone: childPhone } });
       if (!existing) {
@@ -125,7 +108,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate unique pseudo
-    const pseudo = `${childName.toLowerCase().replace(/[^a-z0-9]/g, '')}_${Math.floor(100 + Math.random() * 900)}`;
+    const pseudo = `${childName.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 30) || 'membre'}_${randomInt(100, 1000)}`;
 
     // Create child user
     const child = await db.user.create({
@@ -136,7 +119,7 @@ export async function POST(request: NextRequest) {
         country: parent.country || 'CD',
         role: 'client', // child is a client for compatibility
         pin: await hashPin(pin),
-        password: parent.password || '1234', // default password or parent password
+        password: await hashPassword(randomBytes(32).toString('base64url')),
         realBalance: 0,
         realBalanceFC: 0,
         bonusBalance: 0, // 0 as required
@@ -147,24 +130,18 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Generate unique card details
-    let cardNumber = generateCardNumber();
-    let cardAttempts = 0;
-    while (await db.traitCard.findUnique({ where: { cardNumber } }) && cardAttempts < 10) {
-      cardNumber = generateCardNumber();
-      cardAttempts++;
-    }
-
-    const cvv = generateCVV();
-    const expiryDate = generateExpiryDate();
     const maxLoadAmount = CARD_LOAD_CAP[cardType === 'FC' ? 'FC' : 'USD'];
 
-    // Create CardRequest + TraitCard
+    // Create a reviewable request and a non-payable preview; no bank credentials are generated.
     const cardRequest = await db.cardRequest.create({
       data: {
         userId: child.id,
         cardType,
-        status: 'approved',
+        status: 'pending',
+        holderName: trimmedName,
+        jobTitle: trimmedJobTitle,
+        birthDate: parsedBirthDate,
+        photoData,
       },
     });
 
@@ -173,12 +150,12 @@ export async function POST(request: NextRequest) {
         userId: child.id,
         cardRequestId: cardRequest.id,
         cardType,
-        cardNumber,
-        cvv,
-        qrCode: generateQRCode(cardRequest.id),
-        expiryDate,
+        qrCode: randomUUID(),
         status: 'pending_retrieval', // En attente de retrait
         holderName: trimmedName,
+        jobTitle: trimmedJobTitle,
+        birthDate: parsedBirthDate,
+        holderPhoto: photoData,
         relation: cardRelation,
         maxLoadAmount,
       },
@@ -196,7 +173,6 @@ export async function POST(request: NextRequest) {
         cardType,
         relation: cardRelation,
         maxLoadAmount,
-        cardNumber: maskCardNumber(cardNumber),
       }),
       riskLevel: 'low',
     });
@@ -207,7 +183,7 @@ export async function POST(request: NextRequest) {
       cardRelation === 'family' ? 'Carte Famille créée' : 'Compte Enfant créé',
       cardRelation === 'family'
         ? `La carte TRAIT ${cardType} de ${childName} (membre de votre famille) a été créée. Plafond d'encaissement : ${formatLoadCap(cardType === 'FC' ? 'FC' : 'USD')}.`
-        : `Le compte de votre enfant ${childName} a été créé avec succès avec la carte ${cardType} ****${cardNumber.slice(-4)}. Plafond d'encaissement : ${formatLoadCap(cardType === 'FC' ? 'FC' : 'USD')}.`,
+        : `Le compte de votre enfant ${childName} a été créé et sa demande est en attente de validation administrative. Vous pouvez déjà consulter l'aperçu. Plafond d'encaissement : ${formatLoadCap(cardType === 'FC' ? 'FC' : 'USD')}.`,
       'general',
       false
     )
@@ -229,16 +205,16 @@ export async function POST(request: NextRequest) {
 
 Plafond d'encaissement de la carte : ${capLabel}.
 
-Rendez-vous à l'administration TRAIT pour récupérer la carte physique.
+La demande attend la validation de l'administration. Vous pourrez retirer la carte physique après validation.
 
-La carte est actuellement active avec un solde de 0 USD et 0 CDF. Vous pouvez commencer à l'utiliser après l'avoir rechargée.`
+L'aperçu est disponible dans votre espace. La carte sera activée après sa remise.`
       : `Félicitations ! La carte TRAIT de ${childName} a été créée avec succès.
 
 Plafond d'encaissement de la carte : ${capLabel}.
 
-Rendez-vous à l'administration TRAIT pour récupérer la carte physique de votre enfant.
+La demande attend la validation de l'administration. Vous pourrez retirer la carte physique de votre enfant après validation.
 
-La carte est actuellement active avec un solde de 0 USD et 0 CDF. Vous pouvez commencer à l'utiliser après l'avoir rechargée.`;
+L'aperçu est disponible dans votre espace. La carte sera activée après sa remise.`;
 
     return NextResponse.json({
       success: true,
@@ -251,7 +227,8 @@ La carte est actuellement active avec un solde de 0 USD et 0 CDF. Vous pouvez co
       card: {
         id: card.id,
         cardType: card.cardType,
-        cardNumber: maskCardNumber(card.cardNumber),
+        cardNumber: null,
+        last4: null,
         status: card.status,
         relation: card.relation,
         maxLoadAmount: card.maxLoadAmount,

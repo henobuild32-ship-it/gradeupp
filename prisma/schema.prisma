@@ -463,6 +463,10 @@ model CardRequest {
   userId       String
   cardType     String     @default("USD")
   status       String     @default("pending")
+  holderName   String?
+  jobTitle     String?
+  birthDate    DateTime?
+  photoData    String?    @db.Text
   rejectReason String?
   adminId      String?
   createdAt    DateTime   @default(now())
@@ -481,12 +485,16 @@ model TraitCard {
   userId        String
   cardRequestId String        @unique
   cardType      String        @default("USD")
-  cardNumber    String        @unique
-  cvv           String
+  cardNumber    String?       @unique
+  last4         String?
+  cvv           String?
   qrCode        String
-  expiryDate    String
+  expiryDate    String?
   status        String        @default("active")
   holderName    String?
+  jobTitle      String?
+  birthDate     DateTime?
+  holderPhoto   String?       @db.Text
   relation      String        @default("child")
   maxLoadAmount Float?
   createdAt     DateTime      @default(now())
@@ -496,7 +504,7 @@ model TraitCard {
   user          User          @relation(fields: [userId], references: [id])
 
   @@index([userId])
-  @@index([cardNumber])
+  @@index([last4])
   @@index([status])
 }
 
@@ -723,6 +731,7 @@ model PaymentRequest {
   currency    String   @default("FC")
   description String?
   status      String   @default("pending")
+  transactionId String? @unique
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   requester   User     @relation(fields: [requesterId], references: [id], onDelete: Cascade)

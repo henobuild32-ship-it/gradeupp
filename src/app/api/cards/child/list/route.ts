@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireUser } from '@/lib/auth';
 
-function maskCardNumber(num: string): string {
-  return num.length >= 4 ? `****${num.slice(-4)}` : num;
+function maskedBirthDate(value: Date | null | undefined) {
+  if (!value) return null;
+  return `${String(value.getUTCDate()).padStart(2, '0')}/${String(value.getUTCMonth() + 1).padStart(2, '0')}/XXXX`;
 }
 
 export async function GET(request: NextRequest) {
@@ -43,15 +44,18 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             cardType: true,
-            cardNumber: true,
-            cvv: true,
+            last4: true,
             qrCode: true,
             expiryDate: true,
             status: true,
             createdAt: true,
             holderName: true,
+            jobTitle: true,
+            birthDate: true,
+            holderPhoto: true,
             relation: true,
             maxLoadAmount: true,
+            request: { select: { status: true } },
           },
         },
       },
@@ -126,9 +130,11 @@ export async function GET(request: NextRequest) {
       ...child,
       relation: child.cards[0]?.relation || 'child',
       recharged: rechargedByChild[child.id] || { USD: 0, FC: 0 },
-      cards: child.cards.map(card => ({
+      cards: child.cards.map(({ request, ...card }) => ({
         ...card,
-        cardNumber: maskCardNumber(card.cardNumber),
+        cardNumber: card.last4 ? `•••• ${card.last4}` : null,
+        birthDate: maskedBirthDate(card.birthDate),
+        requestStatus: request.status,
       })),
     }));
 

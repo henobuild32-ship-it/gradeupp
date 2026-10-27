@@ -34,26 +34,30 @@ export function middleware(request: NextRequest) {
 
   if (pathname.startsWith('/api/')) {
     const origin = request.headers.get('origin')
-    const host = request.headers.get('host') || ''
-    const allowedExact = new Set([
-      'https://trait-rho.vercel.app',
-      'http://localhost:3000',
-      'http://localhost:3099',
-    ])
+    const host = (request.headers.get('host') || '').toLowerCase()
+    const hasSessionCookie = !!(
+      request.cookies.get('trait_token')?.value ||
+      request.cookies.get('trait_admin_token')?.value
+    )
 
     function isAllowedOrigin(o: string | null): boolean {
-      if (!o) return true
-      if (allowedExact.has(o)) return true
+      if (!o) return false
       try {
         const u = new URL(o)
-        if (u.host === host) return true
-        if (u.hostname.endsWith('.vercel.app') && u.hostname.includes('trait')) return true
-        if (u.hostname.endsWith('.vercel.app') && u.hostname.includes('henobuild')) return true
+        const localHttp = u.protocol === 'http:' && /^(localhost|127\.0\.0\.1)(:\d+)?$/i.test(host)
+        return u.host.toLowerCase() === host && (u.protocol === 'https:' || localHttp)
       } catch {}
       return false
     }
 
-    if (!isAllowedOrigin(origin)) {
+    const isStateChangingMethod = !['GET', 'HEAD', 'OPTIONS'].includes(request.method)
+    const referer = request.headers.get('referer')
+    const hasSameOriginReferer = (() => {
+      if (!referer) return false
+      try { return new URL(referer).host.toLowerCase() === host } catch { return false }
+    })()
+
+    if ((origin && !isAllowedOrigin(origin)) || (!origin && isStateChangingMethod && hasSessionCookie && !hasSameOriginReferer)) {
       return NextResponse.json(
         { success: false, message: 'Origin not allowed' },
         { status: 403 }
@@ -62,11 +66,13 @@ export function middleware(request: NextRequest) {
 
     if (origin) {
       response.headers.set('Access-Control-Allow-Origin', origin)
+      response.headers.set('Vary', 'Origin')
     }
     response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
     response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
     response.headers.set('Access-Control-Allow-Credentials', 'true')
     response.headers.set('Access-Control-Max-Age', '86400')
+    if (request.method === 'OPTIONS') return new NextResponse(null, { status: 204, headers: response.headers })
   }
 
   if (pathname.startsWith('/api/') && !pathname.startsWith('/api/app/version')) {

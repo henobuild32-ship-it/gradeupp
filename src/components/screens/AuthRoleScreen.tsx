@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { ArrowLeft, User, Building2 } from 'lucide-react';
+import { ArrowLeft, User, Building2, Store } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAppStore } from '@/lib/store';
@@ -62,7 +62,7 @@ export default function AuthRoleScreen() {
           <p className="text-muted-foreground text-center">{t('auth.choose_role')}</p>
         </div>
 
-        <div className="flex flex-col gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {/* Client option */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -144,6 +144,38 @@ export default function AuthRoleScreen() {
               </CardContent>
             </Card>
           </motion.div>
+          {/* Seller option */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.35 }}
+          >
+            <Card
+              className={`cursor-pointer transition-all duration-200 hover:shadow-lg ${
+                selectedRole === 'seller'
+                  ? 'border-pink-500 bg-pink-50/50 shadow-md ring-2 ring-pink-200'
+                  : 'hover:border-pink-200'
+              }`}
+              onClick={() => setSelectedRole('seller')}
+            >
+              <CardContent className="p-6 flex flex-col items-center gap-3">
+                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${
+                  selectedRole === 'seller' ? 'bg-pink-500 text-white' : 'bg-pink-100 text-pink-600'
+                }`}>
+                  <Store className="w-8 h-8" />
+                </div>
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold text-foreground">Commerçant</h3>
+                  <p className="text-sm text-muted-foreground mt-1">Présentez votre boutique et suivez vos ventes après validation.</p>
+                </div>
+                {selectedRole === 'seller' && (
+                  <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-6 h-6 rounded-full bg-pink-500 flex items-center justify-center">
+                    <span className="text-white text-xs font-bold">✓</span>
+                  </motion.div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
         </div>
 
         {/* Continue button */}
@@ -154,7 +186,7 @@ export default function AuthRoleScreen() {
           className="mt-8"
         >
           <Button
-            onClick={() => navigateTo('auth-phone')}
+            onClick={() => navigateTo('auth', { mode: 'register', role: selectedRole })}
             className="w-full h-13 text-base font-semibold bg-[#0D5C63] hover:bg-[#083A3E] text-white rounded-xl shadow-lg shadow-blue-900/10 cursor-pointer"
             size="lg"
           >
@@ -167,7 +199,7 @@ export default function AuthRoleScreen() {
           <p className="text-sm text-muted-foreground">
             {t('auth.already_account')}{' '}
             <button
-              onClick={() => navigateTo('auth-login')}
+              onClick={() => navigateTo('auth', { mode: 'login', role: selectedRole })}
               className="font-semibold text-[#0D5C63] hover:text-blue-900 underline underline-offset-2 cursor-pointer"
             >
               {t('auth.login_link')}

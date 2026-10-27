@@ -178,7 +178,7 @@ export default function AgentPendingScreen() {
           className="w-full max-w-sm mt-6 space-y-3"
         >
           <Button
-            onClick={() => navigateTo('auth-login')}
+            onClick={() => navigateTo('auth', { mode: 'login', role: 'agent' })}
             className="w-full h-11 text-sm font-semibold bg-[#0D5C63] hover:bg-[#083A3E] text-white rounded-xl cursor-pointer"
           >
             Se connecter

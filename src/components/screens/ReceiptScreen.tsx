@@ -7,6 +7,7 @@ import {
   Share2,
   Copy,
   Download,
+  Printer,
   X,
   CheckCircle,
   XCircle,
@@ -24,6 +25,7 @@ import { toast } from 'sonner';
 interface ReceiptData {
   id: string;
   receiptNumber: string;
+  invoiceNumber?: string | null;
   type: string;
   amount: number;
   fee: number;
@@ -52,9 +54,32 @@ export default function ReceiptScreen() {
 
   async function fetchReceipt() {
     try {
-      const res = await fetch(`/api/transfer/receipt?transactionId=${transactionId}`);
+      const res = await fetch('/api/receipt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ transactionId }),
+      });
       const data = await res.json();
-      if (data.success) setReceipt(data.receipt);
+      if (data.success && data.receipt?.transaction) {
+        const result = data.receipt;
+        const transaction = result.transaction;
+        setReceipt({
+          id: transaction.id,
+          receiptNumber: result.receiptNumber,
+          invoiceNumber: result.invoiceNumber ?? null,
+          type: transaction.type,
+          amount: transaction.amount,
+          fee: transaction.fee,
+          total: transaction.amount + transaction.fee,
+          currency: transaction.currency,
+          status: transaction.status,
+          description: transaction.description || '',
+          createdAt: transaction.createdAt,
+          sender: result.sender,
+          receiver: result.receiver,
+        });
+      }
       else toast.error('Reçu introuvable');
     } catch { toast.error('Erreur de chargement'); }
     finally { setLoading(false); }
@@ -77,13 +102,13 @@ export default function ReceiptScreen() {
 
   async function handleShare() {
     if (!receipt) return;
-    const text = `TRAIT - Reçu de transaction\nN°: ${receipt.receiptNumber}\nMontant: ${receipt.currency === 'FC' ? '' : '$'}${receipt.amount.toFixed(2)} ${receipt.currency === 'FC' ? 'FC' : 'USD'}\nDe: ${receipt.sender.name}\nÀ: ${receipt.receiver.name}\nDate: ${formatDate(receipt.createdAt)}`;
+    const text = `TRAIT - Reçu de transaction\nN°: ${receipt.receiptNumber}${receipt.invoiceNumber ? `\nFacture: ${receipt.invoiceNumber}` : ''}\nMontant: ${receipt.currency === 'FC' ? '' : '$'}${receipt.amount.toFixed(2)} ${receipt.currency === 'FC' ? 'FC' : 'USD'}\nDe: ${receipt.sender.name}\nÀ: ${receipt.receiver.name}\nDate: ${formatDate(receipt.createdAt)}`;
     try { await navigator.share({ title: 'Reçu TRAIT', text }); } catch {}
   }
 
   async function handleCopy() {
     if (!receipt) return;
-    const text = `Reçu TRAIT\n${receipt.receiptNumber}\n${formatDate(receipt.createdAt)}\nDe: ${receipt.sender.name} (${receipt.sender.phone})\nÀ: ${receipt.receiver.name} (${receipt.receiver.phone})\nMontant: ${receipt.currency === 'FC' ? '' : '$'}${receipt.amount.toFixed(2)} ${receipt.currency === 'FC' ? 'FC' : 'USD'}\nFrais: ${receipt.currency === 'FC' ? '' : '$'}${receipt.fee.toFixed(2)} ${receipt.currency === 'FC' ? 'FC' : 'USD'}\nTotal: ${receipt.currency === 'FC' ? '' : '$'}${receipt.total.toFixed(2)} ${receipt.currency === 'FC' ? 'FC' : 'USD'}\nStatut: ${receipt.status}`;
+    const text = `Reçu TRAIT\n${receipt.receiptNumber}${receipt.invoiceNumber ? `\nFacture: ${receipt.invoiceNumber}` : ''}\n${formatDate(receipt.createdAt)}\nDe: ${receipt.sender.name} (${receipt.sender.phone})\nÀ: ${receipt.receiver.name} (${receipt.receiver.phone})\nMontant: ${receipt.currency === 'FC' ? '' : '$'}${receipt.amount.toFixed(2)} ${receipt.currency === 'FC' ? 'FC' : 'USD'}\nFrais: ${receipt.currency === 'FC' ? '' : '$'}${receipt.fee.toFixed(2)} ${receipt.currency === 'FC' ? 'FC' : 'USD'}\nTotal: ${receipt.currency === 'FC' ? '' : '$'}${receipt.total.toFixed(2)} ${receipt.currency === 'FC' ? 'FC' : 'USD'}\nStatut: ${receipt.status}`;
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -94,7 +119,7 @@ export default function ReceiptScreen() {
 
   function handleDownload() {
     if (!receipt) return;
-    const text = `TRAIT - Reçu de Transaction\n${'='.repeat(40)}\nN° Reçu: ${receipt.receiptNumber}\nDate: ${formatDate(receipt.createdAt)}\n\n--- EXPÉDITEUR ---\nNom: ${receipt.sender.name}\nTéléphone: ${receipt.sender.phone}\n\n--- DESTINATAIRE ---\nNom: ${receipt.receiver.name}\nTéléphone: ${receipt.receiver.phone}\n\n--- DÉTAILS ---\nDescription: ${receipt.description || 'N/A'}\nMontant: ${receipt.currency === 'FC' ? '' : '$'}${receipt.amount.toFixed(2)} ${receipt.currency === 'FC' ? 'FC' : 'USD'}\nFrais: ${receipt.currency === 'FC' ? '' : '$'}${receipt.fee.toFixed(2)} ${receipt.currency === 'FC' ? 'FC' : 'USD'}\nTotal: ${receipt.currency === 'FC' ? '' : '$'}${receipt.total.toFixed(2)} ${receipt.currency === 'FC' ? 'FC' : 'USD'}\nStatut: ${receipt.status}\n\n${'='.repeat(40)}\nMerci d'utiliser TRAIT !`;
+    const text = `TRAIT - Reçu de Transaction\n${'='.repeat(40)}\nN° Reçu: ${receipt.receiptNumber}${receipt.invoiceNumber ? `\nN° Facture: ${receipt.invoiceNumber}` : ''}\nDate: ${formatDate(receipt.createdAt)}\n\n--- EXPÉDITEUR ---\nNom: ${receipt.sender.name}\nTéléphone: ${receipt.sender.phone}\n\n--- DESTINATAIRE ---\nNom: ${receipt.receiver.name}\nTéléphone: ${receipt.receiver.phone}\n\n--- DÉTAILS ---\nDescription: ${receipt.description || 'N/A'}\nMontant: ${receipt.currency === 'FC' ? '' : '$'}${receipt.amount.toFixed(2)} ${receipt.currency === 'FC' ? 'FC' : 'USD'}\nFrais: ${receipt.currency === 'FC' ? '' : '$'}${receipt.fee.toFixed(2)} ${receipt.currency === 'FC' ? 'FC' : 'USD'}\nTotal: ${receipt.currency === 'FC' ? '' : '$'}${receipt.total.toFixed(2)} ${receipt.currency === 'FC' ? 'FC' : 'USD'}\nStatut: ${receipt.status}\n\n${'='.repeat(40)}\nMerci d'utiliser TRAIT !`;
     const blob = new Blob([text], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -126,20 +151,21 @@ export default function ReceiptScreen() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <div className="flex items-center gap-3 px-4 pt-6 pb-4 bg-white dark:bg-gray-950">
+      <div className="print:hidden flex items-center gap-3 px-4 pt-6 pb-4 bg-white dark:bg-gray-950">
         <Button variant="ghost" size="icon" className="rounded-full" onClick={() => navigateTo('home')}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-xl font-bold text-foreground">Reçu</h1>
+        <h1 className="text-xl font-bold text-foreground">{receipt.invoiceNumber ? 'Facture et reçu' : 'Reçu'}</h1>
       </div>
 
-      <div className="px-4 py-4 max-w-md mx-auto">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-border overflow-hidden">
+      <div className="px-4 py-4 max-w-md mx-auto print:max-w-none print:p-0">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-border overflow-hidden print:rounded-none print:shadow-none">
           <div className="bg-[#0D5C63] p-6 text-white text-center">
             <p className="text-lg font-bold">TRAIT</p>
             <p className="text-[10px] opacity-80 mt-0.5">Transfert d&apos;argent sécurisé</p>
             <div className="mt-4">
-              <p className="text-[10px] opacity-70">N° {receipt.receiptNumber}</p>
+            <p className="text-[10px] opacity-70">N° reçu {receipt.receiptNumber}</p>
+            {receipt.invoiceNumber && <p className="text-[10px] opacity-80 mt-1">Facture {receipt.invoiceNumber}</p>}
               <p className="text-xs mt-1 opacity-80">{formatDate(receipt.createdAt)}</p>
             </div>
           </div>
@@ -187,12 +213,15 @@ export default function ReceiptScreen() {
           </div>
         </motion.div>
 
-        <div className="flex flex-wrap gap-2 mt-6">
+        <div className="print:hidden flex flex-wrap gap-2 mt-6">
           <Button variant="outline" className="flex-1 rounded-xl" onClick={handleShare}>
             <Share2 className="h-4 w-4 mr-2" />Partager
           </Button>
           <Button variant="outline" className="flex-1 rounded-xl" onClick={handleDownload}>
             <Download className="h-4 w-4 mr-2" />Télécharger
+          </Button>
+          <Button variant="outline" className="flex-1 rounded-xl" onClick={() => window.print()}>
+            <Printer className="h-4 w-4 mr-2" />Imprimer / PDF
           </Button>
           <Button variant="outline" className="flex-1 rounded-xl" onClick={handleCopy}>
             {copied ? <CheckCircle className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}

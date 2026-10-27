@@ -25,11 +25,15 @@ import { NotificationBadge } from '@/components/layout/NotificationBadge';
 interface UserCard {
   id: string;
   cardType: 'USD' | 'FC';
-  cardNumber: string;
-  cvv: string;
+  cardNumber: string | null;
   qrCode: string;
-  expiryDate: string;
+  expiryDate: string | null;
   status: string;
+  holderName?: string | null;
+  jobTitle?: string | null;
+  birthDate?: string | null;
+  holderPhoto?: string | null;
+  requestStatus?: string | null;
 }
 
 interface PendingRequest {
@@ -389,8 +393,10 @@ export default function HomeScreen() {
               <div className="space-y-3">
                 {userCards.map((card) => (
                   <TraitCard key={card.id} cardType={card.cardType} cardNumber={card.cardNumber}
-                    cardHolder={user?.name || user?.pseudo || 'TRAIT USER'} expiryDate={card.expiryDate}
-                    cvv={card.cvv} qrCode={card.qrCode}
+                    cardHolder={card.holderName || user?.name || user?.pseudo || 'TRAIT USER'} expiryDate={card.expiryDate}
+                    qrCode={card.qrCode} jobTitle={card.jobTitle} birthDate={card.birthDate}
+                    holderPhoto={card.holderPhoto} cardId={card.id}
+                    requestStatus={card.requestStatus}
                     balance={card.cardType === 'USD' ? (user?.realBalance ?? 0) : (user?.realBalanceFC ?? 0)}
                     status={card.status} />
                 ))}

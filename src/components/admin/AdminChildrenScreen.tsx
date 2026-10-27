@@ -38,12 +38,17 @@ interface ParentData {
 interface ChildCard {
   id: string;
   cardType: 'USD' | 'FC';
-  cardNumber: string;
-  cvv: string;
+  last4: string | null;
   qrCode: string;
-  expiryDate: string;
+  expiryDate: string | null;
   status: string;
   createdAt: string;
+  holderName: string | null;
+  jobTitle: string | null;
+  birthDate: string | null;
+  holderPhoto: string | null;
+  relation: string;
+  request: { status: string };
 }
 
 interface ChildUser {
@@ -278,14 +283,22 @@ export default function AdminChildrenScreen() {
                           </span>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2 text-[11px] text-muted-foreground">
-                          <div>Numéro: <span className="font-mono font-bold text-foreground">{card.cardNumber}</span></div>
-                          <div>CVV: <span className="font-mono text-foreground">{card.cvv}</span></div>
+                        <div className="grid grid-cols-[54px_1fr] gap-3 rounded-lg bg-muted/30 p-2.5">
+                          <div className="h-[68px] w-[54px] overflow-hidden rounded-md border bg-muted">
+                            {card.holderPhoto ? <img src={card.holderPhoto} alt={`Portrait de ${card.holderName || child.name}`} className="h-full w-full object-cover" /> : null}
+                          </div>
+                          <div className="space-y-1 text-[11px] text-muted-foreground">
+                            <div>Titulaire : <span className="font-semibold text-foreground">{card.holderName || child.name}</span></div>
+                            <div>Poste : <span className="text-foreground">{card.jobTitle || '—'}</span></div>
+                            <div>Date de naissance : <span className="font-semibold text-foreground">{card.birthDate ? new Date(card.birthDate).toLocaleDateString('fr-FR', { timeZone: 'UTC' }) : '—'}</span></div>
+                            <div>Identifiant interne : <span className="font-mono text-foreground">{card.last4 ? `•••• ${card.last4}` : `•••• ${card.id.slice(-4).toUpperCase()}`}</span></div>
+                            <p className="text-[10px]">Aucun numéro bancaire ni CVV n’est stocké.</p>
+                          </div>
                         </div>
 
                         {/* Actions on Card */}
                         <div className="flex gap-2 pt-2 border-t flex-wrap justify-end">
-                          {card.status === 'pending_retrieval' && (
+                          {card.status === 'pending_retrieval' && card.request.status === 'approved' && (
                             <Button
                               size="sm"
                               className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[10px] h-7 px-3 rounded-lg"
@@ -295,6 +308,7 @@ export default function AdminChildrenScreen() {
                               Confirmer la remise
                             </Button>
                           )}
+                          {card.status === 'pending_retrieval' && card.request.status !== 'approved' && <span className="mr-auto text-[10px] text-amber-700">Validation de la demande requise avant la remise</span>}
                           
                           {card.status === 'active' || card.status === 'delivered' || card.status === 'pending_retrieval' ? (
                             <Button

@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAdmin } from '@/lib/auth';
 
-function maskCardNumber(num: string): string {
-  return num.length >= 4 ? `****${num.slice(-4)}` : num;
+function maskCardNumber(num: string | null): string {
+  return num ? `•••• ${num.slice(-4)}` : 'Carte TRAIT';
 }
 
 // POST - Admin suspend or activate a card

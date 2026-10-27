@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useAppStore } from '@/lib/store';
 import { toast } from 'sonner';
+import Image from 'next/image';
 
 export default function AdminLoginScreen() {
   const { setAdmin, navigateTo, goBack } = useAppStore();
@@ -58,15 +59,15 @@ export default function AdminLoginScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#e5f3f1] via-background to-[#f5f7f7] flex flex-col">
       {/* Sticky Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: 'easeOut' as const }}
-        className="sticky top-0 z-10 backdrop-blur-md bg-background/80 border-b border-border"
+        className="sticky top-0 z-10 border-b border-border/50 bg-white/70 backdrop-blur-xl dark:bg-background/80"
       >
-        <div className="flex items-center gap-3 px-4 py-3">
+        <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-4 py-3 sm:px-6">
           <Button
             variant="ghost"
             size="icon"
@@ -76,7 +77,13 @@ export default function AdminLoginScreen() {
             <ArrowLeft className="h-5 w-5" />
             <span className="sr-only">Retour</span>
           </Button>
-          <h1 className="text-lg font-semibold text-foreground">Connexion Admin</h1>
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-border/60">
+            <Image src="/trait-mark.png" alt="" width={42} height={30} className="h-8 w-9 object-contain" />
+          </span>
+          <div>
+            <h1 className="text-base font-semibold text-foreground">Administration TRAIT</h1>
+            <p className="text-xs text-muted-foreground">Accès sécurisé</p>
+          </div>
         </div>
       </motion.div>
 
@@ -86,12 +93,12 @@ export default function AdminLoginScreen() {
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, ease: 'easeOut' as const }}
-          className="w-full max-w-sm"
+          className="w-full max-w-md"
         >
           {/* Shield Icon */}
           <div className="flex flex-col items-center mb-8">
-            <div className="w-20 h-20 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center mb-4">
-              <Shield className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#0D5C63]/10 text-[#0D5C63]">
+              <Shield className="h-8 w-8" />
             </div>
             <h2 className="text-2xl font-bold text-foreground mb-1">
               Accès Administration
@@ -102,8 +109,8 @@ export default function AdminLoginScreen() {
           </div>
 
           {/* Login Form */}
-          <Card className="border-border shadow-lg">
-            <CardContent className="p-6">
+          <Card className="rounded-3xl border-white/80 bg-white/90 shadow-xl shadow-[#073f45]/10 backdrop-blur-xl dark:border-border dark:bg-card">
+            <CardContent className="p-6 sm:p-8">
               <form onSubmit={handleLogin} className="space-y-4">
                 {/* Username */}
                 <div className="space-y-2">
@@ -111,6 +118,8 @@ export default function AdminLoginScreen() {
                   <Input
                     id="username"
                     type="text"
+                    required
+                    maxLength={80}
                     placeholder="admin"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
@@ -126,6 +135,8 @@ export default function AdminLoginScreen() {
                     <Input
                       id="password"
                       type={showPassword ? 'text' : 'password'}
+                      required
+                      maxLength={128}
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
@@ -136,7 +147,7 @@ export default function AdminLoginScreen() {
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                      tabIndex={-1}
+                      aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                     >
                       {showPassword ? (
                         <EyeOff className="h-4 w-4" />
@@ -150,8 +161,8 @@ export default function AdminLoginScreen() {
                 {/* Submit */}
                 <Button
                   type="submit"
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
-                  disabled={loading}
+                  className="h-12 w-full rounded-xl bg-[#0D5C63] font-semibold text-white hover:bg-[#083A3E]"
+                  disabled={loading || !username.trim() || !password.trim()}
                 >
                   {loading ? (
                     <>

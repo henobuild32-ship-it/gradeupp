@@ -118,6 +118,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    if (!user.isVerified && user.email) {
+      return NextResponse.json(
+        {
+          success: false,
+          verificationRequired: true,
+          email: user.email,
+          message: 'Vérifiez votre adresse email avant de vous connecter.',
+        },
+        { status: 403 }
+      )
+    }
+
     // Do NOT rewrite agent codes — codes are assigned at admin validation (AGT-XXXXXX)
 
     // Sign JWT

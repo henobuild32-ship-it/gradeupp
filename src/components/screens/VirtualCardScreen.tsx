@@ -7,19 +7,11 @@ import {
   Snowflake,
   Flame,
   Copy,
-  Eye,
-  EyeOff,
-  Fingerprint,
   ShieldAlert,
   History,
-  Globe,
-  Nfc,
-  Banknote,
-  Wallet,
   Package,
   CheckCircle2,
   Loader2,
-  SlidersHorizontal,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -42,23 +34,14 @@ import VirtualCard, { type VirtualCardData, type VirtualCardState } from '@/comp
  * - Auto-masquage après 30 s ou passage en arrière-plan.
  * - Copie : presse-papiers effacé après 60 s.
  * - Jamais de stockage local du PAN/CVV complet.
- * - Mode démo = SPÉCIMEN uniquement (0000 0000 0000 0000).
+ * - Sans émetteur bancaire connecté, aucun numéro ni CVV n'est affiché.
  */
 
 const REVEAL_TIMEOUT_MS = 30_000;
 const CLIPBOARD_CLEAR_MS = 60_000;
-const IS_SPECIMEN = process.env.NEXT_PUBLIC_CARD_MODE !== 'live';
-
-type LimitKey = 'online' | 'contactless' | 'atm';
-
-interface CardLimits {
-  online: boolean;
-  contactless: boolean;
-  atm: boolean;
-}
 
 export default function VirtualCardScreen() {
-  const { goBack, navigateTo, user, setPendingPinAction } = useAppStore();
+  const { goBack, navigateTo, user, pageParams } = useAppStore();
   const { t } = useTranslation();
 
   const [loading, setLoading] = useState(true);
@@ -66,21 +49,14 @@ export default function VirtualCardScreen() {
   const [revealed, setRevealed] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showLostDialog, setShowLostDialog] = useState(false);
-  const [showOneTimeDialog, setShowOneTimeDialog] = useState(false);
-  const [showLimitsDialog, setShowLimitsDialog] = useState(false);
-  const [limits, setLimits] = useState<CardLimits>({
-    online: true,
-    contactless: true,
-    atm: true,
-  });
 
   const revealTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const clipboardTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Données carte (last4 uniquement — jamais de PAN complet en state persistant) ──
   const [card, setCard] = useState<VirtualCardData>({
-    last4: IS_SPECIMEN ? '0000' : '0000',
-    maskedNumber: '•••• •••• •••• 0000',
+    last4: '',
+    maskedNumber: '•••• •••• ••••',
     expiry: '',
     holder: user?.name || user?.pseudo || '—',
     cardType: 'USD',
@@ -147,14 +123,16 @@ export default function VirtualCardScreen() {
         const data = await res.json();
         if (cancelled) return;
         if (data.success) {
-          const active = (data.cards || []).find(
-            (c: { status: string }) => c.status === 'active' || c.status === 'suspended' || c.status === 'blocked' || c.status === 'frozen',
+          const active = (data.cards || []).find((c: { id: string }) => c.id === pageParams.cardId) || (data.cards || []).find(
+            (c: { status: string }) => ['active', 'suspended', 'blocked', 'frozen', 'pending_retrieval'].includes(c.status),
           );
           const pending = (data.pendingRequests || [])[0];
           if (active) {
-            const last4 = String(active.cardNumber || '').slice(-4) || '0000';
+            const last4 = String(active.cardNumber || '').replace(/\D/g, '').slice(-4);
             setCardState(
-              active.status === 'frozen'
+              active.status === 'pending_retrieval'
+                ? 'pending'
+                : active.status === 'frozen'
                 ? 'frozen'
                 : active.status === 'blocked'
                   ? 'blocked'
@@ -164,6 +142,7 @@ export default function VirtualCardScreen() {
             );
             setCard((c) => ({
               ...c,
+              id: active.id,
               last4,
               maskedNumber: `•••• •••• •••• ${last4}`,
               cardType: active.cardType === 'FC' ? 'FC' : 'USD',
@@ -180,7 +159,7 @@ export default function VirtualCardScreen() {
           }
         }
       } catch {
-        // Silently keep specimen defaults in demo
+        toast.error('Impossible de charger le statut de votre carte. Réessayez.');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -197,21 +176,7 @@ export default function VirtualCardScreen() {
 
   // ── Révélation sécurisée (PIN puis — natif — biométrie) ──
   const requestReveal = () => {
-    setPendingPinAction(async () => {
-      // Après PIN OK : en mode live, appeler GET /api/cards/reveal → SDK émetteur.
-      // Ici : jamais de PAN inventé hors spécimen.
-      setRevealed(true);
-      setCard((c) => ({
-        ...c,
-        revealed: true,
-        issuerPan: IS_SPECIMEN ? null : c.issuerPan,
-        issuerExpiry: IS_SPECIMEN ? null : c.issuerExpiry,
-        issuerCvv: IS_SPECIMEN ? null : c.issuerCvv,
-      }));
-      startRevealTimer();
-      toast.success(t('vcard.revealed'));
-    });
-    navigateTo('pin-verify');
+    toast.info('Aucun émetteur bancaire n’est connecté. Les numéros et CVV ne sont pas générés ni révélés par TRAIT.');
   };
 
   // ── Gel / dégel ──
@@ -226,7 +191,7 @@ export default function VirtualCardScreen() {
       const res = await fetch('/api/cards/freeze', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ action: next === 'frozen' ? 'freeze' : 'unfreeze' }),
+        body: JSON.stringify({ action: next === 'frozen' ? 'freeze' : 'unfreeze', cardId: card.id }),
       });
       const data = await res.json();
       if (data.success) {
@@ -234,13 +199,10 @@ export default function VirtualCardScreen() {
         hideDetails();
         toast.success(next === 'frozen' ? t('vcard.frozen_toast') : t('vcard.unfrozen_toast'));
       } else {
-        // Fallback UI même si endpoint absent (maquette)
-        setCardState(next);
-        toast.success(next === 'frozen' ? t('vcard.frozen_toast') : t('vcard.unfrozen_toast'));
+        toast.error(data.message || 'La carte n’a pas été modifiée');
       }
     } catch {
-      setCardState(next);
-      toast.success(next === 'frozen' ? t('vcard.frozen_toast') : t('vcard.unfrozen_toast'));
+      toast.error('Impossible de joindre le service de carte');
     } finally {
       setActionLoading(null);
     }
@@ -266,18 +228,31 @@ export default function VirtualCardScreen() {
 
   // ── Actions ──
   const handleLost = async () => {
-    setShowLostDialog(false);
+    if (!card.id) {
+      toast.error('Carte introuvable. Actualisez votre liste de cartes.');
+      return;
+    }
     setActionLoading('lost');
-    // Remplacement immédiat carte virtuelle
-    setCardState('blocked');
-    hideDetails();
-    setActionLoading(null);
-    toast.success(t('vcard.lost_done'));
-  };
-
-  const handleOneTimeCard = () => {
-    setShowOneTimeDialog(false);
-    toast.success(t('vcard.one_time_done'));
+    try {
+      const token = useAppStore.getState().token;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = `Bearer ${token}`;
+      const response = await fetch('/api/cards/freeze', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ action: 'lost', cardId: card.id }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message || 'La carte n’a pas pu être bloquée');
+      setShowLostDialog(false);
+      setCardState('blocked');
+      hideDetails();
+      toast.success('Carte bloquée', { description: 'Son QR est invalidé. Vous pouvez demander un remplacement.' });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Impossible de joindre le service de carte');
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   const handleActivatePhysical = () => {
@@ -291,27 +266,17 @@ export default function VirtualCardScreen() {
         case 'freeze':
           void toggleFreeze();
           break;
-        case 'limits':
-          setShowLimitsDialog(true);
-          break;
-        case 'online':
-          setLimits((l) => ({ ...l, online: !l.online }));
-          toast.success(limits.online ? t('vcard.online_disabled') : t('vcard.online_enabled'));
-          break;
         case 'tx':
           navigateTo('history');
           break;
         case 'lost':
           setShowLostDialog(true);
           break;
-        case 'onetime':
-          setShowOneTimeDialog(true);
-          break;
         default:
           break;
       }
     },
-    [toggleFreeze, limits.online, navigateTo, t],
+    [toggleFreeze, navigateTo],
   );
 
   const actionGrid = useMemo<Array<{
@@ -329,18 +294,6 @@ export default function VirtualCardScreen() {
         disabled: actionLoading === 'freeze' || cardState === 'pending' || cardState === 'blocked',
       },
       {
-        id: 'limits',
-        icon: SlidersHorizontal,
-        labelKey: 'vcard.limits',
-        disabled: cardState === 'pending',
-      },
-      {
-        id: 'online',
-        icon: Globe,
-        labelKey: limits.online ? 'vcard.online_off' : 'vcard.online_on',
-        disabled: cardState === 'pending' || cardState === 'blocked',
-      },
-      {
         id: 'tx',
         icon: History,
         labelKey: 'vcard.recent_tx',
@@ -351,16 +304,10 @@ export default function VirtualCardScreen() {
         icon: ShieldAlert,
         labelKey: 'vcard.report_lost',
         danger: true,
-        disabled: cardState === 'pending',
-      },
-      {
-        id: 'onetime',
-        icon: Wallet,
-        labelKey: 'vcard.one_time',
-        disabled: cardState === 'pending',
+        disabled: cardState === 'pending' || cardState === 'blocked' || actionLoading === 'lost',
       },
     ],
-    [cardState, actionLoading, limits.online],
+    [cardState, actionLoading],
   );
 
   if (loading) {
@@ -411,68 +358,10 @@ export default function VirtualCardScreen() {
           onUnfreeze={cardState === 'frozen' ? () => toggleFreeze() : undefined}
         />
 
-        {/* Actions de révélation (détails) */}
-        {(cardState === 'active' || cardState === 'frozen') && (
-          <div className="grid grid-cols-3 gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-auto flex-col gap-1 py-3 rounded-xl border-border"
-              onClick={revealed ? hideDetails : requestReveal}
-            >
-              {revealed ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              <span className="text-[10px]">
-                {revealed ? t('vcard.hide_details') : t('vcard.show_details')}
-              </span>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-auto flex-col gap-1 py-3 rounded-xl border-border"
-              onClick={() =>
-                copyField(
-                  IS_SPECIMEN ? '0000000000000000' : card.maskedNumber.replace(/\s|•/g, ''),
-                  'vcard.copied_number',
-                )
-              }
-            >
-              <Copy className="w-4 h-4" />
-              <span className="text-[10px]">{t('vcard.copy_number')}</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-auto flex-col gap-1 py-3 rounded-xl border-border"
-              disabled={!revealed}
-              onClick={() =>
-                copyField(IS_SPECIMEN ? '0000' : card.expiry, 'vcard.copied_expiry')
-              }
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              <span className="text-[10px]">{t('vcard.copy_expiry')}</span>
-            </Button>
-          </div>
-        )}
-
-        {/* Révélation : copies CVV */}
-        {revealed && (
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-xl"
-              onClick={() => copyField(IS_SPECIMEN ? '000' : '', 'vcard.copied_cvv')}
-            >
-              <Copy className="w-4 h-4" />
-              {t('vcard.copy_cvv')}
-            </Button>
-            <div className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground rounded-xl border border-dashed border-border">
-              <Fingerprint className="w-3.5 h-3.5 text-[#3ddc97]" />
-              {t('vcard.auth_ok')}
-            </div>
-          </div>
-        )}
-
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200">
+          <p className="font-semibold">Portefeuille TRAIT interne</p>
+          <p className="mt-1 text-xs leading-relaxed">TRAIT n’est pas relié à un émetteur bancaire. Aucun numéro bancaire ni CVV n’est créé ou révélé. Les paiements TRAIT seront activés après validation et remise de la carte.</p>
+        </div>
         {/* Actions sous la carte */}
         <div>
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
@@ -508,44 +397,16 @@ export default function VirtualCardScreen() {
               </button>
             ))}
           </div>
+          {cardState === 'blocked' && (
+            <Button className="mt-3 w-full rounded-xl" onClick={() => navigateTo('card-request')}>
+              Demander une carte de remplacement
+            </Button>
+          )}
         </div>
 
-        {/* Résumé limites */}
-        <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            {t('vcard.limits_title')}
-          </p>
-          {(
-            [
-              { key: 'online' as LimitKey, icon: Globe, labelKey: 'vcard.limit_online' },
-              { key: 'contactless' as LimitKey, icon: Nfc, labelKey: 'vcard.limit_contactless' },
-              { key: 'atm' as LimitKey, icon: Banknote, labelKey: 'vcard.limit_atm' },
-            ] as const
-          ).map(({ key, icon: Icon, labelKey }) => (
-            <div key={key} className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-sm text-foreground">
-                <Icon className="w-4 h-4 text-muted-foreground" />
-                {t(labelKey)}
-              </span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={limits[key]}
-                onClick={() => setLimits((l) => ({ ...l, [key]: !l[key] }))}
-                className="relative h-6 w-11 rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
-                style={{
-                  background: limits[key] ? '#3ddc97' : 'rgba(128,128,128,0.35)',
-                  outlineColor: '#3ddc97',
-                }}
-                aria-label={t(labelKey)}
-              >
-                <span
-                  className="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform"
-                  style={{ transform: limits[key] ? 'translateX(20px)' : 'translateX(0)' }}
-                />
-              </button>
-            </div>
-          ))}
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <p className="text-sm font-semibold text-foreground">Paramètres de paiement bancaire</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Les plafonds bancaires, paiements en ligne, sans contact et retraits ne sont pas activés : ils nécessitent un émetteur bancaire connecté. Les paiements QR TRAIT restent soumis à la confirmation du titulaire.</p>
         </div>
 
         {/* Note sécurité */}
@@ -566,9 +427,10 @@ export default function VirtualCardScreen() {
             <Button
               className="h-11 rounded-xl bg-red-600 hover:bg-red-700 text-white"
               onClick={handleLost}
+              disabled={actionLoading === 'lost'}
             >
-              <ShieldAlert className="w-4 h-4" />
-              {t('vcard.lost_confirm')}
+              {actionLoading === 'lost' ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldAlert className="w-4 h-4" />}
+              {actionLoading === 'lost' ? 'Blocage…' : t('vcard.lost_confirm')}
             </Button>
             <Button variant="outline" className="h-11 rounded-xl" onClick={() => setShowLostDialog(false)}>
               {t('vcard.cancel')}
@@ -577,66 +439,6 @@ export default function VirtualCardScreen() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Dialog : carte à usage unique ── */}
-      <Dialog open={showOneTimeDialog} onOpenChange={setShowOneTimeDialog}>
-        <DialogContent className="mx-4 rounded-2xl">
-          <DialogHeader>
-            <DialogTitle>{t('vcard.one_time_title')}</DialogTitle>
-            <DialogDescription>{t('vcard.one_time_desc')}</DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-2 mt-2">
-            <Button
-              className="h-11 rounded-xl bg-[#0f1b2d] hover:bg-[#0f1b2d]/90 text-white dark:bg-[#3ddc97] dark:text-[#0f1b2d] dark:hover:bg-[#3ddc97]/90"
-              onClick={handleOneTimeCard}
-            >
-              <Wallet className="w-4 h-4" />
-              {t('vcard.one_time_confirm')}
-            </Button>
-            <Button variant="outline" className="h-11 rounded-xl" onClick={() => setShowOneTimeDialog(false)}>
-              {t('vcard.cancel')}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Dialog : limites détaillées ── */}
-      <Dialog open={showLimitsDialog} onOpenChange={setShowLimitsDialog}>
-        <DialogContent className="mx-4 rounded-2xl">
-          <DialogHeader>
-            <DialogTitle>{t('vcard.limits_dialog_title')}</DialogTitle>
-            <DialogDescription>{t('vcard.limits_dialog_desc')}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            {(
-              [
-                { key: 'online' as LimitKey, labelKey: 'vcard.limit_online' },
-                { key: 'contactless' as LimitKey, labelKey: 'vcard.limit_contactless' },
-                { key: 'atm' as LimitKey, labelKey: 'vcard.limit_atm' },
-              ] as const
-            ).map(({ key, labelKey }) => (
-              <div key={key} className="flex items-center justify-between">
-                <span className="text-sm text-foreground">{t(labelKey)}</span>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={limits[key]}
-                  onClick={() => setLimits((l) => ({ ...l, [key]: !l[key] }))}
-                  className="relative h-6 w-11 rounded-full transition-colors"
-                  style={{ background: limits[key] ? '#3ddc97' : 'rgba(128,128,128,0.35)' }}
-                >
-                  <span
-                    className="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform"
-                    style={{ transform: limits[key] ? 'translateX(20px)' : 'translateX(0)' }}
-                  />
-                </button>
-              </div>
-            ))}
-          </div>
-          <Button className="h-11 rounded-xl w-full" onClick={() => setShowLimitsDialog(false)}>
-            {t('vcard.save')}
-          </Button>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

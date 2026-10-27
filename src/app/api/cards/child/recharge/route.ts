@@ -83,6 +83,9 @@ export async function POST(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
     });
     const card = cards.find((c) => c.cardType === currency) || cards[0] || null;
+    if (!card || card.status !== 'active') {
+      return NextResponse.json({ success: false, message: 'La carte doit être validée et remise par l’administration avant toute recharge.' }, { status: 409 });
+    }
     const maxLoad = loadCapFor(capCurrency, card && card.cardType === currency ? card.maxLoadAmount : null);
 
     // Plafond d'encaissement cumulé (total jamais dépassé sur la carte)

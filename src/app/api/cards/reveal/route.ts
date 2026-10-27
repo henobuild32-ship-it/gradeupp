@@ -44,9 +44,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (card.status === 'blocked') {
+    if (card.status !== 'active') {
       return NextResponse.json(
-        { success: false, message: 'Carte bloquée — révélation impossible' },
+        { success: false, message: 'Seule une carte active peut être consultée' },
         { status: 403 }
       );
     }
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       mode: 'specimen',
-      last4: String(card.cardNumber || '').slice(-4),
+      last4: card.last4,
       // En live, remplacer par un jeton de session issuer (ttl ≤ 30 s) :
       // issuerSession: { /* [À CONFIRMER AVEC L'ÉMETTEUR] */ },
       pan: null,
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
       message:
         'Mode spécimen — en production, les détails viennent du SDK émetteur (jamais stockés par Trait).',
       expiresInSec: 30,
-    });
+    }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (error) {
     console.error('Card reveal error:', error);
     return NextResponse.json(

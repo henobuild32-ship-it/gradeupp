@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: `Solde ${currency} insuffisant.` }, { status: 400 });
     }
 
-    const last4 = String(card.cardNumber).slice(-4);
+    const last4 = card.last4 || '';
     const paymentDesc = typeof description === 'string' && description.trim()
       ? description.trim()
       : `Paiement par carte TRAIT - ****${last4}${isChild ? ` (Commission Enfant: ${fee} ${currency})` : ''}`;

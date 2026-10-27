@@ -23,6 +23,10 @@ export function routeAfterAuth(navigateTo: Navigate, u: Partial<User> | null): v
     return;
   }
   if (u.role === 'agent') {
+    if (u.validationStatus !== 'validated' || u.suspended) {
+      navigateTo('agent-pending');
+      return;
+    }
     navigateTo('agent-dashboard');
     return;
   }

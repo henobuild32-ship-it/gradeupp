@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getAuthUser } from '@/lib/auth'
 
+const invoiceNumberFrom = (description: string | null | undefined) => description?.match(/\bFAC-[A-Z0-9]+\b/i)?.[0]?.toUpperCase() ?? null
+
 export async function GET(request: NextRequest) {
   try {
     const auth = await getAuthUser(request)
@@ -62,6 +64,8 @@ export async function GET(request: NextRequest) {
         amount: r.amount,
         currency: r.currency,
         description: r.description || '',
+        invoiceNumber: invoiceNumberFrom(r.description),
+        transactionId: r.transactionId || null,
         status: r.status === 'completed' ? 'accepted' : r.status,
         createdAt: r.createdAt.toISOString(),
         requester: {

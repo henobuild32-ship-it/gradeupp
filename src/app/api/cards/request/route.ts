@@ -1,15 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireUser } from '@/lib/auth';
+import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 // POST - Client requests a card
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireUser(request);
     if (auth instanceof NextResponse) return auth;
-    const { userId, cardType } = await request.json() as {
+    const rateLimit = checkRateLimit({ windowMs: 60 * 60 * 1000, maxRequests: 3, key: `card-request:${auth.userId}` });
+    if (!rateLimit.allowed) return rateLimitResponse(rateLimit.resetIn);
+    const { userId, cardType, holderName, jobTitle, birthDate, photoData } = await request.json() as {
       userId: string;
       cardType: 'USD' | 'FC';
+      holderName: string;
+      jobTitle: string;
+      birthDate: string;
+      photoData: string;
     };
 
     if (!userId) {
@@ -33,6 +40,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const safeName = typeof holderName === 'string' ? holderName.trim().replace(/\s+/g, ' ').slice(0, 100) : '';
+    const safeJobTitle = typeof jobTitle === 'string' ? jobTitle.trim().replace(/\s+/g, ' ').slice(0, 60) : '';
+    const parsedBirthDate = typeof birthDate === 'string' ? new Date(`${birthDate}T00:00:00.000Z`) : null;
+    if (!safeName || safeName.length < 2 || !safeJobTitle || !parsedBirthDate || Number.isNaN(parsedBirthDate.getTime()) || parsedBirthDate >= new Date()) {
+      return NextResponse.json({ success: false, message: 'Nom, poste et date de naissance valide sont requis' }, { status: 400 });
+    }
+    if (typeof photoData !== 'string' || photoData.length > 1_500_000 || !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(photoData)) {
+      return NextResponse.json({ success: false, message: 'Ajoutez une photo JPEG, PNG ou WebP de moins de 1 Mo' }, { status: 400 });
+    }
+
     // Verify user exists
     const user = await db.user.findUnique({ where: { id: userId } });
     if (!user) {
@@ -51,7 +68,7 @@ export async function POST(request: NextRequest) {
 
     // Check if user already has a card of that type
     const existingCard = await db.traitCard.findFirst({
-      where: { userId, cardType },
+      where: { userId, cardType, status: { not: 'blocked' } },
     });
 
     if (existingCard) {
@@ -79,6 +96,10 @@ export async function POST(request: NextRequest) {
         userId,
         cardType,
         status: 'pending',
+        holderName: safeName,
+        jobTitle: safeJobTitle,
+        birthDate: parsedBirthDate,
+        photoData,
       },
     });
 
