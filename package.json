@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 2398",
-    "build": "prisma migrate deploy && prisma generate && next build && node scripts/copy-build-assets.js",
+    "build": "prisma generate && node scripts/deploy-migrations.js && next build && node scripts/copy-build-assets.js",
     "start": "node -e \"process.env.PORT='2398'; require('./.next/standalone/server.js')\"",
     "lint": "eslint src",
     "db:push": "prisma db push",
