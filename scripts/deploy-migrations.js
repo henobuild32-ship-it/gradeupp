@@ -3,6 +3,7 @@ const path = require('node:path');
 const { PrismaClient } = require('@prisma/client');
 
 const baselineMigration = '20261026000000_existing_schema_baseline';
+const secureCardsMigration = '20261027010000_secure_trait_cards';
 const baselineSchema = path.join(process.cwd(), 'prisma', 'schema.baseline.prisma');
 const isWindows = process.platform === 'win32';
 
@@ -46,10 +47,12 @@ async function inspectDatabase() {
     let migrations = [];
     if (state.migrationTable) {
       migrations = await prisma.$queryRaw`
-        SELECT migration_name AS "migrationName"
+        SELECT
+          migration_name AS "migrationName",
+          finished_at AS "finishedAt",
+          rolled_back_at AS "rolledBackAt"
         FROM public."_prisma_migrations"
-        WHERE finished_at IS NOT NULL
-          AND rolled_back_at IS NULL
+        WHERE rolled_back_at IS NULL
       `;
     }
 
@@ -61,11 +64,13 @@ async function inspectDatabase() {
 
 async function main() {
   const state = await inspectDatabase();
-  const baselineApplied = state.migrations.some(migration => migration.migrationName === baselineMigration);
+  const completedMigrations = state.migrations.filter(migration => migration.finishedAt);
+  const failedMigrations = state.migrations.filter(migration => !migration.finishedAt);
+  const baselineApplied = completedMigrations.some(migration => migration.migrationName === baselineMigration);
 
   if (baselineApplied) {
     console.log(`Prisma baseline already recorded: ${baselineMigration}`);
-  } else if (state.migrations.length > 0) {
+  } else if (completedMigrations.length > 0) {
     throw new Error('Existing Prisma migration history has no recognized baseline; refusing to modify the database.');
   } else if (state.applicationTableCount > 0) {
     console.log('Checking that the existing database matches the previous TRAIT schema before baselining it.');
@@ -87,8 +92,17 @@ async function main() {
 
     console.log('Existing schema matches. Recording the baseline without changing application tables.');
     runPrisma(['migrate', 'resolve', '--applied', baselineMigration]);
-  } else if (state.migrations.length === 0) {
+  } else if (state.applicationTableCount === 0) {
     console.log('Database is empty. Prisma will create the schema from the full migration history.');
+  }
+
+  for (const migration of failedMigrations) {
+    if (migration.migrationName !== secureCardsMigration) {
+      throw new Error(`Migration ${migration.migrationName} is incomplete; refusing automatic recovery.`);
+    }
+
+    console.log(`Preparing a safe retry of incomplete migration ${secureCardsMigration}.`);
+    runPrisma(['migrate', 'resolve', '--rolled-back', secureCardsMigration]);
   }
 
   runPrisma(['migrate', 'deploy']);
