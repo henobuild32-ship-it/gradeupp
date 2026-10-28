@@ -143,8 +143,10 @@ function formatDate(dateStr: string, lang: string): string {
 }
 
 export default function HomeScreen() {
-  const { user, navigateTo, setUser } = useAppStore();
+  const { user, navigateTo, setUser, themeVariant } = useAppStore();
   const { t, language } = useTranslation();
+  const isWhiteTheme = themeVariant === 'white';
+  const homeSurface = isWhiteTheme ? 'bg-card border-border' : 'bg-[#0f1729] border-white/5';
   const [recentTransactions, setRecentTransactions] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [codeCopied, setCodeCopied] = useState(false);
@@ -238,22 +240,22 @@ export default function HomeScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a1a] pb-24">
+    <div className={`min-h-screen pb-24 ${isWhiteTheme ? 'bg-background text-foreground' : 'bg-[#0a0a1a]'}`}>
       {/* ════════════ HEADER ════════════ */}
-      <header className="sticky top-0 z-30 bg-[#0a0a1a]/90 backdrop-blur-xl border-b border-white/5">
+      <header className={`sticky top-0 z-30 backdrop-blur-xl border-b ${isWhiteTheme ? 'bg-background/95 border-border' : 'bg-[#0a0a1a]/90 border-white/5'}`}>
         <div className="flex items-center justify-between px-5 py-4">
           <div className="flex items-center gap-3">
             <div className="relative h-10 w-10 rounded-xl overflow-hidden bg-gradient-to-br from-[#0D5C63] to-[#14888F] flex items-center justify-center shrink-0 shadow-lg shadow-teal-500/20">
               <Image src="/trait-logo.png" alt="TRAIT" width={28} height={28} className="object-contain" />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] text-gray-500 font-medium tracking-wider uppercase">{t('home.welcome')}</p>
-              <h1 className="text-[15px] font-bold text-white truncate">{user?.name || user?.pseudo || 'User'}</h1>
+              <p className="text-[10px] text-muted-foreground font-medium tracking-wider uppercase">{t('home.welcome')}</p>
+              <h1 className={`text-[15px] font-bold truncate ${isWhiteTheme ? 'text-foreground' : 'text-white'}`}>{user?.name || user?.pseudo || 'User'}</h1>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <NotificationBadge onClick={() => navigateTo('notifications')} />
-            <button onClick={() => navigateTo('profile')} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
+            <button onClick={() => navigateTo('profile')} className={`w-9 h-9 flex items-center justify-center rounded-xl transition-colors ${isWhiteTheme ? 'bg-muted hover:bg-muted/80' : 'bg-white/5 hover:bg-white/10'}`}>
               <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#0D5C63] to-[#14888F] flex items-center justify-center">
                 <User className="w-3.5 h-3.5 text-white" />
               </div>
@@ -266,7 +268,7 @@ export default function HomeScreen() {
         {/* ════════════ BALANCE HERO ════════════ */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative">
           <div className="absolute inset-0 bg-gradient-to-r from-[#0D5C63]/20 to-[#14888F]/20 rounded-3xl blur-xl" />
-          <div className="relative rounded-3xl bg-gradient-to-br from-[#0f1729] to-[#0a1020] border border-white/10 p-6 overflow-hidden">
+          <div className={`relative rounded-3xl border p-6 overflow-hidden ${isWhiteTheme ? 'bg-gradient-to-br from-white to-teal-50 border-border shadow-sm' : 'bg-gradient-to-br from-[#0f1729] to-[#0a1020] border-white/10'}`}>
             <div className="absolute -top-20 -right-20 w-40 h-40 rounded-full bg-[#0D5C63]/10 blur-3xl" />
             <div className="absolute -bottom-10 -left-10 w-28 h-28 rounded-full bg-[#14888F]/10 blur-2xl" />
 
@@ -274,35 +276,35 @@ export default function HomeScreen() {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Wallet className="w-4 h-4 text-[#00D4AA]" />
-                  <p className="text-[11px] text-gray-400 font-semibold tracking-wider uppercase">{t('home.total_balance')}</p>
+                  <p className="text-[11px] text-muted-foreground font-semibold tracking-wider uppercase">{t('home.total_balance')}</p>
                 </div>
-                <button onClick={() => setShowBalance(!showBalance)} className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
-                  {showBalance ? <Eye className="w-3.5 h-3.5 text-gray-400" /> : <EyeOff className="w-3.5 h-3.5 text-gray-400" />}
+                <button onClick={() => setShowBalance(!showBalance)} className={`p-1.5 rounded-lg transition-colors ${isWhiteTheme ? 'bg-muted hover:bg-muted/80' : 'bg-white/5 hover:bg-white/10'}`}>
+                  {showBalance ? <Eye className="w-3.5 h-3.5 text-muted-foreground" /> : <EyeOff className="w-3.5 h-3.5 text-muted-foreground" />}
                 </button>
               </div>
 
               <div className="flex items-baseline gap-3 mb-5">
-                <p className="text-4xl font-black text-white tracking-tight">
+                <p className={`text-4xl font-black tracking-tight ${isWhiteTheme ? 'text-foreground' : 'text-white'}`}>
                   {showBalance ? `$${totalConvertedUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '••••••'}
                 </p>
-                <p className="text-lg font-bold text-gray-500">USD</p>
+                <p className="text-lg font-bold text-muted-foreground">USD</p>
               </div>
 
               <div className="flex items-center gap-4 mb-6">
-                <div className="flex-1 rounded-xl bg-white/5 p-3">
-                  <p className="text-[9px] text-gray-500 font-semibold tracking-wider uppercase mb-1">USD</p>
-                  <p className="text-lg font-bold text-white">
+                <div className={`flex-1 rounded-xl p-3 ${isWhiteTheme ? 'bg-white/80 border border-border/70' : 'bg-white/5'}`}>
+                  <p className="text-[9px] text-muted-foreground font-semibold tracking-wider uppercase mb-1">USD</p>
+                  <p className={`text-lg font-bold ${isWhiteTheme ? 'text-foreground' : 'text-white'}`}>
                     {showBalance ? totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '••••'}
                   </p>
                 </div>
-                <div className="flex-1 rounded-xl bg-white/5 p-3">
-                  <p className="text-[9px] text-gray-500 font-semibold tracking-wider uppercase mb-1">CDF</p>
-                  <p className="text-lg font-bold text-white">
+                <div className={`flex-1 rounded-xl p-3 ${isWhiteTheme ? 'bg-white/80 border border-border/70' : 'bg-white/5'}`}>
+                  <p className="text-[9px] text-muted-foreground font-semibold tracking-wider uppercase mb-1">CDF</p>
+                  <p className={`text-lg font-bold ${isWhiteTheme ? 'text-foreground' : 'text-white'}`}>
                     {showBalance ? totalFC.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '••••'}
                   </p>
                 </div>
-                <div className="flex-1 rounded-xl bg-white/5 p-3">
-                  <p className="text-[9px] text-gray-500 font-semibold tracking-wider uppercase mb-1">Bonus</p>
+                <div className={`flex-1 rounded-xl p-3 ${isWhiteTheme ? 'bg-white/80 border border-border/70' : 'bg-white/5'}`}>
+                  <p className="text-[9px] text-muted-foreground font-semibold tracking-wider uppercase mb-1">Bonus</p>
                   <p className="text-lg font-bold text-[#00D4AA]">
                     {showBalance ? `$${bonusBalanceUSD.toFixed(2)}` : '••••'}
                   </p>
@@ -322,11 +324,11 @@ export default function HomeScreen() {
                           navigateTo(action.page);
                         }
                       }}
-                      className="flex-1 flex flex-col items-center gap-2 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all">
+                      className={`flex-1 flex flex-col items-center gap-2 py-3 rounded-2xl border transition-all ${isWhiteTheme ? 'bg-white/80 hover:bg-white border-border' : 'bg-white/5 hover:bg-white/10 border-white/5'}`}>
                       <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${action.gradient} flex items-center justify-center shadow-lg`}>
                         <Icon className="w-4 h-4 text-white" />
                       </div>
-                      <span className="text-[10px] font-semibold text-gray-300">{t(action.labelKey)}</span>
+                      <span className={`text-[10px] font-semibold ${isWhiteTheme ? 'text-foreground' : 'text-gray-300'}`}>{t(action.labelKey)}</span>
                     </motion.button>
                   );
                 })}
@@ -338,17 +340,17 @@ export default function HomeScreen() {
         {/* ════════════ AGENT CODE ════════════ */}
         {isAgent && displayAgentCode && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-            className="rounded-2xl p-4 bg-[#0f1729] border border-white/10">
+            className={`rounded-2xl p-4 border ${isWhiteTheme ? 'bg-card border-border' : 'bg-[#0f1729] border-white/10'}`}>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-[#0D5C63]/20 flex items-center justify-center shrink-0">
                 <BadgeCheck className="w-5 h-5 text-[#00D4AA]" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-widest">{t('home.agent_code')}</p>
-                <p className="text-lg font-bold font-mono text-[#00D4AA] tracking-wider">{displayAgentCode}</p>
+                <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-widest">{t('home.agent_code')}</p>
+                <p className={`text-lg font-bold font-mono tracking-wider ${isWhiteTheme ? 'text-primary' : 'text-[#00D4AA]'}`}>{displayAgentCode}</p>
               </div>
-              <button onClick={handleCopyCode} className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
-                {codeCopied ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4 text-gray-400" />}
+              <button onClick={handleCopyCode} className={`px-3 py-1.5 rounded-lg transition-colors ${isWhiteTheme ? 'bg-muted hover:bg-muted/80' : 'bg-white/5 hover:bg-white/10'}`}>
+                {codeCopied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4 text-muted-foreground" />}
               </button>
             </div>
           </motion.div>
@@ -366,10 +368,10 @@ export default function HomeScreen() {
                   <ScanLine className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1 text-left">
-                  <p className="text-sm font-bold text-white">{t('home.pay_scan')}</p>
-                  <p className="text-[11px] text-gray-400">{t('home.pay_scan_desc')}</p>
+                  <p className={`text-sm font-bold ${isWhiteTheme ? 'text-foreground' : 'text-white'}`}>{t('home.pay_scan')}</p>
+                  <p className="text-[11px] text-muted-foreground">{t('home.pay_scan_desc')}</p>
                 </div>
-                <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isWhiteTheme ? 'bg-white/80 group-hover:bg-white' : 'bg-white/5 group-hover:bg-white/10'}`}>
                   <QrCode className="w-4 h-4 text-[#A78BFA]" />
                 </div>
               </div>
@@ -381,7 +383,7 @@ export default function HomeScreen() {
         {!isAgent && (
           <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-bold text-white flex items-center gap-2">
+              <h2 className={`text-sm font-bold flex items-center gap-2 ${isWhiteTheme ? 'text-foreground' : 'text-white'}`}>
                 <CreditCard className="w-4 h-4 text-[#00D4AA]" />
                 {t('home.my_cards')}
               </h2>
@@ -409,8 +411,8 @@ export default function HomeScreen() {
                 <div className="flex items-center gap-3">
                   <Clock className="w-5 h-5 text-amber-400 shrink-0" />
                   <div>
-                    <p className="text-sm font-semibold text-white">{t('home.card_processing')}</p>
-                    <p className="text-[11px] text-gray-400">{t('home.card_processing_desc')}</p>
+                    <p className={`text-sm font-semibold ${isWhiteTheme ? 'text-foreground' : 'text-white'}`}>{t('home.card_processing')}</p>
+                    <p className="text-[11px] text-muted-foreground">{t('home.card_processing_desc')}</p>
                   </div>
                 </div>
               </div>
@@ -438,7 +440,7 @@ export default function HomeScreen() {
         {/* ════════════ SERVICES GRID ════════════ */}
         <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
+            <h2 className={`text-sm font-bold flex items-center gap-2 ${isWhiteTheme ? 'text-foreground' : 'text-white'}`}>
               <Zap className="w-4 h-4 text-[#00D4AA]" />
               {t('home.services')}
             </h2>
@@ -453,7 +455,7 @@ export default function HomeScreen() {
                     className={`px-4 py-2 rounded-xl text-[11px] font-semibold whitespace-nowrap transition-all ${
                       activeCategory === i
                         ? 'bg-[#0D5C63] text-white'
-                        : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                        : isWhiteTheme ? 'bg-muted text-muted-foreground hover:bg-muted/80' : 'bg-white/5 text-gray-400 hover:bg-white/10'
                     }`}>
                     {t(cat.titleKey)}
                   </button>
@@ -467,11 +469,11 @@ export default function HomeScreen() {
                   return (
                     <motion.button key={item.page} whileTap={{ scale: 0.95 }}
                       onClick={() => navigateTo(item.page)}
-                      className="flex flex-col items-center gap-2 py-3 rounded-2xl bg-[#0f1729] border border-white/5 hover:border-white/10 transition-all">
+                      className={`flex flex-col items-center gap-2 py-3 rounded-2xl border transition-all ${isWhiteTheme ? 'bg-card border-border hover:border-primary/30 hover:bg-muted/40' : 'bg-[#0f1729] border-white/5 hover:border-white/10'}`}>
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${item.color}20` }}>
                         <Icon className="w-4 h-4" style={{ color: item.color }} />
                       </div>
-                      <span className="text-[9px] font-semibold text-gray-400 text-center leading-tight px-1">
+                      <span className="text-[9px] font-semibold text-muted-foreground text-center leading-tight px-1">
                         {item.labelKey === 'QR Code' ? 'QR Code' : t(item.labelKey)}
                       </span>
                     </motion.button>
@@ -491,11 +493,11 @@ export default function HomeScreen() {
                   return (
                     <motion.button key={item.page} whileTap={{ scale: 0.95 }}
                       onClick={() => navigateTo(item.page)}
-                      className="flex flex-col items-center gap-2 py-3 rounded-2xl bg-[#0f1729] border border-white/5 hover:border-white/10 transition-all">
+                      className={`flex flex-col items-center gap-2 py-3 rounded-2xl border transition-all ${isWhiteTheme ? 'bg-card border-border hover:border-primary/30 hover:bg-muted/40' : 'bg-[#0f1729] border-white/5 hover:border-white/10'}`}>
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${item.color}20` }}>
                         <Icon className="w-4 h-4" style={{ color: item.color }} />
                       </div>
-                      <span className="text-[9px] font-semibold text-gray-400 text-center leading-tight px-1">
+                      <span className="text-[9px] font-semibold text-muted-foreground text-center leading-tight px-1">
                         {t(item.labelKey)}
                       </span>
                     </motion.button>
@@ -513,11 +515,11 @@ export default function HomeScreen() {
                         if (item.page === 'my-qr-code') navigateTo('my-qr-code');
                         else navigateTo(item.page);
                       }}
-                    className="flex flex-col items-center gap-2 py-3 rounded-2xl bg-[#0f1729] border border-white/5 hover:border-white/10 transition-all">
+                    className={`flex flex-col items-center gap-2 py-3 rounded-2xl border transition-all ${isWhiteTheme ? 'bg-card border-border hover:border-primary/30 hover:bg-muted/40' : 'bg-[#0f1729] border-white/5 hover:border-white/10'}`}>
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${item.color}20` }}>
                       <Icon className="w-4 h-4" style={{ color: item.color }} />
                     </div>
-                    <span className="text-[9px] font-semibold text-gray-400 text-center leading-tight px-1">
+                    <span className="text-[9px] font-semibold text-muted-foreground text-center leading-tight px-1">
                       {item.labelKey === 'QR Code' ? 'QR Code' : t(item.labelKey)}
                     </span>
                   </motion.button>
@@ -530,7 +532,7 @@ export default function HomeScreen() {
         {/* ════════════ RECENT TRANSACTIONS ════════════ */}
         <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
+            <h2 className={`text-sm font-bold flex items-center gap-2 ${isWhiteTheme ? 'text-foreground' : 'text-white'}`}>
               <TrendingUp className="w-4 h-4 text-[#00D4AA]" />
               {t('home.recent_transactions')}
             </h2>
@@ -542,20 +544,20 @@ export default function HomeScreen() {
           {loading ? (
             <div className="space-y-2">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center gap-3 p-4 rounded-2xl bg-[#0f1729] border border-white/5">
-                  <Skeleton className="h-10 w-10 rounded-xl shrink-0 bg-white/5" />
-                  <div className="flex-1 space-y-2"><Skeleton className="h-3.5 w-3/4 bg-white/5" /><Skeleton className="h-3 w-1/2 bg-white/5" /></div>
-                  <Skeleton className="h-4 w-20 bg-white/5" />
+                <div key={i} className={`flex items-center gap-3 p-4 rounded-2xl border ${homeSurface}`}>
+                  <Skeleton className={`h-10 w-10 rounded-xl shrink-0 ${isWhiteTheme ? 'bg-muted' : 'bg-white/5'}`} />
+                  <div className="flex-1 space-y-2"><Skeleton className={`h-3.5 w-3/4 ${isWhiteTheme ? 'bg-muted' : 'bg-white/5'}`} /><Skeleton className={`h-3 w-1/2 ${isWhiteTheme ? 'bg-muted' : 'bg-white/5'}`} /></div>
+                  <Skeleton className={`h-4 w-20 ${isWhiteTheme ? 'bg-muted' : 'bg-white/5'}`} />
                 </div>
               ))}
             </div>
           ) : recentTransactions.length === 0 ? (
-            <div className="rounded-2xl p-8 bg-[#0f1729] border border-white/5 flex flex-col items-center">
-              <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center mb-3">
-                <History className="w-5 h-5 text-gray-600" />
+            <div className={`rounded-2xl p-8 border flex flex-col items-center ${homeSurface}`}>
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 ${isWhiteTheme ? 'bg-muted' : 'bg-white/5'}`}>
+                <History className="w-5 h-5 text-muted-foreground" />
               </div>
-              <p className="text-sm font-semibold text-gray-500">{t('home.no_transactions')}</p>
-              <p className="text-[11px] text-gray-600 mt-1">
+              <p className="text-sm font-semibold text-muted-foreground">{t('home.no_transactions')}</p>
+              <p className="text-[11px] text-muted-foreground mt-1">
                 {isAgent ? t('home.no_transactions_agent') : t('home.start_send')}
               </p>
             </div>
@@ -566,13 +568,13 @@ export default function HomeScreen() {
                 const isReceive = tx.type === 'receive' || tx.type === 'deposit';
                 return (
                   <motion.div key={tx.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
-                    className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#0f1729] border border-white/5 hover:border-white/10 transition-all">
+                    className={`flex items-center gap-3 p-3.5 rounded-2xl border transition-all ${isWhiteTheme ? 'bg-card border-border hover:border-primary/30' : 'bg-[#0f1729] border-white/5 hover:border-white/10'}`}>
                     <div className={`flex h-10 w-10 items-center justify-center rounded-xl shrink-0 ${isReceive ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
                       <TypeIcon className="w-[18px] h-[18px]" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-medium text-white truncate">{tx.description}</p>
-                      <p className="text-[11px] text-gray-500 mt-0.5">{formatDate(tx.createdAt, language)}</p>
+                      <p className={`text-[13px] font-medium truncate ${isWhiteTheme ? 'text-foreground' : 'text-white'}`}>{tx.description}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">{formatDate(tx.createdAt, language)}</p>
                     </div>
                     <p className={`text-[13px] font-bold ${isReceive ? 'text-green-400' : 'text-red-400'}`}>
                       {isReceive ? '+' : '-'}{fmtCurrency(tx.amount, tx.currency)}
@@ -595,10 +597,10 @@ export default function HomeScreen() {
               </div>
             </div>
             <div className="text-left flex-1">
-              <p className="text-sm font-semibold text-violet-400">{t('home.need_help')}</p>
+              <p className={`text-sm font-semibold ${isWhiteTheme ? 'text-violet-700' : 'text-violet-400'}`}>{t('home.need_help')}</p>
               <p className="text-xs text-gray-500">{t('home.talk_ai')}</p>
             </div>
-            <ArrowRight className="w-4 h-4 text-violet-400/60" />
+            <ArrowRight className={`w-4 h-4 ${isWhiteTheme ? 'text-violet-700/70' : 'text-violet-400/60'}`} />
           </button>
         </motion.div>
       </main>

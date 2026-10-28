@@ -72,3 +72,9 @@ Principaux parcours identifiés : accueil/authentification; portefeuille et tran
 - Migration `20261028160000_anonymize_deleted_users`: champ/index `deletedAt`. Elle est créée mais n'a pas été appliquée à la base distante.
 - Test ajouté sur la normalisation téléphone et l'exclusion des comptes supprimés. `npm test`: 12 réussis, 0 échec. `npx tsc --noEmit`: réussi. `npm run lint -- --no-cache`: réussi. `npx prisma validate`: réussi. `npx next build`: réussi avec 142 routes.
 - La suppression n'a pas été déclenchée sur un compte réel : ce scénario requiert une base de test isolée afin de vérifier les écritures transactionnelles et les relations, indisponible dans cet environnement. Le comportement SQL de la migration n'a pas été exécuté.
+
+## Phase 4 — thème Blanc sur l'accueil client
+
+- L'accueil ne respectait pas le thème Blanc : son fond, ses surfaces, ses titres et ses lignes d'historique avaient des couleurs sombres codées en dur. Il lit maintenant la variante de thème persistée et adapte l'arrière-plan, l'en-tête, le solde, les raccourcis, les services, les cartes et les transactions récentes; les dégradés de marque gardent leur contraste.
+- `npx tsc --noEmit`: réussi. `npx eslint src/components/screens/HomeScreen.tsx --no-cache`: réussi. `npm test`: 12 réussis, 0 échec.
+- Limite : l'onglet navigateur local n'a pas été accessible après le refus d'autorisation précédent. Le contraste visuel de l'accueil, et les autres écrans utilisant encore des couleurs en dur, restent à parcourir en mode Blanc sur navigateur/appareil avant de déclarer le thème entièrement harmonisé.
