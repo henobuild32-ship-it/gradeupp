@@ -85,3 +85,12 @@ Principaux parcours identifiés : accueil/authentification; portefeuille et tran
 - Le store vide téléphone, mot de passe d'inscription et OTP lors de l'authentification d'un compte et des déconnexions client/admin, pour qu'un formulaire précédent ne reparaisse pas au changement de session.
 - `npm test`: 12 réussis, 0 échec. `npx tsc --noEmit`: réussi. ESLint ciblé des écrans modifiés et du store: réussi sans avertissement après retrait d'un attribut ARIA inadapté.
 - Les intégrations restent non opérationnelles sans adaptateur/partenaire. Aucun paiement simulé ou réel n'est déclaré réussi.
+
+## Phase 6 — soumission et stockage KYC
+
+- La soumission KYC vérifie désormais sur le serveur le type MIME, l'encodage base64 canonique, la taille et la signature JPEG/PNG/WebP des deux images. La validation se fait aussi au POST final, donc un client ne peut pas contourner le contrôle de l'endpoint d'upload en forgeant directement la requête.
+- Les images sont compressées jusqu'à 1,5 Mo chacune; cette limite garde les deux data URLs sous la limite de taille habituelle d'une requête de fonction hébergée. La compression réessaie avec une qualité puis une résolution plus faibles au lieu d'échouer au premier dépassement. Les colonnes Prisma deviennent `TEXT`, car le chiffrement base64 agrandit les documents au-delà de `VARCHAR(255)`.
+- La demande, le journal de sécurité et la notification sont maintenant écrits dans une seule transaction DB. Un statut déjà en attente ou vérifié bloque atomiquement une resoumission concurrente. Le mode de vérification stocké décrit une revue administrative manuelle; aucune reconnaissance automatisée n'est prétendue.
+- Migration `20261028170000_kyc_document_text` créée, mais non appliquée. Elle doit être exécutée sur une base isolée avant de tester la persistance KYC; aucune base distante n'a été touchée.
+- `npm test`: 15 réussis, 0 échec, dont trois scénarios de validation KYC. `npx tsc --noEmit`: réussi. ESLint ciblé des quatre fichiers KYC: réussi. `npx prisma validate`: réussi. `npx next build`: réussi, 142 routes générées. `git diff --check`: réussi.
+- Non couvert dans cette phase : parcours KYC avec compte connecté et vraie écriture/lecture admin sur une base de test isolée, et contrôle visuel mobile. La validation des fichiers et la compilation sont automatisées, mais elles ne remplacent pas ces tests d'intégration.

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireUser } from '@/lib/auth';
 import { encryptKycDocument } from '@/lib/kyc-storage';
+import { validateKycImageDataUrl } from '@/lib/kyc-image-validation';
 
 // ─── Constants ───────────────────────────────────────────────────────
 
@@ -129,16 +130,19 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireUser(request);
     if (auth instanceof NextResponse) return auth;
-    const body = await request.json() as {
+    const body = await request.json().catch(() => null) as {
       userId: string;
       documentType: string;
       documentUrl: string;
       selfieUrl: string;
-    };
+    } | null;
 
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json({ success: false, message: 'Requête invalide' }, { status: 400 });
+    }
     const { userId, documentType, documentUrl, selfieUrl } = body;
 
-    if (!userId || !documentType || !documentUrl || !selfieUrl) {
+    if (typeof userId !== 'string' || !userId || typeof documentType !== 'string' || !documentType || !documentUrl || !selfieUrl) {
       return NextResponse.json(
         { success: false, message: 'Tous les champs sont requis: documentType, documentUrl, selfieUrl' },
         { status: 400 }
@@ -158,6 +162,18 @@ export async function POST(request: NextRequest) {
         { success: false, message: 'Type de document invalide. Types acceptés: passport, id_card, driver_license' },
         { status: 400 }
       );
+    }
+
+    for (const [label, image] of [['document', documentUrl], ['selfie', selfieUrl]] as const) {
+      const validation = validateKycImageDataUrl(image);
+      if (!validation.valid) {
+        const message = validation.reason === 'size'
+          ? 'Chaque image doit faire au maximum 1,5 Mo.'
+          : validation.reason === 'signature'
+            ? 'Le contenu de l’image ne correspond pas à son format déclaré.'
+            : 'Image invalide. Utilisez une image JPG, PNG ou WebP valide.';
+        return NextResponse.json({ success: false, message, field: label }, { status: 400 });
+      }
     }
 
     const user = await db.user.findUnique({
@@ -184,40 +200,49 @@ export async function POST(request: NextRequest) {
     const kycData = {
       documentType,
       submittedAt: now.toISOString(),
-      verificationMode: 'automatic_document_and_selfie_presence_check',
+      verificationMode: 'manual_admin_review',
     };
+    const submitted = await db.$transaction(async (tx) => {
+      const update = await tx.user.updateMany({
+        where: { id: userId, deletedAt: null, kycStatus: { notIn: ['pending', 'verified'] } },
+        data: {
+          kycStatus: 'pending',
+          kycSubmittedAt: now,
+          kycVerifiedAt: null,
+          kycRejectReason: null,
+          kycDocumentType: documentType,
+          kycDocumentUrl: encryptKycDocument(documentUrl),
+          kycSelfieUrl: encryptKycDocument(selfieUrl),
+          kycData: JSON.stringify(kycData),
+        },
+      });
+      if (update.count !== 1) return false;
 
-    await db.user.update({
-      where: { id: userId },
-      data: {
-        kycStatus: 'pending',
-        kycSubmittedAt: now,
-        kycVerifiedAt: null,
-        kycRejectReason: null,
-        kycDocumentType: documentType,
-        kycDocumentUrl: encryptKycDocument(documentUrl),
-        kycSelfieUrl: encryptKycDocument(selfieUrl),
-        kycData: JSON.stringify(kycData),
-      },
+      await tx.securityLog.create({
+        data: {
+          userId,
+          action: 'kyc_submitted',
+          details: JSON.stringify({ documentType, submittedAt: now.toISOString(), verificationMode: kycData.verificationMode }),
+          riskLevel: 'low',
+        },
+      });
+      await tx.notification.create({
+        data: {
+          userId,
+          title: 'Vérification KYC soumise',
+          message: `Votre demande de vérification d'identité a été soumise. Elle sera examinée manuellement par notre équipe. Type de document: ${documentType}.`,
+          type: 'security',
+        },
+      });
+      return true;
     });
 
-    await db.securityLog.create({
-      data: {
-        userId,
-        action: 'kyc_submitted',
-        details: JSON.stringify({ documentType, submittedAt: now.toISOString(), verificationMode: kycData.verificationMode }),
-        riskLevel: 'low',
-      },
-    });
-
-    await db.notification.create({
-      data: {
-        userId,
-        title: 'Vérification KYC soumise',
-        message: `Votre demande de vérification d'identité a été soumise. Elle sera examinée par notre équipe. Type de document: ${documentType}.`,
-        type: 'security',
-      },
-    });
+    if (!submitted) {
+      return NextResponse.json(
+        { success: false, message: 'Une demande est déjà en cours ou votre identité est déjà vérifiée.' },
+        { status: 409 }
+      );
+    }
 
     return NextResponse.json({
       success: true,

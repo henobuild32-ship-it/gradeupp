@@ -112,37 +112,50 @@ export default function KYCVerificationScreen() {
 
   // ─── Image compression ────────────────────────────────────────────
 
-  function compressImage(file: File, maxWidth = 800, quality = 0.6): Promise<File> {
+  function compressImage(file: File, maxWidth = 1280, quality = 0.72): Promise<File> {
     return new Promise((resolve, reject) => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       const img = new window.Image();
 
+      const objectUrl = URL.createObjectURL(file);
       img.onload = () => {
-        let w = img.width;
-        let h = img.height;
-        if (w > maxWidth) {
-          h = (h * maxWidth) / w;
-          w = maxWidth;
-        }
-        canvas.width = w;
-        canvas.height = h;
-        ctx?.drawImage(img, 0, 0, w, h);
-        canvas.toBlob(
-          (blob) => {
+        URL.revokeObjectURL(objectUrl);
+        const encode = (width: number, compressionQuality: number) => {
+          const scale = Math.min(1, width / img.width);
+          const w = Math.max(1, Math.round(img.width * scale));
+          const h = Math.max(1, Math.round(img.height * scale));
+          canvas.width = w;
+          canvas.height = h;
+          ctx?.drawImage(img, 0, 0, w, h);
+          canvas.toBlob((blob) => {
             if (!blob) { reject(new Error('Compression failed')); return; }
+            if (blob.size > 1.5 * 1024 * 1024) {
+              if (compressionQuality > 0.45) {
+                encode(width, Math.max(0.42, compressionQuality - 0.1));
+                return;
+              }
+              if (width > 720) {
+                encode(Math.max(720, Math.round(width * 0.85)), 0.65);
+                return;
+              }
+              reject(new Error('Image trop volumineuse après compression. Choisissez une photo plus petite.'));
+              return;
+            }
             const compressed = new File([blob], file.name, {
               type: 'image/jpeg',
               lastModified: Date.now(),
             });
             resolve(compressed);
-          },
-          'image/jpeg',
-          quality
-        );
+          }, 'image/jpeg', compressionQuality);
+        };
+        encode(maxWidth, quality);
       };
-      img.onerror = () => reject(new Error('Image load failed'));
-      img.src = URL.createObjectURL(file);
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error('Impossible de lire cette image. Choisissez un fichier JPG, PNG ou WebP.'));
+      };
+      img.src = objectUrl;
     });
   }
 
@@ -187,8 +200,8 @@ export default function KYCVerificationScreen() {
         }
         toast.error(data.message || "Erreur lors de l'upload");
       }
-    } catch {
-      toast.error("Erreur lors de l'upload");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erreur lors de l'upload");
     } finally {
       setUploading(false);
     }
@@ -493,7 +506,7 @@ export default function KYCVerificationScreen() {
                         <p className="text-xs text-muted-foreground">
                           {documentUploading ? 'Upload en cours...' : 'Cliquez pour uploader'}
                         </p>
-                        <p className="text-[10px] text-muted-foreground/60">JPG, PNG, WebP — Max 5 MB</p>
+                        <p className="text-[10px] text-muted-foreground/60">JPG, PNG, WebP — max. 1,5 Mo après compression</p>
                       </div>
                     )}
                     <input
@@ -528,7 +541,7 @@ export default function KYCVerificationScreen() {
                         <p className="text-xs text-muted-foreground">
                           {selfieUploading ? 'Upload en cours...' : 'Prenez ou uploadez une photo'}
                         </p>
-                        <p className="text-[10px] text-muted-foreground/60">JPG, PNG, WebP — Max 5 MB</p>
+                        <p className="text-[10px] text-muted-foreground/60">JPG, PNG, WebP — max. 1,5 Mo après compression</p>
                       </div>
                     )}
                     <input
