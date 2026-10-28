@@ -1,0 +1,53 @@
+# TRAIT — audit technique initial (28 octobre 2026)
+
+Ce document enregistre le diagnostic de départ et sépare les constats statiques des tests réellement exécutés. Il sera complété au fil des phases.
+
+## Architecture constatée
+
+- Application web/PWA Next.js 16, React 19 et TypeScript. La majorité des espaces est un client SPA : `src/app/page.tsx` rend des écrans depuis un store Zustand, tandis que les pages fichier servent surtout l'accueil public, les conditions, les liens de paiement et la vérification de reçus.
+- API Next.js en handlers `route.ts`; base PostgreSQL gérée par Prisma et hébergée sur Supabase. Le script `npm run build` lance les migrations avant Next.js : il ne faut pas l'exécuter localement contre l'URL distante sans base de test.
+- Authentification par cookies HttpOnly, profil vérifié par `/api/auth/profile`; Zustand ne conserve qu'un indice de session réduit et des préférences. Les soldes et rôles ne doivent pas provenir du stockage navigateur.
+- Déploiement Vercel lié au dépôt GitHub. Les transferts internationaux ont une interface, les routes `/api/transfers/*` et un registre d'adaptateurs, mais aucun adaptateur fournisseur n'est enregistré par défaut. Aucun transfert bancaire/mobile réel n'est donc validé.
+- Le dépôt ne contient pas de configuration Playwright/Cypress ni de suite E2E existante. Les tests présents sont des tests Node ciblés.
+
+## Inventaire des routes et espaces
+
+État initial au commit `2a5d84b` : 5 pages Next fichier, 153 handlers API, 64 écrans client/agent, 25 composants administrateur et 3 composants TRAIT dédiés aux cartes/QR. Les handlers se répartissaient ainsi :
+
+| Groupe API | Routes |
+|---|---:|
+| admin | 30 |
+| agent | 9 |
+| auth | 18 |
+| biometric | 7 |
+| cards | 12 |
+| transfer | 5 |
+| autres 29 groupes | 72 |
+| **Total** | **153** |
+
+Principaux parcours identifiés : accueil/authentification; portefeuille et transferts internes; transfert international; agent; KYC; cartes; notifications/push; historique/reçus; marketplace/commandes/vendeurs; troc et chat; support; admin, utilisateurs, vendeurs, KYC et signalements; paramètres, thèmes, biométrie et 2FA. Les routes API sont listées directement dans `src/app/api`; leur présence ne prouve pas à elle seule que chaque action d'interface a été testée.
+
+## Régressions et défauts vérifiés dans le code
+
+- L'ancien `PUT /api/agent/withdrawal/[id]` a été remplacé par une réponse `410`. L'ancien handler débitait le portefeuille et écrivait retrait, transaction et notification dans des appels séparés, sans contrôle PIN. Aucun écran actuel ne l'appelle; la validation d'un retrait par l'agent passe par `/api/agent/validate-withdrawal`. La rupture concerne d'éventuels clients externes anciens et est documentée par la réponse de retrait de route.
+- L'interface hors ligne annonçait des « transactions » à synchroniser, alors que sa file ne pouvait synchroniser que des favoris et refusait les opérations financières. Le message pouvait induire l'utilisateur en erreur; la Phase 2 remplace cette bannière par un avertissement hors ligne sans action de synchronisation.
+- Les réglages utilisateur dédiés à l'ancien menu téléphonique n'étaient utilisés que par celui-ci et son seed. Aucune autre route ou écran n'utilisait le modèle de réglages.
+- L'ancien sélecteur agent dans le formulaire de retrait utilisait une route appartenant à l'ancien menu. La Phase 2 le relie à `/api/agent/lookup`, dont la réponse a le format consommé par l'écran.
+
+## Contrôles réellement exécutés sur l'état initial
+
+| Contrôle | Résultat |
+|---|---|
+| `npm test` | 10 réussis, 0 échoué (pays/téléphones, calcul USD/CDF, registre fournisseurs) |
+| `npx tsc --noEmit` | Réussi |
+| `npm run lint -- --no-cache` | Réussi |
+| Build Vercel du code initial | Réussi; 153 pages/routes générées, migrations annoncées à jour |
+| Démarrage local `npm run dev` | Démarré; accueil et `/api/health` répondent `200` après la compilation initiale |
+| Navigateur / parcours visuels | Non validés : l'autorisation d'observer l'onglet local a été refusée; aucune voie de contournement n'est utilisée |
+
+## État des intégrations et limites initiales
+
+- Le registre de transfert n'annonce aucun prestataire tant qu'un adaptateur réel n'est pas enregistré. Contrat API, contrats commerciaux, secrets et sandbox partenaires restent à fournir.
+- KYC, reçus PDF, push, upload média, Marketplace, rôles et actions administrateur existent en code, mais leur parcours complet n'a pas encore été vérifié avec des comptes isolés.
+- Aucun compte de test n'a été créé dans la base distante. Aucune transaction financière ni migration de schéma n'a été exécutée sur la production pendant ce chantier.
+- Le téléphone i5C+ et les autres appareils réels restent à vérifier par l'utilisateur; l'inspection responsive visuelle n'a pas pu être effectuée sans accès navigateur.
