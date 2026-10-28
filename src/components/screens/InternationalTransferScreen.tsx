@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, ArrowRight, CheckCircle2, Clock3, CreditCard, Globe2, Loader2, ShieldCheck, Wallet } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CheckCircle2, Clock3, CreditCard, Globe2, Landmark, Loader2, ShieldCheck, Smartphone, Wallet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -225,6 +225,39 @@ export default function InternationalTransferScreen() {
               </button>
             </div>
             <p className="text-xs leading-5 text-muted-foreground">La carte Trait utilise le solde Trait du compte. Aucun numéro de carte ni CVV n’est demandé ou transmis pour ce transfert.</p>
+          </section>
+
+          <section aria-labelledby="external-transfer-preview-title" className="space-y-3 border-t pt-5">
+            <div>
+              <h2 id="external-transfer-preview-title" className="text-sm font-semibold">Autres modes internationaux</h2>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">Aperçus des parcours préparés. Ils restent désactivés tant qu’un partenaire réel n’est pas connecté et vérifié.</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <article className="rounded-xl border border-dashed border-border bg-muted/30 p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 text-sm font-semibold"><Smartphone className="size-4 text-primary" /> Mobile Money international</div>
+                  <span className="shrink-0 rounded-full bg-amber-100 px-2 py-1 text-[10px] font-semibold text-amber-800">Bientôt disponible</span>
+                </div>
+                <div className="mt-3 space-y-2 rounded-lg border border-border/70 bg-background p-3 text-xs text-muted-foreground">
+                  <p>Pays · opérateur compatible</p>
+                  <p>Indicatif · téléphone du bénéficiaire Trait/partenaire</p>
+                  <p>Montant · frais · estimation de réception</p>
+                </div>
+                <p className="mt-3 text-xs leading-5 text-muted-foreground">Aucun opérateur international n’est actuellement raccordé. Ce parcours n’envoie ni ne débite d’argent.</p>
+              </article>
+              <article className="rounded-xl border border-dashed border-border bg-muted/30 p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 text-sm font-semibold"><Landmark className="size-4 text-primary" /> Virement bancaire</div>
+                  <span className="shrink-0 rounded-full bg-amber-100 px-2 py-1 text-[10px] font-semibold text-amber-800">Bientôt disponible</span>
+                </div>
+                <div className="mt-3 space-y-2 rounded-lg border border-border/70 bg-background p-3 text-xs text-muted-foreground">
+                  <p>Pays · banque · nom légal du bénéficiaire</p>
+                  <p>IBAN/SWIFT ou coordonnées bancaires locales</p>
+                  <p>Montant · frais · taux · délai estimé</p>
+                </div>
+                <p className="mt-3 text-xs leading-5 text-muted-foreground">Aucune banque de règlement n’est connectée. Aucun virement réel ne peut être confirmé pour le moment.</p>
+              </article>
+            </div>
           </section>
 
           <section className="space-y-3 border-t pt-5">

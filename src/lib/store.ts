@@ -324,6 +324,7 @@ export const useAppStore = create<AppStore>()(
         set({
           user,
           ...(user ? { admin: null } : {}),
+          ...(user ? { phoneNumber: '', registrationPassword: '', otpCode: '', otpVerified: false } : {}),
           ...(accountChanged ? {
             notifications: [],
             unreadCount: 0,
@@ -340,6 +341,10 @@ export const useAppStore = create<AppStore>()(
         if (!admin) {
           return set({
             admin: null,
+            phoneNumber: '',
+            registrationPassword: '',
+            otpCode: '',
+            otpVerified: false,
             ...(current.admin ? {
               notifications: [], unreadCount: 0, navigationStack: [],
               lastAuthenticatedPage: null, lastAuthenticatedPageParams: {}, lastAuthenticatedAccountId: null,
@@ -354,6 +359,10 @@ export const useAppStore = create<AppStore>()(
         set({
           admin: safeAdmin,
           user: null,
+          phoneNumber: '',
+          registrationPassword: '',
+          otpCode: '',
+          otpVerified: false,
           ...(accountChanged || current.user ? {
             notifications: [],
             unreadCount: 0,
@@ -386,6 +395,10 @@ export const useAppStore = create<AppStore>()(
           pendingPinAction: null,
           notifications: [],
           unreadCount: 0,
+          phoneNumber: '',
+          registrationPassword: '',
+          otpCode: '',
+          otpVerified: false,
           lastAuthenticatedPage: null,
           lastAuthenticatedPageParams: {},
           lastAuthenticatedAccountId: null,
@@ -402,6 +415,10 @@ export const useAppStore = create<AppStore>()(
           admin: null,
           user: null,
           token: null,
+          phoneNumber: '',
+          registrationPassword: '',
+          otpCode: '',
+          otpVerified: false,
           currentPage: 'admin-login',
           pageParams: {},
           navigationStack: [],

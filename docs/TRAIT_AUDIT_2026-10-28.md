@@ -78,3 +78,10 @@ Principaux parcours identifiés : accueil/authentification; portefeuille et tran
 - L'accueil ne respectait pas le thème Blanc : son fond, ses surfaces, ses titres et ses lignes d'historique avaient des couleurs sombres codées en dur. Il lit maintenant la variante de thème persistée et adapte l'arrière-plan, l'en-tête, le solde, les raccourcis, les services, les cartes et les transactions récentes; les dégradés de marque gardent leur contraste.
 - `npx tsc --noEmit`: réussi. `npx eslint src/components/screens/HomeScreen.tsx --no-cache`: réussi. `npm test`: 12 réussis, 0 échec.
 - Limite : l'onglet navigateur local n'a pas été accessible après le refus d'autorisation précédent. Le contraste visuel de l'accueil, et les autres écrans utilisant encore des couleurs en dur, restent à parcourir en mode Blanc sur navigateur/appareil avant de déclarer le thème entièrement harmonisé.
+
+## Phase 5 — état réel des rails externes et effacement des formulaires
+
+- Le formulaire de transfert international conserve les parcours Wallet Trait et Carte Trait existants. Il présente aussi des aperçus non interactifs pour Mobile Money international et virement bancaire, avec les champs attendus et la mention « Bientôt disponible ». L'écran précise qu'aucun partenaire n'est raccordé et qu'aucun débit ni transfert externe ne peut être effectué.
+- Le store vide téléphone, mot de passe d'inscription et OTP lors de l'authentification d'un compte et des déconnexions client/admin, pour qu'un formulaire précédent ne reparaisse pas au changement de session.
+- `npm test`: 12 réussis, 0 échec. `npx tsc --noEmit`: réussi. ESLint ciblé des écrans modifiés et du store: réussi sans avertissement après retrait d'un attribut ARIA inadapté.
+- Les intégrations restent non opérationnelles sans adaptateur/partenaire. Aucun paiement simulé ou réel n'est déclaré réussi.
