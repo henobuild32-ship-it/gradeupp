@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft,
@@ -13,6 +14,7 @@ import {
   XCircle,
   Clock,
   ChevronRight,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -22,6 +24,7 @@ import { useAppStore } from '@/lib/store';
 import { useTranslation } from '@/lib/i18n';
 import { toast } from 'sonner';
 import { formatCurrencyAmount, formatExchangeRate, normalizeCurrency } from '@/lib/currency';
+import { getCountry } from '@/lib/countries';
 import { QRCodeSVG } from 'qrcode.react';
 
 interface ReceiptData {
@@ -39,8 +42,8 @@ interface ReceiptData {
   status: string;
   description: string;
   createdAt: string;
-  sender: { name: string; phone: string };
-  receiver: { name: string; phone: string };
+  sender: { name: string; phone: string | null; country: string | null };
+  receiver: { name: string; phone: string | null; country: string | null };
 }
 
 export default function ReceiptScreen() {
@@ -49,6 +52,7 @@ export default function ReceiptScreen() {
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [verificationUrl, setVerificationUrl] = useState('');
 
   const transactionId = pageParams?.transactionId;
@@ -119,6 +123,11 @@ export default function ReceiptScreen() {
     return formatCurrencyAmount(amount, normalizeCurrency(currency));
   }
 
+  function countryName(code: string | null) {
+    if (!code) return '—';
+    return getCountry(code)?.nameFr || code;
+  }
+
   async function handleShare() {
     if (!receipt) return;
     const text = `Trait Fintech — Reçu de transaction\nN°: ${receipt.receiptNumber}${receipt.invoiceNumber ? `\nFacture: ${receipt.invoiceNumber}` : ''}\nEnvoyé: ${money(receipt.amount, receipt.currency)}\nReçu: ${money(receipt.amountReceived ?? receipt.amount, receipt.receivingCurrency || receipt.currency)}\nDe: ${receipt.sender.name}\nÀ: ${receipt.receiver.name}\nDate: ${formatDate(receipt.createdAt)}`;
@@ -142,8 +151,89 @@ export default function ReceiptScreen() {
     } catch {}
   }
 
-  function handleDownload() {
+  async function imageUrlToDataUrl(url: string): Promise<string> {
+    const response = await fetch(url, { cache: 'force-cache' });
+    if (!response.ok) throw new Error('Image du document indisponible');
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('Image invalide'));
+      reader.onerror = () => reject(new Error('Image invalide'));
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function qrSvgToPng(): Promise<string> {
+    const svg = document.querySelector<SVGSVGElement>('.receipt-verification-qr');
+    if (!svg) throw new Error('QR de vérification indisponible');
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const objectUrl = URL.createObjectURL(new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' }));
+    try {
+      const image = new window.Image();
+      await new Promise<void>((resolve, reject) => {
+        image.onload = () => resolve();
+        image.onerror = () => reject(new Error('Impossible de préparer le QR de vérification'));
+        image.src = objectUrl;
+      });
+      const canvas = document.createElement('canvas');
+      canvas.width = 384;
+      canvas.height = 384;
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('Préparation du QR indisponible');
+      context.fillStyle = '#ffffff';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL('image/png');
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  }
+
+  async function handleDownload() {
     if (!receipt) return;
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      const [{ createReceiptPdf }, logoDataUrl, qrDataUrl] = await Promise.all([
+        import('@/lib/receipt-pdf'),
+        imageUrlToDataUrl('/trait-logo.png'),
+        qrSvgToPng(),
+      ]);
+      const bytes = createReceiptPdf({
+        ...receipt,
+        transactionId: receipt.id,
+        invoiceNumber: receipt.invoiceNumber ?? null,
+        receivingCurrency: receipt.receivingCurrency ?? receipt.currency,
+        amountReceived: receipt.amountReceived ?? receipt.amount,
+        exchangeRate: receipt.exchangeRate ?? null,
+        verificationUrl,
+        logoDataUrl,
+        qrDataUrl,
+      });
+      const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+      const pdf = new Blob([buffer], { type: 'application/pdf' });
+      const objectUrl = URL.createObjectURL(pdf);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = `Trait-Fintech-${receipt.receiptNumber}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 30_000);
+      toast.success('Reçu PDF téléchargé.');
+    } catch {
+      toast.error('Impossible de générer le PDF. Réessayez ou utilisez Imprimer / PDF.');
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  function handlePrint() {
+    if (!receipt) return;
+    if (typeof window.print !== 'function') {
+      toast.error('L’impression n’est pas prise en charge sur cet appareil.');
+      return;
+    }
     document.body.classList.add('receipt-print-mode');
     window.addEventListener('afterprint', () => document.body.classList.remove('receipt-print-mode'), { once: true });
     window.print();
@@ -180,8 +270,9 @@ export default function ReceiptScreen() {
       <div className="px-4 py-4 max-w-md mx-auto print:max-w-none print:p-0">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="receipt-print-area bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-border overflow-hidden print:rounded-none print:shadow-none">
           <div className="receipt-print-header bg-[#0D5C63] p-6 text-white text-center">
+            <Image src="/trait-logo.png" width={56} height={56} alt="Logo Trait Fintech" className="receipt-brand-logo mx-auto mb-2 rounded-lg bg-white object-contain" />
             <p className="text-lg font-bold">Trait Fintech</p>
-            <p className="text-[10px] opacity-80 mt-0.5">Transfert d&apos;argent sécurisé</p>
+            <p className="text-[10px] opacity-80 mt-0.5">Reçu de transaction confirmé</p>
             <div className="mt-4">
             <p className="text-[10px] opacity-70">N° reçu {receipt.receiptNumber}</p>
             {receipt.invoiceNumber && <p className="text-[10px] opacity-80 mt-1">Facture {receipt.invoiceNumber}</p>}
@@ -206,16 +297,20 @@ export default function ReceiptScreen() {
               <div>
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">EXPÉDITEUR</p>
                 <p className="text-sm font-semibold text-foreground">{receipt.sender.name}</p>
-                <p className="text-xs text-muted-foreground">{receipt.sender.phone}</p>
+                <p className="text-xs text-muted-foreground">{countryName(receipt.sender.country)}{receipt.sender.phone ? ` · ${receipt.sender.phone}` : ''}</p>
               </div>
               <div>
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">DESTINATAIRE</p>
                 <p className="text-sm font-semibold text-foreground">{receipt.receiver.name}</p>
-                <p className="text-xs text-muted-foreground">{receipt.receiver.phone}</p>
+                <p className="text-xs text-muted-foreground">{countryName(receipt.receiver.country)}{receipt.receiver.phone ? ` · ${receipt.receiver.phone}` : ''}</p>
               </div>
             </div>
 
             <div className="border-t border-border pt-4 space-y-2">
+              <div className="flex justify-between gap-4 text-sm">
+                <span className="text-muted-foreground">Type d’opération</span>
+                <span className="text-right font-medium">{receipt.type}</span>
+              </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Montant envoyé</span>
                 <span className="font-medium">{money(receipt.amount, receipt.currency)}</span>
@@ -243,7 +338,7 @@ export default function ReceiptScreen() {
             {verificationUrl && (
               <div className="border-t border-border pt-4 text-center">
                 <p className="text-xs font-semibold text-foreground">Vérifier l’authenticité du reçu</p>
-                <QRCodeSVG value={verificationUrl} size={116} level="M" includeMargin className="mx-auto mt-2" aria-label="QR code de vérification du reçu" />
+                <QRCodeSVG value={verificationUrl} size={116} level="M" includeMargin className="receipt-verification-qr mx-auto mt-2" aria-label="QR code de vérification du reçu" />
                 <p className="break-all text-[10px] text-muted-foreground print:hidden">{verificationUrl}</p>
               </div>
             )}
@@ -254,10 +349,11 @@ export default function ReceiptScreen() {
           <Button variant="outline" className="flex-1 rounded-xl" onClick={handleShare}>
             <Share2 className="h-4 w-4 mr-2" />Partager
           </Button>
-          <Button variant="outline" className="flex-1 rounded-xl" onClick={handleDownload}>
-            <Download className="h-4 w-4 mr-2" />Enregistrer en PDF
+          <Button variant="outline" className="flex-1 rounded-xl" onClick={handleDownload} disabled={downloading}>
+            {downloading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+            {downloading ? 'Préparation…' : 'Télécharger le PDF'}
           </Button>
-          <Button variant="outline" className="flex-1 rounded-xl" onClick={handleDownload}>
+          <Button variant="outline" className="flex-1 rounded-xl" onClick={handlePrint}>
             <Printer className="h-4 w-4 mr-2" />Imprimer / PDF
           </Button>
           <Button variant="outline" className="flex-1 rounded-xl" onClick={handleCopy}>

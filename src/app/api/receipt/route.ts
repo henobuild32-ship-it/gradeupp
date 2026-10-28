@@ -26,8 +26,8 @@ export async function POST(request: NextRequest) {
     const transaction = await prisma.transaction.findUnique({
       where: { id: transactionId },
       include: {
-        sender: { select: { id: true, name: true, pseudo: true, phone: true, deletedAt: true } },
-        receiver: { select: { id: true, name: true, pseudo: true, phone: true, deletedAt: true } },
+        sender: { select: { id: true, name: true, pseudo: true, phone: true, country: true, deletedAt: true } },
+        receiver: { select: { id: true, name: true, pseudo: true, phone: true, country: true, deletedAt: true } },
       },
     })
 
@@ -76,12 +76,14 @@ export async function POST(request: NextRequest) {
         name: transaction.sender.deletedAt ? 'Compte supprimé' : transaction.sender.name,
         pseudo: transaction.sender.deletedAt ? null : transaction.sender.pseudo,
         phone: transaction.sender.deletedAt ? null : transaction.sender.phone,
+        country: transaction.sender.deletedAt ? null : transaction.sender.country,
       },
       receiver: {
         id: transaction.receiver.id,
         name: transaction.receiver.deletedAt ? 'Compte supprimé' : transaction.receiver.name,
         pseudo: transaction.receiver.deletedAt ? null : transaction.receiver.pseudo,
         phone: transaction.receiver.deletedAt ? null : transaction.receiver.phone,
+        country: transaction.receiver.deletedAt ? null : transaction.receiver.country,
       },
       generatedAt: new Date().toISOString(),
       brand: 'Trait Fintech',
