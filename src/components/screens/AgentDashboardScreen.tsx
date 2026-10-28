@@ -343,7 +343,7 @@ export default function AgentDashboardScreen() {
                   </p>
                 </div>
                 <div className="flex-1 rounded-xl bg-white/10 p-2.5">
-                  <p className="text-[9px] text-white/60 font-semibold tracking-wider uppercase mb-0.5">FC</p>
+                  <p className="text-[9px] text-white/60 font-semibold tracking-wider uppercase mb-0.5">CDF</p>
                   <p className="text-sm font-bold">
                     {(user?.realBalanceFC ?? 0).toLocaleString('fr-FR', { maximumFractionDigits: 0 })}
                   </p>

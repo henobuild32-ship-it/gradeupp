@@ -6,6 +6,7 @@ import { Fingerprint, ScanFace, Lock, ShieldAlert, LogOut, Loader2 } from 'lucid
 import { useAppStore } from '@/lib/store';
 import { toast } from 'sonner';
 import { authenticateBiometric, checkBiometricSupport, describeBiometricError, isNativePlatform, storedCredentialId } from '@/lib/biometric';
+import { markFreshAuth } from '@/lib/session-flag';
 
 /**
  * Écran de verrouillage TRAIT — s'affiche à la réouverture de l'app
@@ -85,6 +86,7 @@ export default function AppLock({ onUnlock }: { onUnlock: () => void }) {
     try {
       const unlockedUser = await authenticateBiometric();
       if (unlockedUser) {
+        markFreshAuth();
         setUser({ ...useAppStore.getState().user, ...unlockedUser } as any);
         if (unlockedUser.pinSet === false) {
           // Procédure normale : PIN obligatoire avant d'accéder au compte
@@ -120,6 +122,7 @@ export default function AppLock({ onUnlock }: { onUnlock: () => void }) {
       });
       const data = await res.json();
       if (data.success) {
+        markFreshAuth();
         setPin('');
         pinRef.current = '';
         onUnlock();
@@ -192,7 +195,7 @@ export default function AppLock({ onUnlock }: { onUnlock: () => void }) {
           <Lock className="w-9 h-9 text-white" />
         </motion.div>
 
-        <h1 className="text-xl font-bold text-foreground mb-1">TRAIT est verrouillé</h1>
+        <h1 className="text-xl font-bold text-foreground mb-1">Trait Fintech est verrouillé</h1>
         <p className="text-sm text-muted-foreground text-center mb-10">
           {user?.name || user?.pseudo || user?.phone ? (
             <>Bonjour <span className="font-medium text-foreground">{user?.name || user?.pseudo || user?.phone}</span>, déverrouillez pour continuer</>

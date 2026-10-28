@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { setTokenCookie, signToken, verifyLoginChallengeToken } from '@/lib/auth'
-import { verifyTOTP } from '@/lib/totp'
+import { hashRecoveryCode, verifyTOTP } from '@/lib/totp'
 import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit'
 
 export async function POST(request: NextRequest) {
@@ -12,8 +12,10 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const challengeToken = typeof body.challengeToken === 'string' ? body.challengeToken : ''
-    const code = typeof body.code === 'string' ? body.code : ''
-    if (!challengeToken || !/^\d{6}$/.test(code)) {
+    const code = typeof body.code === 'string' ? body.code.trim().toUpperCase() : ''
+    const isTotpCode = /^\d{6}$/.test(code)
+    const isRecoveryCode = /^[A-F0-9]{24}$/.test(code)
+    if (!challengeToken || (!isTotpCode && !isRecoveryCode)) {
       return NextResponse.json({ success: false, message: 'Code de vérification invalide' }, { status: 400 })
     }
 
@@ -50,6 +52,7 @@ export async function POST(request: NextRequest) {
         hasCompletedOnboarding: true,
         twoFactorEnabled: true,
         twoFactorSecret: true,
+        twoFactorRecoveryCodes: true,
         pin: true,
         biometricEnabled: true,
         referralCode: true,
@@ -68,8 +71,33 @@ export async function POST(request: NextRequest) {
     if (user.role === 'agent' && user.validationStatus !== 'validated') {
       return NextResponse.json({ success: false, message: 'Votre compte Agent n’est pas validé.' }, { status: 403 })
     }
-    if (!verifyTOTP(user.twoFactorSecret, code)) {
+    let validCode = isTotpCode && verifyTOTP(user.twoFactorSecret, code)
+    let usedRecoveryCode = false
+    if (!validCode && isRecoveryCode) {
+      const recoveryHash = hashRecoveryCode(code)
+      if (user.twoFactorRecoveryCodes.includes(recoveryHash)) {
+        const remainingCodes = user.twoFactorRecoveryCodes.filter((stored) => stored !== recoveryHash)
+        const consumed = await db.user.updateMany({
+          where: { id: user.id, twoFactorRecoveryCodes: { has: recoveryHash } },
+          data: { twoFactorRecoveryCodes: remainingCodes },
+        })
+        validCode = consumed.count === 1
+        usedRecoveryCode = validCode
+      }
+    }
+    if (!validCode) {
       return NextResponse.json({ success: false, message: 'Code invalide. Réessayez.' }, { status: 401 })
+    }
+
+    if (usedRecoveryCode) {
+      db.notification.create({
+        data: {
+          userId: user.id,
+          title: 'Code de secours utilisé',
+          message: 'Un code de secours 2FA a été utilisé pour ouvrir une session. Régénérez vos codes si nécessaire.',
+          type: 'security',
+        },
+      }).catch(() => {})
     }
 
     const token = await signToken({ userId: user.id, role: user.role })

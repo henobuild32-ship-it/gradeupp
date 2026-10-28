@@ -7,6 +7,8 @@ import {
   User,
   Shield,
   Moon,
+  Palette,
+  Sun,
   Globe,
   Download,
   Info,
@@ -198,7 +200,7 @@ function IOSGuideModal({ onClose }: { onClose: () => void }) {
 }
 
 export default function SettingsScreen() {
-  const { goBack, user, setUser, logout, navigateTo, isDarkMode, toggleTheme } =
+  const { goBack, user, setUser, logout, navigateTo, isDarkMode, toggleTheme, themeVariant, setThemeVariant } =
     useAppStore();
   const { canInstall, isIOS, isInstalled, isStandalone, installApp } = usePWAInstall();
   const { isSubscribed, permission, subscribe } = usePushSubscription();
@@ -555,6 +557,50 @@ export default function SettingsScreen() {
             </Card>
           </motion.div>
         ))}
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <Card>
+            <CardHeader className="pb-2 px-4 pt-4">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Thèmes</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3">
+              {([
+                { id: 'white', label: 'Blanc', description: 'Fond blanc et contraste renforcé', icon: Sun },
+                { id: 'original', label: 'D’origine', description: 'Présentation actuelle de Trait', icon: Palette },
+              ] as const).map((option) => {
+                const Icon = option.icon;
+                const selected = themeVariant === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => {
+                      setThemeVariant(option.id);
+                      toast.success(`Thème ${option.label.toLowerCase()} appliqué`);
+                    }}
+                    className={`min-h-16 w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-colors ${
+                      selected ? 'border-[#0D5C63] bg-[#0D5C63]/5' : 'border-border hover:bg-muted/50'
+                    }`}
+                  >
+                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${selected ? 'bg-[#0D5C63] text-white' : 'bg-muted text-muted-foreground'}`}>
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold text-foreground">{option.label}</span>
+                      <span className="block text-xs text-muted-foreground">{option.description}</span>
+                    </span>
+                    {selected && <Check className="h-4 w-4 shrink-0 text-[#0D5C63]" />}
+                  </button>
+                );
+              })}
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Install App Card */}
         {!(isInstalled || isStandalone) && (

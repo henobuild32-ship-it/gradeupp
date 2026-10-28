@@ -1,15 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { checkChildBalanceLimit } from '@/lib/security'
+import { checkChildBalanceLimit, checkDailyLimit, checkKYC, detectSuspiciousActivity, logSecurityEvent } from '@/lib/security'
 import { requireUser, verifyPinWithAttempts } from '@/lib/auth'
 import { SendMoneySchema, validateRequest } from '@/lib/validations'
 import { updateBalanceAndNotify } from '@/lib/notifications'
 import { findUserByPhone } from '@/lib/phone'
+import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit'
+import { calculateTransferFee, convertCurrencyAmount, DEFAULT_USD_CDF_RATE, normalizeCurrency } from '@/lib/currency'
+import { getUsdCdfExchangeRate } from '@/lib/currency-server'
+import { normalizeInternationalPhone } from '@/lib/countries'
 
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireUser(request)
     if (auth instanceof NextResponse) return auth
+
+    const rateLimit = checkRateLimit({ windowMs: 60 * 60 * 1000, maxRequests: 10, key: `wallet-send:${auth.userId}` })
+    if (!rateLimit.allowed) return rateLimitResponse(rateLimit.resetIn)
 
     const body = await request.json()
     const validation = validateRequest(SendMoneySchema, body)
@@ -17,8 +24,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: validation.error }, { status: 400 })
     }
 
-    const { receiverPhone, amount, currency, pin } = validation.data
+    const { receiverPhone, amount, currency, receivingCurrency, traitCardTransfer, pin, description } = validation.data
     const senderId = auth.userId
+    const normalizedPhone = normalizeInternationalPhone(receiverPhone)
+    if (!normalizedPhone) {
+      return NextResponse.json({ success: false, message: 'Saisissez un numéro international valide avec son indicatif.' }, { status: 400 })
+    }
 
     const sender = await db.user.findUnique({
       where: { id: senderId },
@@ -39,10 +50,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Votre compte est suspendu.' }, { status: 403 })
     }
 
-    const isFC = currency === 'FC'
-    const cur = isFC ? 'FC' : (currency || 'USD')
+    const cur = normalizeCurrency(currency)
+    const receiveCur = normalizeCurrency(receivingCurrency || currency)
+    const isFC = cur === 'CDF'
 
-    if (receiverPhone.trim() === sender.phone.trim()) {
+    if (normalizedPhone === normalizeInternationalPhone(sender.phone)) {
       return NextResponse.json({ success: false, message: 'Un transfert vers soi-même est interdit' }, { status: 400 })
     }
 
@@ -54,10 +66,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: pinResult.blocked ? 'Trop de tentatives. Compte bloqué temporairement.' : 'PIN incorrect' }, { status: pinResult.blocked ? 429 : 401 })
     }
 
-    const fee = Math.round(amount * 0.007 * 100) / 100
+    const fee = calculateTransferFee(amount)
 
     // Find receiver — aucun compte n'est créé automatiquement
-    const receiver = await findUserByPhone(receiverPhone)
+    const receiver = await findUserByPhone(normalizedPhone)
 
     if (!receiver) {
       return NextResponse.json(
@@ -66,7 +78,45 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const limitCheck = await checkChildBalanceLimit(receiver.id, amount, cur)
+    if (receiver.id === senderId) {
+      return NextResponse.json({ success: false, message: 'Un transfert vers soi-même est interdit' }, { status: 400 })
+    }
+    if (receiver.suspended || receiver.tempBlocked) {
+      return NextResponse.json({ success: false, message: 'Le compte du bénéficiaire ne peut pas recevoir de transfert actuellement.' }, { status: 403 })
+    }
+
+    if (traitCardTransfer) {
+      const [senderCard, receiverCard] = await Promise.all([
+        db.traitCard.findFirst({ where: { userId: senderId, status: 'active' }, select: { id: true } }),
+        db.traitCard.findFirst({ where: { userId: receiver.id, status: 'active' }, select: { id: true } }),
+      ])
+      if (!senderCard) return NextResponse.json({ success: false, message: 'Une carte Trait active est nécessaire pour utiliser ce mode de paiement.' }, { status: 403 })
+      if (!receiverCard) return NextResponse.json({ success: false, message: 'Aucune carte Trait active n’est liée à ce numéro.' }, { status: 404 })
+    }
+
+    const dailyCheck = await checkDailyLimit(senderId)
+    if (!dailyCheck.allowed) {
+      await logSecurityEvent({ userId: senderId, action: 'daily_limit_reached', details: JSON.stringify({ count: dailyCheck.count, limit: dailyCheck.limit }), riskLevel: 'high' })
+      return NextResponse.json({ success: false, message: `Limite journalière atteinte (${dailyCheck.limit} opérations).` }, { status: 429 })
+    }
+
+    const exchangeRate = cur === receiveCur ? null : await getUsdCdfExchangeRate()
+    const receivedAmount = convertCurrencyAmount(amount, cur, receiveCur, exchangeRate ?? DEFAULT_USD_CDF_RATE)
+    const usdEquivalent = cur === 'USD' ? amount : convertCurrencyAmount(amount, 'CDF', 'USD', await getUsdCdfExchangeRate())
+    const suspicious = await detectSuspiciousActivity(senderId, usdEquivalent)
+    if (suspicious.suspicious) {
+      await logSecurityEvent({ userId: senderId, action: 'suspicious_activity', details: JSON.stringify({ reasons: suspicious.reasons, amount, currency: cur }), riskLevel: suspicious.reasons.length >= 2 ? 'critical' : 'medium' })
+      if (suspicious.reasons.length >= 2) return NextResponse.json({ success: false, message: 'Opération suspendue pour vérification de sécurité.', code: 'SUSPICIOUS_ACTIVITY' }, { status: 403 })
+    }
+    if (usdEquivalent > 1000) {
+      const kyc = await checkKYC(senderId)
+      if (!kyc.verified) return NextResponse.json({ success: false, message: 'Une vérification d’identité validée est requise pour ce montant.', code: 'KYC_REQUIRED', kycStatus: kyc.status }, { status: 403 })
+    }
+
+    if (receivedAmount <= 0) {
+      return NextResponse.json({ success: false, message: 'Le montant après frais doit rester supérieur à zéro.' }, { status: 400 })
+    }
+    const limitCheck = await checkChildBalanceLimit(receiver.id, receivedAmount, receiveCur)
     if (!limitCheck.allowed) {
       return NextResponse.json(
         { success: false, message: limitCheck.message },
@@ -75,21 +125,32 @@ export async function POST(request: NextRequest) {
     }
 
     const senderBalanceField = isFC ? 'realBalanceFC' : 'realBalance'
-    const receiverBalanceField = isFC ? 'realBalanceFC' : 'realBalance'
+    const senderBonusField = isFC ? 'bonusBalanceFC' : 'bonusBalance'
+    const receiverBalanceField = receiveCur === 'CDF' ? 'realBalanceFC' : 'realBalance'
 
     // Fully atomic: debit + credit + transaction record in a single $transaction
     let transaction
     try {
       const result = await db.$transaction(async (tx) => {
+        const canChargeFeeFromBonus = fee > 0 && sender[senderBalanceField] < amount + fee && sender[senderBalanceField] >= amount && sender[senderBonusField] >= fee
         const debit = await tx.user.updateMany({
-          where: { id: senderId, [senderBalanceField]: { gte: amount + fee } },
-          data: { [senderBalanceField]: { decrement: amount + fee } },
+          where: {
+            id: senderId,
+            [senderBalanceField]: { gte: canChargeFeeFromBonus ? amount : amount + fee },
+            ...(canChargeFeeFromBonus ? { [senderBonusField]: { gte: fee } } : {}),
+            suspended: false,
+            tempBlocked: false,
+          },
+          data: {
+            [senderBalanceField]: { decrement: canChargeFeeFromBonus ? amount : amount + fee },
+            ...(canChargeFeeFromBonus ? { [senderBonusField]: { decrement: fee } } : {}),
+          },
         })
         if (debit.count !== 1) throw new Error('INSUFFICIENT_BALANCE')
 
         const credit = await tx.user.updateMany({
           where: { id: receiver.id },
-          data: { [receiverBalanceField]: { increment: amount } },
+          data: { [receiverBalanceField]: { increment: receivedAmount } },
         })
         if (credit.count !== 1) throw new Error('RECEIVER_UPDATE_FAILED')
 
@@ -99,10 +160,13 @@ export async function POST(request: NextRequest) {
             amount,
             fee,
             currency: cur,
+            receivingCurrency: receiveCur,
+            amountReceived: receivedAmount,
+            exchangeRate,
             status: 'completed',
             senderId,
             receiverId: receiver.id,
-            description: `Transfert de ${amount.toFixed(2)} ${cur} vers ${receiver.phone}`,
+            description: (description?.trim() || `Transfert Trait de ${amount.toFixed(2)} ${cur} vers ${receiver.phone}`).slice(0, 200),
           },
         })
 
@@ -110,7 +174,7 @@ export async function POST(request: NextRequest) {
           data: {
             userId: receiver.id,
             title: 'Transfert reçu',
-            message: `Vous avez reçu ${amount.toFixed(2)} ${cur} de ${sender.phone || sender.name || 'Inconnu'}`,
+            message: `Vous avez reçu ${receivedAmount.toFixed(2)} ${receiveCur} de ${sender.phone || sender.name || 'Inconnu'}`,
             type: 'transfer_received',
           },
         })
@@ -118,7 +182,7 @@ export async function POST(request: NextRequest) {
           data: {
             userId: senderId,
             title: 'Transfert envoyé',
-            message: `Vous avez envoyé ${amount.toFixed(2)} ${cur} à ${receiver.phone || receiver.name || 'Inconnu'}`,
+            message: `Vous avez envoyé ${amount.toFixed(2)} ${cur} à ${receiver.phone || receiver.name || 'Inconnu'}${receiveCur !== cur ? ` ; reçu ${receivedAmount.toFixed(2)} ${receiveCur}` : ''}`,
             type: 'transfer_sent',
           },
         })
@@ -138,7 +202,7 @@ export async function POST(request: NextRequest) {
       const { sendPushToUser } = await import('@/lib/push')
       await sendPushToUser(receiver.id, {
         title: 'Transfert reçu',
-        body: `Vous avez reçu ${amount.toFixed(2)} ${cur} de ${sender.name || sender.phone || 'un utilisateur'}`,
+        body: `Vous avez reçu ${receivedAmount.toFixed(2)} ${receiveCur} de ${sender.name || sender.phone || 'un utilisateur'}`,
         url: '/history',
       })
     } catch (err) {
@@ -179,6 +243,9 @@ export async function POST(request: NextRequest) {
         amount: transaction.amount,
         fee: transaction.fee,
         currency: transaction.currency,
+        receivingCurrency: transaction.receivingCurrency,
+        amountReceived: transaction.amountReceived,
+        exchangeRate: transaction.exchangeRate,
         status: transaction.status,
         senderId: transaction.senderId,
         receiverId: transaction.receiverId,

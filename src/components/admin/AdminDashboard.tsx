@@ -26,12 +26,15 @@ import {
   Store,
   FileCheck,
   Headphones,
+  RefreshCw,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { useAppStore, type PageName } from '@/lib/store';
+import { DEFAULT_USD_CDF_RATE } from '@/lib/currency';
 import { toast } from 'sonner';
 
 interface DashboardStats {
@@ -134,6 +137,9 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exchangeRate, setExchangeRate] = useState(String(DEFAULT_USD_CDF_RATE));
+  const [rateLoading, setRateLoading] = useState(true);
+  const [rateSaving, setRateSaving] = useState(false);
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -165,6 +171,39 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchDashboardData();
   }, [fetchDashboardData]);
+
+  useEffect(() => {
+    fetch('/api/admin/exchange-rate', { credentials: 'include' })
+      .then((response) => response.json())
+      .then((data) => { if (data.success && Number(data.rate) > 0) setExchangeRate(String(data.rate)); })
+      .catch(() => toast.error('Impossible de charger le taux USD/CDF'))
+      .finally(() => setRateLoading(false));
+  }, []);
+
+  async function saveExchangeRate() {
+    const rate = Number(exchangeRate.replace(',', '.'));
+    if (!Number.isFinite(rate) || rate <= 0 || rate > 1_000_000) {
+      toast.error('Saisissez un taux supérieur à zéro.');
+      return;
+    }
+    setRateSaving(true);
+    try {
+      const response = await fetch('/api/admin/exchange-rate', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rate }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.message || 'Échec de mise à jour');
+      setExchangeRate(String(data.rate));
+      toast.success('Taux USD/CDF mis à jour.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Échec de mise à jour du taux');
+    } finally {
+      setRateSaving(false);
+    }
+  }
 
   function handleLogout() {
     adminLogout();
@@ -268,6 +307,28 @@ export default function AdminDashboard() {
             </div>
           )}
         </motion.div>
+
+        <Card className="border-border">
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold text-foreground">Taux de change central</h2>
+                <p className="mt-1 text-xs text-muted-foreground">Ce taux s’applique aux nouvelles conversions USD/CDF.</p>
+              </div>
+              <RefreshCw className="h-4 w-4 shrink-0 text-muted-foreground" />
+            </div>
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <label className="flex min-h-11 flex-1 items-center gap-2 rounded-lg border border-input px-3">
+                <span className="shrink-0 text-sm font-medium">1 USD =</span>
+                <Input aria-label="Taux CDF pour un dollar américain" type="number" inputMode="decimal" min="0.01" step="0.01" value={exchangeRate} onChange={(event) => setExchangeRate(event.target.value)} disabled={rateLoading || rateSaving} className="h-10 border-0 px-0 shadow-none focus-visible:ring-0" />
+                <span className="shrink-0 text-sm font-medium">CDF</span>
+              </label>
+              <Button className="min-h-11 sm:w-auto" onClick={saveExchangeRate} disabled={rateLoading || rateSaving}>
+                {rateLoading ? 'Chargement…' : rateSaving ? 'Enregistrement…' : 'Enregistrer le taux'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Recent Activity */}
         <motion.div

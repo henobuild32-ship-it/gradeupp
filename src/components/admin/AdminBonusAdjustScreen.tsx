@@ -295,7 +295,7 @@ export default function AdminBonusAdjustScreen() {
                       ${foundUser.realBalance.toFixed(2)}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {foundUser.realBalanceFC.toLocaleString('fr-FR')} FC
+                      {foundUser.realBalanceFC.toLocaleString('fr-FR')} CDF
                     </p>
                   </div>
                   <div className="text-center">
@@ -307,7 +307,7 @@ export default function AdminBonusAdjustScreen() {
                       ${foundUser.bonusBalance.toFixed(2)}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {foundUser.bonusBalanceFC.toLocaleString('fr-FR')} FC
+                      {foundUser.bonusBalanceFC.toLocaleString('fr-FR')} CDF
                     </p>
                   </div>
                 </div>
@@ -360,7 +360,7 @@ export default function AdminBonusAdjustScreen() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="USD">USD - Dollar Américain</SelectItem>
-                      <SelectItem value="FC">FC - Franc Congolais</SelectItem>
+                      <SelectItem value="FC">CDF - Franc congolais</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

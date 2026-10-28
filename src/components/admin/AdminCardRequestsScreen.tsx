@@ -138,7 +138,7 @@ function getCardTypeBadge(cardType: string) {
   }
   return (
     <Badge variant="outline" className="text-xs border-blue-300 text-blue-700 dark:border-blue-700 dark:text-blue-400">
-      FC
+        CDF
     </Badge>
   );
 }

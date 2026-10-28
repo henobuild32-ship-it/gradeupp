@@ -1,7 +1,7 @@
 // TRAIT Service Worker — Push Notifications + offline shell
 // v11 : iOS-safe — jamais de Response.error() sur une navigation,
 // cache-first pour les chunks immuables /_next/static/.
-const CACHE_NAME = 'trait-v11';
+const CACHE_NAME = 'trait-v12';
 
 const OFFLINE_HTML =
   '<!doctype html><html lang="fr"><head><meta charset="utf-8">' +
@@ -148,7 +148,7 @@ self.addEventListener('push', (event) => {
   }
 
   event.waitUntil(
-    self.registration.showNotification(data.title || 'TRAIT', {
+    self.registration.showNotification(data.title || 'Trait Fintech', {
       body: data.body || data.message || '',
       icon: '/trait-logo.png',
       badge: '/trait-logo.png',

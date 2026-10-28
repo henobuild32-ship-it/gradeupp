@@ -104,7 +104,7 @@ function PaymentUIMockup() {
       {/* Amount */}
       <div className="bg-slate-800/80 rounded-xl p-4 text-center mb-4 border border-slate-700/50">
         <p className="text-slate-500 text-[10px] uppercase tracking-widest mb-1">Montant à payer</p>
-        <p className="text-white text-3xl font-bold">15 500 <span className="text-lg text-emerald-400">FC</span></p>
+        <p className="text-white text-3xl font-bold">15 500 <span className="text-lg text-emerald-400">CDF</span></p>
         <p className="text-slate-500 text-xs mt-1">≈ $5,72 USD</p>
       </div>
 
@@ -114,16 +114,16 @@ function PaymentUIMockup() {
         <div className="flex items-center gap-3 bg-slate-800/60 rounded-xl p-3 border border-emerald-500/50 border-2">
           <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center"><Wallet className="size-4 text-emerald-400" /></div>
           <div className="flex-1">
-            <p className="text-white text-sm font-semibold">Mobile Money</p>
-            <p className="text-slate-400 text-[10px]">Orange Money • M-Pesa • Airtel Money</p>
+            <p className="text-white text-sm font-semibold">Wallet Trait</p>
+            <p className="text-slate-400 text-[10px]">Compte Trait vérifié requis</p>
           </div>
           <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center"><Check className="size-3 text-white" /></div>
         </div>
         <div className="flex items-center gap-3 bg-slate-800/60 rounded-xl p-3 border border-slate-700/50 opacity-60">
           <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center"><CreditCardIcon className="size-4 text-blue-400" /></div>
           <div className="flex-1">
-            <p className="text-white text-sm font-semibold">Carte bancaire</p>
-            <p className="text-slate-400 text-[10px]">Visa • Mastercard</p>
+            <p className="text-white text-sm font-semibold">Carte Trait</p>
+            <p className="text-slate-400 text-[10px]">Destinataire avec carte Trait active</p>
           </div>
         </div>
       </div>
@@ -131,7 +131,7 @@ function PaymentUIMockup() {
       {/* Pay button */}
       <button className="w-full h-12 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-bold text-sm transition-all active:scale-[0.98] shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2">
         <Lock className="size-4" />
-        Payer 15 500 FC
+        Payer 15 500 CDF
       </button>
 
       {/* Security badge */}
@@ -160,7 +160,7 @@ export default function IntegrationGuideScreen() {
   const [testResult, setTestResult] = useState<string | null>(null)
   const [testLoading, setTestLoading] = useState(false)
   const [testAmount, setTestAmount] = useState('2500')
-  const [testCurrency, setTestCurrency] = useState('FC')
+  const [testCurrency, setTestCurrency] = useState('CDF')
   const [showSecret, setShowSecret] = useState(false)
 
   const scrollToSection = (id: SectionId) => {
@@ -229,15 +229,15 @@ export default function IntegrationGuideScreen() {
                   <BookOpen className="size-8 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-foreground">Intégrer TRAIT à votre application</h2>
-                  <p className="text-sm text-muted-foreground">La fintech qui connecte la RDC au monde — paiement, transfert, QR, carte</p>
+                  <h2 className="text-xl font-bold text-foreground">Intégrer Trait Fintech à votre application</h2>
+                  <p className="text-sm text-muted-foreground">Paiements et transferts entre comptes Trait, QR et cartes Trait.</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {[
-                  { icon: Wallet, label: 'Paiements', value: 'Mobile Money, Carte, QR' },
-                  { icon: Repeat, label: 'Transferts', value: 'National & International' },
+                  { icon: Wallet, label: 'Paiements', value: 'Wallet Trait, Carte Trait, QR' },
+                  { icon: Repeat, label: 'Transferts', value: 'Entre comptes Trait' },
                   { icon: QrCode, label: 'QR Code', value: 'Scan & Pay' },
                   { icon: Percent, label: 'Commission', value: '1,5% / transaction' },
                 ].map((f, i) => (
@@ -288,11 +288,11 @@ export default function IntegrationGuideScreen() {
                   <ul className="space-y-2 text-xs text-muted-foreground">
                     {[
                       'Nom du marchand et montant affiché en gros',
-                      'Choix de la méthode de paiement (Mobile Money, Carte, etc.)',
+                      'Choix du Wallet Trait ou d’une carte Trait active',
                       'Bouton de paiement sécurisé avec cadenas',
                       'Indicateur de connexion et badge de sécurité TRAIT',
                       'Design responsive qui s\'adapte à tous les écrans',
-                      'Paiement en FC ou USD avec conversion automatique',
+                      'Paiement en CDF ou USD avec conversion automatique',
                     ].map((item, i) => (
                       <li key={i} className="flex items-start gap-2">
                         <CheckCircle className="size-3.5 text-emerald-600 shrink-0 mt-0.5" />
@@ -451,22 +451,8 @@ export default function IntegrationGuideScreen() {
                 </div>
               </div>
 
-              {/* Numéros de test mobile money */}
-              <div>
-                <p className="text-[10px] font-semibold text-muted-foreground mb-2">📱 Numéros de test Mobile Money</p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {[
-                    { op: 'Orange Money', num: '+243 90 000 0001' },
-                    { op: 'M-Pesa', num: '+243 90 000 0002' },
-                    { op: 'Airtel Money', num: '+243 90 000 0003' },
-                    { op: 'Africell Money', num: '+243 90 000 0004' },
-                  ].map((m) => (
-                    <div key={m.op} className="bg-white dark:bg-slate-900 rounded-xl p-2.5 border border-border/50 text-center">
-                      <p className="text-[10px] font-semibold text-foreground">{m.op}</p>
-                      <p className="text-[9px] font-mono text-muted-foreground">{m.num}</p>
-                    </div>
-                  ))}
-                </div>
+              <div className="rounded-xl border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+                Les paiements nécessitent un compte Trait enregistré. Les réseaux de paiement externes ne sont pas encore raccordés.
               </div>
 
               {/* Mode d'emploi */}
@@ -547,7 +533,7 @@ export default function IntegrationGuideScreen() {
 // Créer un paiement
 const payment = await trait.payments.create({
   amount: 15500,
-  currency: 'FC',
+  currency: 'CDF',
   description: 'Commande #123',
   customer: { email: 'client@email.com', phone: '+243901234567' }
 })
@@ -578,7 +564,7 @@ client = Client(api_key="sk_test_xxxxxxxxx", sandbox=True)
 # Créer un paiement
 payment = client.payments.create({
     "amount": 15500,
-    "currency": "FC",
+    "currency": "CDF",
     "description": "Commande #123",
     "customer": {"email": "client@email.com"}
 })
@@ -588,9 +574,9 @@ print(payment["status"])  # 'processing'
 # Effectuer un retrait
 withdrawal = client.withdrawals.create({
     "amount": 50000,
-    "currency": "FC",
-    "method": "mobile_money",
-    "phone": "+243901234567"
+    "currency": "CDF",
+    "recipientPhone": "+243901234567",  # numéro enregistré dans Trait
+    "description": "Paiement commande #123"
 })`} label="Python" lang="Python" />
               </div>
 
@@ -605,7 +591,7 @@ $trait->setSandbox(true);
 
 $payment = $trait->payments->create([
   'amount' => 15500,
-  'currency' => 'FC',
+  'currency' => 'CDF',
   'description' => 'Commande #123',
   'customer' => ['email' => 'client@email.com']
 ]);
@@ -627,7 +613,7 @@ final client = TraitClient(
 // Lancer le paiement
 final payment = await client.payments.create(
   amount: 15500,
-  currency: 'FC',
+  currency: 'CDF',
   description: 'Achat dans mon app',
 );
 
@@ -652,7 +638,7 @@ const client = new Trait({
 // Ouvrir l'écran de paiement
 const payment = await client.presentPayment({
   amount: 15500,
-  currency: 'FC',
+  currency: 'CDF',
   description: 'Achat #456',
   onComplete: (result) => {
     if (result.status === 'completed') {
@@ -670,7 +656,7 @@ const payment = await client.presentPayment({
   -H "Content-Type: application/json" \\
   -d '{
     "amount": 15500,
-    "currency": "FC",
+    "currency": "CDF",
     "description": "Test depuis cURL",
     "customer": {
       "email": "client@email.com",
@@ -701,7 +687,7 @@ const payment = await client.presentPayment({
                   <Label className="text-xs text-muted-foreground">Devise</Label>
                   <select value={testCurrency} onChange={(e) => setTestCurrency(e.target.value)}
                     className="h-10 w-full mt-1 rounded-lg border border-input bg-background px-3 text-sm">
-                    <option value="FC">FC — Francs congolais</option>
+                    <option value="CDF">CDF — Franc congolais</option>
                     <option value="USD">USD — Dollars américains</option>
                   </select>
                 </div>
@@ -772,7 +758,7 @@ const payment = await client.presentPayment({
   "data": {
     "id": "pay_abc123",
     "amount": 15500,
-    "currency": "FC",
+    "currency": "CDF",
     "status": "completed",
     "fee": 232.5,
     "commission": 232.5,
@@ -845,7 +831,7 @@ const response = await fetch('https://sandbox.trait.cd/api/v1/payments', {
     'Content-Type': 'application/json',
     'Idempotency-Key': crypto.randomUUID()  // ← Unique par requête
   },
-  body: JSON.stringify({ amount: 15500, currency: 'FC' })
+  body: JSON.stringify({ amount: 15500, currency: 'CDF' })
 })`} label="Idempotence — éviter les paiements en double" lang="JavaScript" />
             </CardContent>
           </Card>
@@ -908,9 +894,9 @@ const response = await fetch('https://sandbox.trait.cd/api/v1/payments', {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {[
-                  { montant: '5 000 FC', com: '75 FC', usd: '$0,09' },
-                  { montant: '15 500 FC', com: '232,5 FC', usd: '$0,27' },
-                  { montant: '100 000 FC', com: '1 500 FC', usd: '$1,74' },
+                  { montant: '5 000 CDF', com: '75 CDF', usd: '$0,09' },
+                  { montant: '15 500 CDF', com: '232,5 CDF', usd: '$0,27' },
+                  { montant: '100 000 CDF', com: '1 500 CDF', usd: '$1,74' },
                 ].map((ex, i) => (
                   <div key={i} className="bg-white dark:bg-slate-900 rounded-xl p-3 border border-border/50 text-center">
                     <p className="text-xs text-muted-foreground">Transaction</p>

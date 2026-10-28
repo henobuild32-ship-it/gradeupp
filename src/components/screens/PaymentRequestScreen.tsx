@@ -252,7 +252,7 @@ export default function PaymentRequestScreen() {
                         <div className="flex items-end justify-between">
                           <div>
                             <p className="text-lg font-bold text-foreground">
-                              {req.currency === 'FC' ? '' : '$'}{req.amount.toFixed(2)} {req.currency === 'FC' ? 'FC' : 'USD'}
+                              {req.currency === 'FC' ? `${req.amount.toLocaleString('fr-FR')} CDF` : `${req.amount.toFixed(2)} USD`}
                             </p>
                             {req.description && (
                               <p className="text-xs text-muted-foreground mt-0.5">{req.description}</p>
@@ -336,7 +336,7 @@ export default function PaymentRequestScreen() {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="USD">USD</SelectItem>
-                  <SelectItem value="FC">FC</SelectItem>
+                  <SelectItem value="FC">CDF</SelectItem>
                 </SelectContent>
               </Select>
             </div>

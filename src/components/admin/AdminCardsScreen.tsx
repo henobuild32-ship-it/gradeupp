@@ -163,7 +163,7 @@ function getCardTypeBadge(cardType: string) {
   }
   return (
     <Badge variant="outline" className="text-[10px] border-red-300 text-red-700 dark:border-red-700 dark:text-red-400 font-semibold">
-      FC
+        CDF
     </Badge>
   );
 }
@@ -410,7 +410,7 @@ export default function AdminCardsScreen() {
               { label: 'Suspendues', value: stats.suspended, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-900/40', icon: ShieldOff },
               { label: 'Bloquées', value: stats.blocked, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-100 dark:bg-red-900/40', icon: Ban },
               { label: 'USD', value: stats.usd, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/30', icon: Wallet },
-              { label: 'FC', value: stats.fc, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/30', icon: Wallet },
+              { label: 'CDF', value: stats.fc, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/30', icon: Wallet },
               { label: 'Retrait requis', value: stats.pendingRetrieval || 0, color: 'text-amber-700 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/30', icon: Clock },
             ].map((stat, i) => {
               const Icon = stat.icon;
@@ -599,7 +599,7 @@ export default function AdminCardsScreen() {
                                 <span className="font-semibold">
                                   {card.cardType === 'USD'
                                     ? `$${(card.user?.realBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
-                                    : `${(card.user?.realBalanceFC ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })} FC`}
+                                    : `${(card.user?.realBalanceFC ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })} CDF`}
                                 </span>
                               </div>
                               <div className="flex items-center gap-1.5">
@@ -825,7 +825,7 @@ export default function AdminCardsScreen() {
                         <p className="font-semibold">
                           {selectedCard.cardType === 'USD'
                             ? `$${(selectedCard.user?.realBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
-                            : `${(selectedCard.user?.realBalanceFC ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })} FC`}
+                            : `${(selectedCard.user?.realBalanceFC ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })} CDF`}
                         </p>
                       </div>
                       <div>

@@ -452,7 +452,7 @@ export default function MarketplaceDetailScreen() {
               </p>
             )}
             {currency === 'FC' && (
-              <Badge variant="outline" className="text-xs border-blue-500/30 text-blue-500">FC</Badge>
+              <Badge variant="outline" className="text-xs border-blue-500/30 text-blue-500">CDF</Badge>
             )}
           </div>
 

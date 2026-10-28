@@ -21,6 +21,7 @@ export function usePushSubscription() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
+    if (!('Notification' in window)) return
     setPermission(Notification.permission)
 
     if (!user || !('serviceWorker' in navigator) || !('PushManager' in window)) return
@@ -83,8 +84,8 @@ export function usePushSubscription() {
         setIsSubscribed(true)
         return true
       }
-      // Server rejected (e.g. auth) — browser sub exists but not saved
-      setIsSubscribed(true) // at least browser-side works
+      // Browser subscription alone is not enough: the server must persist it.
+      setIsSubscribed(false)
       return false
     } catch (error) {
       console.error('Push subscribe error:', error)
@@ -102,7 +103,8 @@ export function usePushSubscription() {
         await sub.unsubscribe()
         const headers: Record<string, string> = {}
         if (token) headers['Authorization'] = `Bearer ${token}`
-        await fetch('/api/notifications/push', { method: 'DELETE', headers })
+        const query = new URLSearchParams({ endpoint: sub.endpoint })
+        await fetch(`/api/notifications/push?${query.toString()}`, { method: 'DELETE', headers })
       }
       setIsSubscribed(false)
     } catch (error) {

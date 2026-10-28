@@ -58,7 +58,7 @@ interface TopBonusUser {
 function formatAmount(amount: number, currency: string): string {
   const prefix = currency === 'USD' ? '$' : '';
   if (currency === 'FC') {
-    return `${amount.toLocaleString('fr-FR')} FC`;
+    return `${amount.toLocaleString('fr-FR')} CDF`;
   }
   return `${prefix}${amount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { getUsdCdfExchangeRate } from '@/lib/currency-server'
 import { getAuthUser } from '@/lib/auth'
 
 // L'IA conversationnelle a besoin de temps (modèle + contexte base)
@@ -517,9 +518,8 @@ async function buildUserContext(request: NextRequest, userName: string, userRole
       lines.push(`Nom : ${userName || 'Utilisateur'} ; Rôle : ${userRole || 'client'} (profil fourni par l'application)`)
     }
     try {
-      const cfg = await db.systemConfig.findUnique({ where: { key: 'exchange_rate_usd_fc' } })
-      const rate = cfg ? parseFloat(cfg.value) : 2850
-      if (!Number.isNaN(rate)) lines.push(`Taux de change actuel : 1 USD = ${rate} FC`)
+      const rate = await getUsdCdfExchangeRate()
+      lines.push(`Taux de change actuel : 1 USD = ${rate} CDF`)
     } catch {}
   } catch {}
   return lines.join('\n')
@@ -531,7 +531,7 @@ async function buildUserContext(request: NextRequest, userName: string, userRole
    ═══════════════════════════════════════════════════════════════ */
 
 function buildSystemPrompt(context: string): string {
-  return `Tu es TRAIT IA, l'assistant officiel et bienveillant de TRAIT, une application fintech moderne (envoi d'argent, paiements, cartes, épargne, marketplace).
+  return `Tu es TRAIT IA, l'assistant officiel et bienveillant de Trait Fintech, une application fintech moderne (envoi d'argent, paiements, cartes, épargne, marketplace).
 
 # Ton personnalité et ton style (priorité absolue)
 - Tu parles comme un ami serviable : naturel, vivant, chaleureux. Jamais robotique, jamais un ton de « manuel d'aide ».

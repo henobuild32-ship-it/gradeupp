@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUser } from '@/lib/auth'
 import { findUserByPhone } from '@/lib/phone'
+import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit'
 
 export async function GET(request: NextRequest) {
   try {
     const auth = await requireUser(request)
     if (auth instanceof NextResponse) return auth
+    const limit = checkRateLimit({ windowMs: 60_000, maxRequests: 20, key: `phone-lookup:${auth.userId}` })
+    if (!limit.allowed) return rateLimitResponse(limit.resetIn)
 
     const { searchParams } = new URL(request.url)
     const phone = searchParams.get('phone')

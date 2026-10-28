@@ -73,7 +73,7 @@ function formatDate(dateStr: string): string {
 
 function formatAmount(amount: number, currency: string): string {
   if (currency === 'FC') {
-    return `${amount.toLocaleString('fr-FR')} FC`;
+    return `${amount.toLocaleString('fr-FR')} CDF`;
   }
   return `$${amount.toFixed(2)}`;
 }
@@ -564,7 +564,7 @@ export default function AdminBonusCampaignsScreen() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="USD">USD</SelectItem>
-                    <SelectItem value="FC">FC</SelectItem>
+                    <SelectItem value="FC">CDF</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

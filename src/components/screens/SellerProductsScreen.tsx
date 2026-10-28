@@ -271,7 +271,7 @@ export default function SellerProductsScreen() {
                     onChange={(e) => setNewProduct({ ...newProduct, currency: e.target.value })}
                   >
                     <option value="USD">USD ($)</option>
-                    <option value="FC">FC</option>
+                    <option value="FC">CDF</option>
                   </select>
                 </div>
               </div>
@@ -428,7 +428,7 @@ export default function SellerProductsScreen() {
                       <h4 className="font-bold text-foreground truncate">{p.name}</h4>
                       <p className="text-sm text-muted-foreground line-clamp-1">{p.description}</p>
                       <p className="font-bold text-[#0D5C63]">
-                        {p.currency === 'FC' ? `${p.price.toFixed(0)} FC` : `$${p.price.toFixed(2)}`}
+                        {p.currency === 'FC' ? `${p.price.toLocaleString('fr-FR')} CDF` : `${p.price.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`}
                       </p>
                       <p className="text-[10px] text-muted-foreground">
                         Stock: {p.stock ?? 1} · {p.condition === 'used' ? 'Occasion' : p.condition === 'refurbished' ? 'Reconditionné' : 'Neuf'} · {imgs.length || (cover ? 1 : 0)} photo(s)

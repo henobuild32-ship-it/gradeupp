@@ -201,7 +201,7 @@ export default function VirtualCard({
               {stateBadge()}
               {isUSD ? null : (
                 <span className="text-[9px] font-bold tracking-widest text-white/70 border border-white/20 rounded px-1.5 py-0.5">
-                  FC
+                  CDF
                 </span>
               )}
             </div>

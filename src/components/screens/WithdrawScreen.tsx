@@ -28,8 +28,8 @@ import { toast } from 'sonner';
 import { formatAgentCodeInput } from '@/lib/agent-format';
 
 function fmtCur(amount: number, currency: string) {
-  if (currency === 'FC') return `${amount.toFixed(2)} FC`;
-  return `$${amount.toFixed(2)}`;
+  if (currency === 'FC' || currency === 'CDF') return `${amount.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} CDF`;
+  return `${amount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`;
 }
 
 export default function WithdrawScreen() {
@@ -266,7 +266,7 @@ export default function WithdrawScreen() {
                 <SelectTrigger className="w-full h-11"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="USD">USD - Dollar US</SelectItem>
-                  <SelectItem value="FC">FC - Franc Congolais</SelectItem>
+                  <SelectItem value="FC">CDF - Franc congolais</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -120,12 +120,89 @@
   --sidebar-ring: oklch(0.62 0.21 264);
 }
 
+html.theme-white {
+  color-scheme: light;
+  --background: #ffffff;
+  --foreground: #111827;
+  --card: #ffffff;
+  --card-foreground: #111827;
+  --popover: #ffffff;
+  --popover-foreground: #111827;
+  --primary: #0d5c63;
+  --primary-foreground: #ffffff;
+  --secondary: #f3f6f7;
+  --secondary-foreground: #183438;
+  --muted: #f4f6f7;
+  --muted-foreground: #59676b;
+  --accent: #eef6f6;
+  --accent-foreground: #183438;
+  --border: #e2e8ea;
+  --input: #d8e1e3;
+  --ring: #0d5c63;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #111827;
+  --sidebar-primary: #0d5c63;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eef6f6;
+  --sidebar-accent-foreground: #183438;
+  --sidebar-border: #e2e8ea;
+  --sidebar-ring: #0d5c63;
+  --chart-1: #0d5c63;
+  --chart-2: #14888f;
+  --chart-3: #d97706;
+  --chart-4: #15803d;
+  --chart-5: #b91c1c;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@media print {
+  @page { size: A4; margin: 18mm; }
+
+  body.receipt-print-mode * {
+    visibility: hidden !important;
+  }
+
+  body.receipt-print-mode .receipt-print-area,
+  body.receipt-print-mode .receipt-print-area * {
+    visibility: visible !important;
+  }
+
+  body.receipt-print-mode .receipt-print-area {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    transform: none !important;
+    opacity: 1 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    color: #172126 !important;
+  }
+
+  body.receipt-print-mode .receipt-print-area * {
+    color: #172126 !important;
+    border-color: #e5e7eb !important;
+    box-shadow: none !important;
+  }
+
+  body.receipt-print-mode .receipt-print-area .receipt-print-header,
+  body.receipt-print-mode .receipt-print-area .receipt-print-header * {
+    background-color: #0d5c63 !important;
+    color: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 }
 

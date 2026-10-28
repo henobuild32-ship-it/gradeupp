@@ -264,7 +264,7 @@ export default function AdminChildrenScreen() {
                     <div className="space-y-1">
                       <span className="text-[10px] text-muted-foreground uppercase font-semibold">Soldes de l&apos;enfant</span>
                       <p className="font-bold text-foreground">{child.realBalance.toFixed(2)} USD</p>
-                      <p className="text-[11px] font-semibold text-red-600 dark:text-red-400">{child.realBalanceFC.toFixed(0)} FC</p>
+                      <p className="text-[11px] font-semibold text-red-600 dark:text-red-400">{child.realBalanceFC.toLocaleString('fr-FR')} CDF</p>
                     </div>
                   </div>
 
@@ -386,7 +386,7 @@ export default function AdminChildrenScreen() {
                         </p>
                       </div>
                       <span className={`font-bold ${isRecharge ? 'text-green-600 dark:text-green-400' : 'text-red-500'}`}>
-                        {isRecharge ? '+' : '-'}{tx.currency === 'FC' ? '' : '$'}{tx.amount.toFixed(tx.currency === 'FC' ? 0 : 2)} {tx.currency}
+                        {isRecharge ? '+' : '-'}{tx.currency === 'FC' ? '' : '$'}{tx.amount.toFixed(tx.currency === 'FC' ? 0 : 2)} {tx.currency === 'FC' ? 'CDF' : 'USD'}
                       </span>
                     </div>
                   );

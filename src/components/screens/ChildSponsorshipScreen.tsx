@@ -516,9 +516,9 @@ export default function ChildSponsorshipScreen() {
                               }`}
                             >
                               <Smartphone className="size-4" />
-                              Compte CDF (FC)
+                              Compte CDF
                               <span className="text-[10px] font-normal text-muted-foreground">
-                                Encaissable : 3 000 000 FC
+                                Encaissable : 3 000 000 CDF
                               </span>
                             </button>
                           </div>
@@ -868,7 +868,7 @@ export default function ChildSponsorshipScreen() {
                           </div>
                         </div>
                         <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                          +{item.currency === 'FC' ? '' : '$'}{item.amount.toFixed(item.currency === 'FC' ? 0 : 2)} {item.currency}
+                          +{item.currency === 'FC' ? `${item.amount.toLocaleString('fr-FR')} CDF` : `${item.amount.toFixed(2)} USD`}
                         </span>
                       </div>
                     ))}
@@ -904,7 +904,7 @@ export default function ChildSponsorshipScreen() {
                         </div>
                         <div className="text-right">
                           <span className="text-xs font-bold text-red-600 dark:text-red-400">
-                            -{item.currency === 'FC' ? '' : '$'}{(item.amount + item.fee).toFixed(item.currency === 'FC' ? 0 : 2)} {item.currency}
+                            -{item.currency === 'FC' ? `${(item.amount + item.fee).toLocaleString('fr-FR')} CDF` : `${(item.amount + item.fee).toFixed(2)} USD`}
                           </span>
                           {item.fee > 0 && (
                             <p className="text-[9px] text-muted-foreground mt-0.5">Dont commission : {item.fee.toFixed(2)} {item.currency}</p>

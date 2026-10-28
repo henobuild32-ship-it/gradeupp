@@ -17,23 +17,8 @@ import {
 import { useAppStore } from '@/lib/store';
 import { useTranslation } from '@/lib/i18n';
 import { toast } from 'sonner';
-
-const countryCodes = [
-  { code: '+228', label: '+228', country: 'Togo' },
-  { code: '+229', label: '+229', country: 'Bénin' },
-  { code: '+225', label: '+225', country: "Côte d'Ivoire" },
-  { code: '+224', label: '+224', country: 'Guinée' },
-  { code: '+237', label: '+237', country: 'Cameroun' },
-  { code: '+243', label: '+243', country: 'RDC' },
-  { code: '+221', label: '+221', country: 'Sénégal' },
-  { code: '+223', label: '+223', country: 'Mali' },
-  { code: '+226', label: '+226', country: 'Burkina Faso' },
-  { code: '+234', label: '+234', country: 'Nigeria' },
-  { code: '+233', label: '+233', country: 'Ghana' },
-  { code: '+1', label: '+1', country: 'US/CA' },
-  { code: '+33', label: '+33', country: 'France' },
-  { code: '+44', label: '+44', country: 'UK' },
-];
+import { CountrySelect } from '@/components/shared/CountrySelect';
+import { normalizeInternationalPhone } from '@/lib/countries';
 
 export default function AuthPhoneScreen() {
   const goBack = useAppStore((s) => s.goBack);
@@ -43,7 +28,7 @@ export default function AuthPhoneScreen() {
   const selectedRole = useAppStore((s) => s.selectedRole);
   const { t } = useTranslation();
 
-  const [countryCode, setCountryCode] = useState('+228');
+  const [countryCode, setCountryCode] = useState('TG');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -55,8 +40,8 @@ export default function AuthPhoneScreen() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const cleanedPhone = phone.replace(/\s/g, '');
-    if (!cleanedPhone || cleanedPhone.length < 6) {
+    const fullPhone = normalizeInternationalPhone(phone, countryCode);
+    if (!fullPhone) {
       toast.error(t('validation.phone_required'));
       return;
     }
@@ -71,7 +56,6 @@ export default function AuthPhoneScreen() {
       return;
     }
 
-    const fullPhone = `${countryCode}${cleanedPhone}`;
     setLoading(true);
 
     try {
@@ -160,18 +144,7 @@ export default function AuthPhoneScreen() {
               {t('auth.phone')}
             </Label>
             <div className="flex gap-2">
-              <Select value={countryCode} onValueChange={setCountryCode}>
-                <SelectTrigger className="w-[100px] shrink-0 ">
-                  <SelectValue placeholder={t('common.code')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {countryCodes.map((item) => (
-                    <SelectItem key={item.code + item.country} value={item.code}>
-                      <span className="text-xs">{item.code} {item.country}</span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <CountrySelect value={countryCode} onValueChange={setCountryCode} className="w-[46%] shrink-0" />
               <Input
                 id="reg-phone"
                 type="tel"
@@ -179,7 +152,7 @@ export default function AuthPhoneScreen() {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="flex-1  focus-visible:border-blue-500 focus-visible:ring-blue-500/20 h-12 text-base"
-                autoComplete="tel"
+                autoComplete="tel-national"
                 disabled={loading}
               />
             </div>

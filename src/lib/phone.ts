@@ -1,32 +1,20 @@
 import { db } from '@/lib/db'
+import { normalizeInternationalPhone } from '@/lib/countries'
 
 /**
- * Recherche un utilisateur par téléphone avec variants normalisés :
- * exact → chiffres / +chiffres → 9 derniers chiffres (si match unique).
- * Évite les faux positifs sur les compteurs partagés.
+ * Recherche un utilisateur uniquement par variantes complètes du numéro E.164.
+ * Les correspondances partielles peuvent acheminer un transfert vers le mauvais compte.
  */
 export async function findUserByPhone(phone: string) {
   const trimmed = (phone || '').trim()
   if (!trimmed) return null
+  const normalized = normalizeInternationalPhone(trimmed)
+  if (!normalized) return null
+  const digits = normalized.replace(/\D/g, '')
 
-  const exact = await db.user.findUnique({ where: { phone: trimmed } })
-  if (exact) return exact
-
-  const digits = trimmed.replace(/\D/g, '')
-  if (!digits) return null
-
-  const variant = await db.user.findFirst({
-    where: { OR: [{ phone: digits }, { phone: `+${digits}` }] },
+  // Exact international matches only. Matching by a suffix caused collisions
+  // between unrelated country plans and could route a transfer to the wrong user.
+  return db.user.findFirst({
+    where: { OR: [{ phone: normalized }, { phone: digits }, { phone: `+${digits}` }] },
   })
-  if (variant) return variant
-
-  if (digits.length >= 8) {
-    const matches = await db.user.findMany({
-      where: { phone: { endsWith: digits.slice(-9) } },
-      take: 2,
-    })
-    if (matches.length === 1) return matches[0]
-  }
-
-  return null
 }

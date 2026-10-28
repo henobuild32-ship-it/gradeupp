@@ -17,6 +17,7 @@ import {
   User,
   Tag,
   AlertTriangle,
+  FileText,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -111,7 +112,7 @@ function getStatusConfig(status: string) {
 }
 
 export default function AdminTransactionsScreen() {
-  const { admin, goBack } = useAppStore();
+  const { admin, goBack, navigateTo } = useAppStore();
 
   // Data
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -461,7 +462,18 @@ export default function AdminTransactionsScreen() {
                             <Calendar className="h-3.5 w-3.5" />
                             <span>{formatDate(tx.createdAt)}</span>
                           </div>
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex flex-wrap items-center justify-end gap-1.5">
+                            {tx.status === 'completed' && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 px-2 text-xs"
+                                onClick={() => navigateTo('receipt', { transactionId: tx.id })}
+                              >
+                                <FileText className="h-3.5 w-3.5 mr-1" />
+                                Reçu
+                              </Button>
+                            )}
                             {tx.status === 'pending' && (
                               <>
                                 <Button

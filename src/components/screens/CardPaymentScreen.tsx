@@ -219,8 +219,8 @@ export default function CardPaymentScreen() {
               <TabsTrigger value="USD" className="flex-1 text-sm font-medium">
                 USD - Dollar
               </TabsTrigger>
-              <TabsTrigger value="FC" className="flex-1 text-sm font-medium">
-                FC - Franc Congolais
+          <TabsTrigger value="FC" className="flex-1 text-sm font-medium">
+                CDF - Franc congolais
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -306,7 +306,7 @@ export default function CardPaymentScreen() {
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium" style={{ color: accentColor }}>
-                    Solde disponible ({selectedCurrency})
+                    Solde disponible ({isUSD ? 'USD' : 'CDF'})
                   </span>
                   <span className="text-sm font-bold" style={{ color: accentColor }}>
                     {currencySymbol}
@@ -314,7 +314,7 @@ export default function CardPaymentScreen() {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}
-                    {!isUSD && <span className="text-xs font-medium ml-0.5">FC</span>}
+                    {!isUSD && <span className="text-xs font-medium ml-0.5">CDF</span>}
                   </span>
                 </div>
               </div>
@@ -339,7 +339,7 @@ export default function CardPaymentScreen() {
                     className={`h-11 ${isUSD ? 'pl-7' : 'pl-3'}`}
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium">
-                    {selectedCurrency}
+                    {isUSD ? 'USD' : 'CDF'}
                   </span>
                 </div>
                 {numericAmount > currencyBalance && (
@@ -399,7 +399,7 @@ export default function CardPaymentScreen() {
                     Traitement...
                   </span>
                 ) : (
-                  `Payer ${isUSD ? '$' : ''}${numericAmount.toFixed(2)}${!isUSD ? ' FC' : ''}`
+                  `Payer ${isUSD ? '$' : ''}${numericAmount.toFixed(2)}${!isUSD ? ' CDF' : ''}`
                 )}
               </Button>
             </CardContent>

@@ -10,22 +10,8 @@ import { Loader2, ArrowLeft, Store, Eye, EyeOff } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
 import { toast } from 'sonner'
 import Image from 'next/image'
-
-const countryCodes = [
-  { code: '+228', label: '+228', country: 'Togo' },
-  { code: '+229', label: '+229', country: 'Bénin' },
-  { code: '+225', label: '+225', country: "Côte d'Ivoire" },
-  { code: '+224', label: '+224', country: 'Guinée' },
-  { code: '+237', label: '+237', country: 'Cameroun' },
-  { code: '+243', label: '+243', country: 'RDC' },
-  { code: '+221', label: '+221', country: 'Sénégal' },
-  { code: '+223', label: '+223', country: 'Mali' },
-  { code: '+226', label: '+226', country: 'Burkina Faso' },
-  { code: '+234', label: '+234', country: 'Nigeria' },
-  { code: '+233', label: '+233', country: 'Ghana' },
-  { code: '+1', label: '+1', country: 'US/CA' },
-  { code: '+33', label: '+33', country: 'France' },
-]
+import { CountrySelect } from '@/components/shared/CountrySelect'
+import { normalizeInternationalPhone } from '@/lib/countries'
 
 const cities = [
   'Kinshasa', 'Lubumbashi', 'Mbuji-Mayi', 'Kisangani', 'Bukavu',
@@ -60,7 +46,7 @@ export default function SellerRegisterScreen() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    countryCode: '+243',
+    countryCode: 'CD',
     phone: '',
     city: '',
     address: '',
@@ -77,7 +63,7 @@ export default function SellerRegisterScreen() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const cleanedPhone = formData.phone.replace(/\D/g, '')
+    const fullPhone = normalizeInternationalPhone(formData.phone, formData.countryCode)
 
     if (!formData.name.trim()) {
       toast.error('Veuillez entrer votre nom complet')
@@ -87,7 +73,7 @@ export default function SellerRegisterScreen() {
       toast.error('Veuillez entrer votre adresse email')
       return
     }
-    if (!cleanedPhone || cleanedPhone.length < 6) {
+    if (!fullPhone) {
       toast.error('Veuillez entrer un numéro de téléphone valide')
       return
     }
@@ -120,8 +106,6 @@ export default function SellerRegisterScreen() {
       return
     }
 
-    const fullPhone = `${formData.countryCode}${cleanedPhone}`
-
     setLoading(true)
     try {
       const res = await fetch('/api/seller/register', {
@@ -131,6 +115,7 @@ export default function SellerRegisterScreen() {
           name: formData.name.trim(),
           email: formData.email.trim(),
           phone: fullPhone,
+          country: formData.countryCode,
           city: formData.city,
           address: formData.address.trim(),
           businessName: formData.businessName.trim(),
@@ -219,19 +204,8 @@ export default function SellerRegisterScreen() {
               <div className="flex flex-col gap-2">
                 <Label htmlFor="phone" className="text-foreground font-medium">Téléphone <span className="text-red-500">*</span></Label>
                 <div className="flex gap-2">
-                  <Select value={formData.countryCode} onValueChange={(v) => setFormData(prev => ({...prev, countryCode: v}))}>
-                    <SelectTrigger className="w-[100px] shrink-0">
-                      <SelectValue placeholder="Code" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {countryCodes.map((item) => (
-                        <SelectItem key={item.code + item.country} value={item.code}>
-                          <span className="text-xs">{item.code} {item.country}</span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Input id="phone" name="phone" type="tel" required value={formData.phone} onChange={handleChange} placeholder="Ex: 810000001" className="flex-1 h-12 text-base" disabled={loading} />
+                  <CountrySelect value={formData.countryCode} onValueChange={(v) => setFormData(prev => ({...prev, countryCode: v}))} className="w-full" disabled={loading} />
+                  <Input id="phone" name="phone" type="tel" inputMode="tel" required value={formData.phone} onChange={handleChange} placeholder="Numéro national" className="h-12 text-base" disabled={loading} autoComplete="tel-national" />
                 </div>
               </div>
             </div>

@@ -73,8 +73,8 @@ function getStatusBadge(status: string) {
 }
 
 function fmtCur(amount: number, currency: string) {
-  if (currency === 'FC') return `${amount.toFixed(2)} FC`;
-  return `$${amount.toFixed(2)}`;
+  if (currency === 'FC' || currency === 'CDF') return `${amount.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} CDF`;
+  return `${amount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`;
 }
 
 function formatDate(dateStr: string) {
@@ -354,7 +354,7 @@ export default function HistoryScreen() {
                   },
                   { label: 'Montant', value: fmtCur(selectedTx.amount, selectedTx.currency) },
                   ...(selectedTx.fee > 0 ? [{ label: 'Frais', value: fmtCur(selectedTx.fee, selectedTx.currency) }] : []),
-                  { label: 'Devise', value: selectedTx.currency === 'FC' ? 'Franc congolais (FC)' : 'Dollar US (USD)' },
+                  { label: 'Devise', value: selectedTx.currency === 'FC' || selectedTx.currency === 'CDF' ? 'Franc congolais (CDF)' : 'Dollar US (USD)' },
                   { label: 'Statut', value: getStatusBadge(selectedTx.status) },
                   { label: 'Date', value: formatDate(selectedTx.createdAt) },
                   { label: 'Description', value: selectedTx.description },

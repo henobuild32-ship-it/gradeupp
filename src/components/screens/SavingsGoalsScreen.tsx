@@ -195,7 +195,7 @@ export default function SavingsGoalsScreen() {
                             <div>
                               <p className="text-sm font-semibold text-foreground">{goal.name}</p>
                               <p className="text-[10px] text-muted-foreground">
-                                {goal.currency === 'FC' ? '' : '$'}{goal.currentAmount.toFixed(2)} / {goal.currency === 'FC' ? '' : '$'}{goal.targetAmount.toFixed(2)} {goal.currency === 'FC' ? 'FC' : 'USD'}
+                                {goal.currency === 'FC' ? `${goal.currentAmount.toLocaleString('fr-FR')} / ${goal.targetAmount.toLocaleString('fr-FR')} CDF` : `${goal.currentAmount.toFixed(2)} / ${goal.targetAmount.toFixed(2)} USD`}
                               </p>
                             </div>
                           </div>
@@ -246,7 +246,7 @@ export default function SavingsGoalsScreen() {
                       <div>
                         <p className="text-sm font-semibold text-foreground">{goal.name}</p>
                         <p className="text-[10px] text-emerald-600">
-                          {goal.currency === 'FC' ? '' : '$'}{goal.targetAmount.toFixed(2)} {goal.currency === 'FC' ? 'FC' : 'USD'} atteint
+                          {goal.currency === 'FC' ? `${goal.targetAmount.toLocaleString('fr-FR')} CDF` : `${goal.targetAmount.toFixed(2)} USD`} atteint
                         </p>
                       </div>
                     </CardContent>
@@ -284,7 +284,7 @@ export default function SavingsGoalsScreen() {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="USD">USD</SelectItem>
-                    <SelectItem value="FC">FC</SelectItem>
+                    <SelectItem value="FC">CDF</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

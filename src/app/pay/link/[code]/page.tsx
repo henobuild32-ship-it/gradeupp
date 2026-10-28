@@ -4,79 +4,13 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import {
   ShieldCheck, AlertCircle, Loader2, ArrowRight,
-  Wallet, Phone, CheckCircle2, Lock, Zap, Copy, Check
+  Wallet, CheckCircle2, Lock, Zap, Copy, Check
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
-
-// ── Operator catalogue — add new operators here, nothing else to change ──────
-const ALL_OPERATORS = [
-  {
-    id: 'wallet',
-    label: 'Wallet TRAIT',
-    logo: '💳',
-    color: 'text-[#0D5C63]',
-    bg: 'bg-[#0D5C63]/10',
-    border: 'border-[#0D5C63]/30',
-    ring: 'ring-[#0D5C63]/40',
-    needsPhone: false,
-    desc: 'Payer depuis votre solde TRAIT',
-    needsAuth: true,
-  },
-  {
-    id: 'mpesa',
-    label: 'M-Pesa',
-    logo: '📱',
-    color: 'text-emerald-600',
-    bg: 'bg-emerald-50 dark:bg-emerald-950/20',
-    border: 'border-emerald-300 dark:border-emerald-700/40',
-    ring: 'ring-emerald-400/40',
-    needsPhone: true,
-    desc: 'Mobile Money M-Pesa',
-    needsAuth: false,
-  },
-  {
-    id: 'orange',
-    label: 'Orange Money',
-    logo: '🟠',
-    color: 'text-orange-600',
-    bg: 'bg-orange-50 dark:bg-orange-950/20',
-    border: 'border-orange-300 dark:border-orange-700/40',
-    ring: 'ring-orange-400/40',
-    needsPhone: true,
-    desc: 'Orange Money RDC',
-    needsAuth: false,
-  },
-  {
-    id: 'airtel',
-    label: 'Airtel Money',
-    logo: '📶',
-    color: 'text-red-600',
-    bg: 'bg-red-50 dark:bg-red-950/20',
-    border: 'border-red-300 dark:border-red-700/40',
-    ring: 'ring-red-400/40',
-    needsPhone: true,
-    desc: 'Airtel Money RDC',
-    needsAuth: false,
-  },
-  {
-    id: 'afrimoney',
-    label: 'Afrimoney',
-    logo: '🏦',
-    color: 'text-purple-600',
-    bg: 'bg-purple-50 dark:bg-purple-950/20',
-    border: 'border-purple-300 dark:border-purple-700/40',
-    ring: 'ring-purple-400/40',
-    needsPhone: true,
-    desc: 'Afrimoney RDC',
-    needsAuth: false,
-  },
-]
 
 interface PaymentLinkDetails {
   amount: number
@@ -86,8 +20,6 @@ interface PaymentLinkDetails {
   allowedMethods: string
   owner: { id: string; name: string; pseudo: string }
 }
-
-type OperatorId = 'wallet' | 'mpesa' | 'orange' | 'airtel' | 'afrimoney'
 
 export default function PayLinkPage() {
   const params = useParams()
@@ -101,11 +33,10 @@ export default function PayLinkPage() {
   const [loggedUser, setLoggedUser] = useState<any>(null)
   const [copiedLink, setCopiedLink] = useState(false)
 
-  const [selectedMethod, setSelectedMethod] = useState<OperatorId | null>(null)
-  const [mobileNumber, setMobileNumber] = useState('')
+  const selectedMethod = 'wallet'
   const [paying, setPaying] = useState(false)
   const [success, setSuccess] = useState(false)
-  const [successMethod, setSuccessMethod] = useState<OperatorId>('wallet')
+  const [receiptTransactionId, setReceiptTransactionId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!code) return
@@ -126,21 +57,12 @@ export default function PayLinkPage() {
       .catch(() => {})
   }, [code])
 
-  const allowedIds = link?.allowedMethods
-    ? link.allowedMethods.split(',').map(s => s.trim())
-    : ALL_OPERATORS.map(o => o.id)
-
-  const operators = ALL_OPERATORS.filter(o => allowedIds.includes(o.id))
-  const selectedOp = ALL_OPERATORS.find(o => o.id === selectedMethod) || null
-
   const fmt = (amount: number, currency: string) =>
-    currency === 'FC' ? `${amount.toLocaleString('fr-FR')} FC` : `$${amount.toFixed(2)}`
+    currency === 'FC' || currency === 'CDF'
+      ? `${amount.toLocaleString('fr-FR')} CDF`
+      : `${amount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`
 
   const handlePay = async () => {
-    if (!selectedMethod) { toast.error('Choisissez une méthode de paiement'); return }
-    if (selectedOp?.needsPhone && !mobileNumber.trim()) {
-      toast.error('Entrez votre numéro de téléphone'); return
-    }
     if (selectedMethod === 'wallet' && !isLoggedIn) {
       toast.info('Connectez-vous pour payer via Wallet TRAIT')
       router.push(`/?pay_link=${code}`)
@@ -153,11 +75,11 @@ export default function PayLinkPage() {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ method: selectedMethod, mobileNumber: mobileNumber.trim() }),
+        body: JSON.stringify({ method: 'wallet' }),
       })
       const data = await res.json()
       if (data.success) {
-        setSuccessMethod(selectedMethod)
+        if (typeof data.transaction?.id === 'string') setReceiptTransactionId(data.transaction.id)
         setSuccess(true)
         toast.success('Paiement traité avec succès !')
       } else {
@@ -209,7 +131,6 @@ export default function PayLinkPage() {
 
   // ── Success ──
   if (success) {
-    const op = ALL_OPERATORS.find(o => o.id === successMethod)
     return (
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-background to-background dark:from-emerald-950/20 flex items-center justify-center p-6">
         <motion.div initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full max-w-sm">
@@ -223,11 +144,7 @@ export default function PayLinkPage() {
               </motion.div>
               <div>
                 <h1 className="text-2xl font-bold text-foreground">Paiement réussi !</h1>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {successMethod === 'wallet'
-                    ? 'Fonds transférés instantanément'
-                    : `Demande ${op?.label} soumise avec succès`}
-                </p>
+                <p className="text-sm text-muted-foreground mt-1">Fonds transférés instantanément entre comptes Trait</p>
               </div>
               <div className="rounded-2xl bg-muted/50 p-4 text-left space-y-3">
                 <div className="flex justify-between">
@@ -240,17 +157,18 @@ export default function PayLinkPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Via</span>
-                  <Badge className={`${op?.bg} ${op?.color} border ${op?.border}`}>{op?.logo} {op?.label}</Badge>
+                  <Badge className="border border-[#0D5C63]/30 bg-[#0D5C63]/10 text-[#0D5C63]">💳 Wallet Trait</Badge>
                 </div>
               </div>
-              {successMethod !== 'wallet' && (
-                <p className="text-xs text-muted-foreground bg-muted/30 rounded-xl p-3">
-                  💡 Les fonds seront crédités après traitement par l'opérateur {op?.label} (quelques minutes).
-                </p>
+              {receiptTransactionId ? (
+                <Button onClick={() => router.push(`/?receipt=${encodeURIComponent(receiptTransactionId)}`)} className="w-full rounded-xl bg-[#0D5C63] hover:bg-[#0D5C63]/90 text-white">
+                  Voir et télécharger le reçu
+                </Button>
+              ) : (
+                <Button onClick={() => router.push('/')} className="w-full rounded-xl bg-[#0D5C63] hover:bg-[#0D5C63]/90 text-white">
+                  Retour à Trait Fintech
+                </Button>
               )}
-              <Button onClick={() => router.push('/')} className="w-full rounded-xl bg-[#0D5C63] hover:bg-[#0D5C63]/90 text-white">
-                Retour à l'accueil
-              </Button>
             </CardContent>
           </Card>
         </motion.div>
@@ -303,68 +221,27 @@ export default function PayLinkPage() {
           </Card>
         </motion.div>
 
-        {/* Method selection */}
+        {/* Trait wallet only */}
         <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.08 }}>
-          <p className="text-sm font-bold text-foreground mb-3">Choisissez votre mode de paiement</p>
-          <div className="grid grid-cols-2 gap-2.5">
-            {operators.map(op => (
-              <button
-                key={op.id}
-                onClick={() => setSelectedMethod(op.id as OperatorId)}
-                className={`relative p-3.5 rounded-2xl border-2 text-left transition-all active:scale-95 ${
-                  selectedMethod === op.id
-                    ? `${op.border} ${op.bg} ring-2 ring-offset-2 ${op.ring}`
-                    : 'border-border bg-card hover:border-border/80'
-                }`}
-              >
-                {selectedMethod === op.id && (
-                  <div className={`absolute top-2 right-2 ${op.bg} rounded-full`}>
-                    <CheckCircle2 className={`h-4 w-4 ${op.color}`} />
-                  </div>
-                )}
-                <div className="text-2xl mb-2">{op.logo}</div>
-                <p className={`text-xs font-bold leading-tight ${selectedMethod === op.id ? op.color : 'text-foreground'}`}>{op.label}</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">{op.desc}</p>
-                {op.id === 'wallet' && isLoggedIn && loggedUser && (
-                  <p className="text-[10px] font-semibold text-[#0D5C63] mt-1.5">
-                    Solde: {link.currency === 'FC'
-                      ? `${(loggedUser.realBalanceFC || 0).toLocaleString('fr-FR')} FC`
-                      : `$${(loggedUser.realBalance || 0).toFixed(2)}`}
-                  </p>
-                )}
-              </button>
-            ))}
+          <p className="text-sm font-bold text-foreground mb-3">Mode de paiement</p>
+          <div className="rounded-2xl border-2 border-[#0D5C63]/30 bg-[#0D5C63]/5 p-4">
+            <div className="flex items-center gap-3">
+              <div className="text-2xl">💳</div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-[#0D5C63]">Wallet Trait</p>
+                <p className="text-xs text-muted-foreground">Le payeur et le destinataire doivent posséder un compte Trait.</p>
+              </div>
+              <CheckCircle2 className="h-5 w-5 text-[#0D5C63]" />
+            </div>
+            {isLoggedIn && loggedUser && (
+              <p className="text-xs font-semibold text-[#0D5C63] mt-3">
+                Solde disponible : {link.currency === 'FC'
+                  ? `${(loggedUser.realBalanceFC || 0).toLocaleString('fr-FR')} CDF`
+                  : `${(loggedUser.realBalance || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`}
+              </p>
+            )}
           </div>
         </motion.div>
-
-        {/* Phone input for mobile money */}
-        <AnimatePresence>
-          {selectedMethod && selectedOp?.needsPhone && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
-            >
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold flex items-center gap-2">
-                  <Phone className="h-4 w-4" />
-                  Numéro {selectedOp.label}
-                </Label>
-                <Input
-                  type="tel"
-                  placeholder="ex: +243 8X XXX XXXX"
-                  value={mobileNumber}
-                  onChange={e => setMobileNumber(e.target.value)}
-                  className="h-12 rounded-xl text-base"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Un code de confirmation sera envoyé sur ce numéro.
-                </p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* Wallet not logged in */}
         <AnimatePresence>
@@ -383,14 +260,12 @@ export default function PayLinkPage() {
         <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.15 }}>
           <Button
             onClick={handlePay}
-            disabled={!selectedMethod || paying}
+            disabled={paying}
             className="w-full h-14 bg-[#0D5C63] hover:bg-[#0D5C63]/90 text-white rounded-2xl font-bold text-base shadow-xl shadow-[#0D5C63]/20 transition-all active:scale-[0.98] disabled:opacity-40"
           >
             {paying
               ? <><Loader2 className="h-5 w-5 animate-spin mr-2" />Traitement...</>
-              : selectedMethod
-                ? <><span>Payer {fmt(link.amount, link.currency)}</span><ArrowRight className="h-5 w-5 ml-2" /></>
-                : 'Choisissez une méthode'
+              : <><span>Payer {fmt(link.amount, link.currency)}</span><ArrowRight className="h-5 w-5 ml-2" /></>
             }
           </Button>
         </motion.div>

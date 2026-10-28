@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireUser } from '@/lib/auth'
-import { verifyTOTP } from '@/lib/totp'
+import { generateRecoveryCodes, verifyTOTP } from '@/lib/totp'
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { code, action } = body as { code: string; action?: 'enable' | 'disable' }
 
-    if (!code || typeof code !== 'string') {
+    if (!code || typeof code !== 'string' || (action !== undefined && action !== 'enable' && action !== 'disable')) {
       return NextResponse.json({ success: false, message: 'Code TOTP requis' }, { status: 400 })
     }
 
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     if (action === 'disable') {
       await db.user.update({
         where: { id: auth.userId },
-        data: { twoFactorEnabled: false, twoFactorSecret: null },
+        data: { twoFactorEnabled: false, twoFactorSecret: null, twoFactorRecoveryCodes: [] },
       })
 
       await db.notification.create({
@@ -47,10 +47,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, message: '2FA désactivé' })
     }
 
-    if (!user.twoFactorEnabled) {
+    if (action === 'enable' && !user.twoFactorEnabled) {
+      const recovery = generateRecoveryCodes()
       await db.user.update({
         where: { id: auth.userId },
-        data: { twoFactorEnabled: true },
+        data: { twoFactorEnabled: true, twoFactorRecoveryCodes: recovery.hashes },
       })
 
       await db.notification.create({
@@ -62,7 +63,11 @@ export async function POST(request: NextRequest) {
         },
       })
 
-      return NextResponse.json({ success: true, message: '2FA activé avec succès' })
+      return NextResponse.json({
+        success: true,
+        message: '2FA activé avec succès. Enregistrez vos codes de secours maintenant.',
+        recoveryCodes: recovery.codes,
+      }, { headers: { 'Cache-Control': 'private, no-store' } })
     }
 
     return NextResponse.json({ success: true, message: 'Code valide' })

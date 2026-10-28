@@ -196,7 +196,9 @@ interface NotificationState {
 
 interface ThemeState {
   isDarkMode: boolean;
+  themeVariant: 'original' | 'white';
   toggleTheme: () => void;
+  setThemeVariant: (variant: 'original' | 'white') => void;
 }
 
 interface LanguageState {
@@ -219,7 +221,7 @@ interface VersionState {
 export interface AppStore extends NavigationState, AuthState, AuthFormState, PinState, NotificationState, ThemeState, LanguageState, CurrencyState, VersionState {}
 
 // Store version for migration
-const STORE_VERSION = 3;
+const STORE_VERSION = 4;
 
 export const useAppStore = create<AppStore>()(
   persist(
@@ -341,7 +343,12 @@ export const useAppStore = create<AppStore>()(
       clearNotifications: () => set({ notifications: [], unreadCount: 0 }),
 
       isDarkMode: false,
-      toggleTheme: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
+      themeVariant: 'original',
+      toggleTheme: () => set((state) => ({ isDarkMode: !state.isDarkMode, themeVariant: 'original' })),
+      setThemeVariant: (themeVariant) => set((state) => ({
+        themeVariant,
+        ...(themeVariant === 'white' ? { isDarkMode: false } : {}),
+      })),
 
       language: 'fr' as Language,
       setLanguage: (lang) => set({ language: lang }),
@@ -375,12 +382,15 @@ export const useAppStore = create<AppStore>()(
           state.lastSeenDeployId = null;
         }
 
+        if (version < 4) state.themeVariant = state.themeVariant ?? 'original';
+
         return state as AppStore;
       },
       partialize: (state) => ({
         user: state.user,
         admin: state.admin,
         isDarkMode: state.isDarkMode,
+        themeVariant: state.themeVariant,
         selectedRole: state.selectedRole,
         language: state.language,
         preferredCurrency: state.preferredCurrency,

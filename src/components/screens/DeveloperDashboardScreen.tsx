@@ -54,7 +54,7 @@ const CODE_SAMPLES: Record<string, { label: string; code: string }[]> = {
 // Mode sandbox activé par défaut` },
     { label: 'Recevoir un paiement', code: `const payment = await trait.payments.create({
   amount: 25000,
-  currency: 'FC',
+  currency: 'CDF',
   description: 'Paiement commande #123',
   customer: { email: 'client@email.com' }
 })
@@ -62,11 +62,11 @@ const CODE_SAMPLES: Record<string, { label: string; code: string }[]> = {
 console.log(payment.status) // 'processing'` },
     { label: 'Vérifier statut', code: `const status = await trait.payments.get('pay_abc123')
 console.log(status.status) // 'completed' | 'failed'` },
-    { label: 'Effectuer un retrait', code: `const withdrawal = await trait.withdrawals.create({
+    { label: 'Envoyer à un compte Trait', code: `const transfer = await trait.transfers.create({
   amount: 50000,
-  currency: 'FC',
-  method: 'mobile_money',
-  phone: '+243901234567'
+  currency: 'CDF',
+  recipientPhone: '+243901234567', // numéro enregistré dans Trait
+  description: 'Paiement commande #123'
 })` },
   ],
   python: [
@@ -78,7 +78,7 @@ client = trait.Client(
 )` },
     { label: 'Recevoir un paiement', code: `payment = client.payments.create({
     "amount": 25000,
-    "currency": "FC",
+    "currency": "CDF",
     "description": "Paiement commande #123",
     "customer": {"email": "client@email.com"}
 })
@@ -86,11 +86,11 @@ client = trait.Client(
 print(payment.status)  # 'processing'` },
     { label: 'Vérifier statut', code: `status = client.payments.get("pay_abc123")
 print(status.status)  # 'completed' | 'failed'` },
-    { label: 'Effectuer un retrait', code: `withdrawal = client.withdrawals.create({
+    { label: 'Envoyer à un compte Trait', code: `transfer = client.transfers.create({
     "amount": 50000,
-    "currency": "FC",
-    "method": "mobile_money",
-    "phone": "+243901234567"
+    "currency": "CDF",
+    "recipientPhone": "+243901234567",  # numéro enregistré dans Trait
+    "description": "Paiement commande #123"
 })` },
   ],
   php: [
@@ -101,7 +101,7 @@ $trait = new Trait\\Client('sk_test_xxxxx');
 $trait->setSandbox(true);` },
     { label: 'Recevoir un paiement', code: `$payment = $trait->payments->create([
   'amount' => 25000,
-  'currency' => 'FC',
+  'currency' => 'CDF',
   'description' => 'Paiement commande #123',
   'customer' => ['email' => 'client@email.com']
 ]);
@@ -124,7 +124,7 @@ client.setSandbox(true);` },
     { label: 'Recevoir un paiement', code: `Payment payment = client.payments.create(
     new PaymentRequest()
         .setAmount(25000)
-        .setCurrency("FC")
+        .setCurrency("CDF")
         .setDescription("Paiement commande #123")
 );
 
@@ -137,7 +137,7 @@ System.out.println(payment.getStatus());` },
 )` },
     { label: 'Recevoir un paiement', code: `val payment = client.payments.create(
     amount = 25000,
-    currency = "FC",
+    currency = "CDF",
     description = "Paiement commande #123"
 )
 
@@ -152,7 +152,7 @@ let client = TraitClient(
 )` },
     { label: 'Recevoir un paiement', code: `let payment = try await client.payments.create(
     amount: 25000,
-    currency: "FC",
+    currency: "CDF",
     description: "Paiement commande #123"
 )
 
@@ -167,7 +167,7 @@ final client = TraitClient(
 );` },
     { label: 'Recevoir un paiement', code: `final payment = await client.payments.create(
   amount: 25000,
-  currency: 'FC',
+  currency: 'CDF',
   description: 'Paiement commande #123',
 );
 
@@ -182,7 +182,7 @@ const client = new Trait({
 });` },
     { label: 'Recevoir un paiement', code: `const payment = await client.payments.create({
   amount: 25000,
-  currency: 'FC',
+  currency: 'CDF',
   description: 'Paiement commande #123',
 });` },
   ],
@@ -193,7 +193,7 @@ var client = new TraitClient("sk_test_xxxxx");
 client.SetSandbox(true);` },
     { label: 'Recevoir un paiement (jeu)', code: `Payment payment = await client.Payments.CreateAsync(
     amount: 25000,
-    currency: "FC",
+    currency: "CDF",
     description: "Achat pack premium"
 );
 
@@ -209,7 +209,7 @@ UTraitClient* Client = NewObject<UTraitClient>();
 Client->Initialize("sk_test_xxxxx");
 Client->SetSandbox(true);` },
     { label: 'Recevoir un paiement (jeu)', code: `FString PaymentId;
-Client->CreatePayment(25000, "FC", 
+Client->CreatePayment(25000, "CDF",
     "Achat skin légendaire", PaymentId);
 
 // Webhook: débloquer l'item
@@ -542,10 +542,10 @@ export default function DeveloperDashboardScreen() {
                         <div className="flex-1 min-w-0">
                           <h3 className="text-sm font-bold text-foreground">{feature.label}</h3>
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            {feature.id === 'payment' && 'Acceptez les paiements par carte, mobile money et wallet'}
+                            {feature.id === 'payment' && 'Recevez des paiements Wallet Trait entre comptes inscrits'}
                             {feature.id === 'deposit' && 'Permettez à vos utilisateurs de déposer des fonds'}
-                            {feature.id === 'transfer' && 'Envoyez et recevez des transferts nationaux et internationaux'}
-                            {feature.id === 'withdraw' && 'Permettez le retrait vers mobile money ou banque'}
+                            {feature.id === 'transfer' && 'Envoyez vers le numéro enregistré d’un utilisateur Trait, dans tous les pays'}
+                            {feature.id === 'withdraw' && 'Les retraits sont demandés auprès d’un agent Trait validé'}
                             {feature.id === 'qr' && 'Générez et scannez des QR codes de paiement'}
                             {feature.id === 'card' && 'Émettez et gérez des cartes virtuelles TRAIT'}
                           </p>

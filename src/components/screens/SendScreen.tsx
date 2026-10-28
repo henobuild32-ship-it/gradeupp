@@ -25,28 +25,42 @@ import {
 import { useAppStore } from '@/lib/store';
 import { useTranslation } from '@/lib/i18n';
 import { toast } from 'sonner';
+import { CountrySelect } from '@/components/shared/CountrySelect';
+import { getCountry, normalizeInternationalPhone } from '@/lib/countries';
+import { parsePhoneNumberFromString } from 'libphonenumber-js/max';
+import { calculateTransferFee, convertCurrencyAmount, DEFAULT_USD_CDF_RATE, formatCurrencyAmount, formatExchangeRate, normalizeCurrency, type Currency } from '@/lib/currency';
 
 function fmtCur(amount: number, currency: string) {
-  if (currency === 'FC') return `${amount.toFixed(2)} FC`;
-  return `$${amount.toFixed(2)}`;
+  return formatCurrencyAmount(amount, currency);
 }
 
 export default function SendScreen() {
   const { user, navigateTo, setUser, setPendingPinAction, pageParams, preferredCurrency, setPreferredCurrency } = useAppStore();
   const { t } = useTranslation();
   const [receiverPhone, setReceiverPhone] = useState('');
+  const [receiverCountry, setReceiverCountry] = useState('CD');
   const [receiverName, setReceiverName] = useState('');
   const [lookingUp, setLookingUp] = useState(false);
   const [lookupDone, setLookupDone] = useState(false);
   const [amount, setAmount] = useState('');
-  const [currency, setCurrency] = useState<'USD' | 'FC'>(preferredCurrency || 'USD');
+  const [currency, setCurrency] = useState<Currency>(normalizeCurrency(preferredCurrency));
+  const [receivingCurrency, setReceivingCurrency] = useState<Currency>(normalizeCurrency(preferredCurrency));
+  const [exchangeRate, setExchangeRate] = useState(DEFAULT_USD_CDF_RATE);
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const normalizedReceiverPhone = normalizeInternationalPhone(receiverPhone, receiverCountry);
+  const countryInfo = getCountry(receiverCountry);
+
+  useEffect(() => {
+    const profileCountry = getCountry(user?.country)?.code;
+    if (profileCountry) setReceiverCountry(profileCountry);
+    fetch('/api/config/exchange-rate').then(r => r.json()).then(d => { if (d.success && Number(d.rate) > 0) setExchangeRate(Number(d.rate)) }).catch(() => setExchangeRate(DEFAULT_USD_CDF_RATE));
+  }, [user?.country]);
 
   // Debounced phone lookup
   useEffect(() => {
-    if (!receiverPhone || receiverPhone.length < 8) {
+    if (!normalizedReceiverPhone) {
       setReceiverName('');
       setLookupDone(false);
       return;
@@ -54,7 +68,7 @@ export default function SendScreen() {
     const timer = setTimeout(() => {
       setLookingUp(true);
       setLookupDone(false);
-      fetch(`/api/users/phone-lookup?phone=${encodeURIComponent(receiverPhone.trim())}`)
+      fetch(`/api/users/phone-lookup?phone=${encodeURIComponent(normalizedReceiverPhone)}`)
         .then(r => r.json())
         .then(data => {
           if (data.success && data.found && data.user) {
@@ -71,7 +85,7 @@ export default function SendScreen() {
         .finally(() => setLookingUp(false));
     }, 500);
     return () => clearTimeout(timer);
-  }, [receiverPhone, user?.id]);
+  }, [normalizedReceiverPhone, receiverPhone, user?.id]);
 
   // Handle pay recipient from QR code scan
   useEffect(() => {
@@ -83,7 +97,11 @@ export default function SendScreen() {
       .then(r => r.json())
       .then(data => {
         if (data.success && data.user) {
-          setReceiverPhone(data.user.phone.replace(/\*/g, '') || data.user.pseudo || '')
+          const parsed = parsePhoneNumberFromString(data.user.phone.replace(/\*/g, ''))
+          if (parsed) {
+            if (parsed.country) setReceiverCountry(parsed.country)
+            setReceiverPhone(parsed.nationalNumber)
+          }
           setReceiverName(data.user.name)
           toast.success(`Paiement vers ${data.user.name}`)
         }
@@ -100,27 +118,28 @@ export default function SendScreen() {
     }
     const payCurrency = pageParams?.payCurrency
     if (payCurrency === 'USD' || payCurrency === 'FC' || payCurrency === 'CDF') {
-      const cur = payCurrency === 'CDF' ? 'FC' : payCurrency
-      setCurrency(cur as 'USD' | 'FC')
-      setPreferredCurrency(cur)
+      const cur = normalizeCurrency(payCurrency)
+      setCurrency(cur)
+      setReceivingCurrency(cur)
+      setPreferredCurrency(cur === 'CDF' ? 'FC' : cur)
     }
   }, [pageParams?.payAmount, pageParams?.payCurrency])
 
-  const isFC = currency === 'FC';
+  const isFC = currency === 'CDF';
   const numericAmount = parseFloat(amount) || 0;
-  const fee = Math.round(numericAmount * 0.007 * 100) / 100;
+  const fee = calculateTransferFee(numericAmount);
   const total = numericAmount + fee;
+  const receivedAmount = convertCurrencyAmount(numericAmount, currency, receivingCurrency, exchangeRate);
 
   const availableBalance = isFC
     ? (user?.realBalanceFC ?? 0) + (user?.bonusBalanceFC ?? 0)
     : (user?.realBalance ?? 0) + (user?.bonusBalance ?? 0);
 
-  const curSymbol = isFC ? 'FC' : '$';
   const receiverNotFound = lookupDone && !receiverName;
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!receiverPhone.trim()) {
+    if (!normalizedReceiverPhone) {
       toast.error(t('send.phone_required'));
       return;
     }
@@ -133,7 +152,7 @@ export default function SendScreen() {
       return;
     }
     if (total > availableBalance) {
-      toast.error(t('send.insufficient', { currency: isFC ? 'FC' : 'USD', amount: fmtCur(availableBalance, currency) }));
+      toast.error(t('send.insufficient', { currency: isFC ? 'CDF' : 'USD', amount: fmtCur(availableBalance, currency) }));
       return;
     }
     setShowConfirm(true);
@@ -151,9 +170,11 @@ export default function SendScreen() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             senderId: user.id,
-            receiverPhone: receiverPhone.trim(),
+            receiverPhone: normalizedReceiverPhone,
             amount: numericAmount,
             currency,
+            receivingCurrency,
+            description: note.trim() || undefined,
             pin,
           }),
         });
@@ -173,7 +194,8 @@ export default function SendScreen() {
           setReceiverPhone('');
           setAmount('');
           setNote('');
-          navigateTo('home');
+          if (data.transaction?.id) navigateTo('receipt', { transactionId: data.transaction.id });
+          else navigateTo('history');
         } else {
           toast.error(data.message || t('send.error'));
         }
@@ -207,7 +229,7 @@ export default function SendScreen() {
         <Card className="border-border bg-gradient-to-br from-emerald-50 to-emerald-100">
           <CardContent className="p-4">
             <p className="text-sm text-emerald-600 mb-1">
-              {t('send.available')} ({isFC ? 'FC' : 'USD'})
+              {t('send.available')} ({isFC ? 'CDF' : 'USD'})
             </p>
             <p className="text-2xl font-bold text-emerald-700">
               {fmtCur(availableBalance, currency)}
@@ -236,13 +258,24 @@ export default function SendScreen() {
             {/* Currency - first so user picks before entering amount */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">{t('send.currency')}</Label>
-              <Select value={currency} onValueChange={(v) => { const next = v as 'USD' | 'FC'; setCurrency(next); setPreferredCurrency(next); }}>
+              <Select value={currency} onValueChange={(v) => { const next = normalizeCurrency(v); setCurrency(next); setPreferredCurrency(next === 'CDF' ? 'FC' : next); }}>
                 <SelectTrigger className="w-full h-11">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="USD">USD - Dollar US</SelectItem>
-                  <SelectItem value="FC">FC - Franc Congolais</SelectItem>
+                  <SelectItem value="CDF">CDF - Franc congolais</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Devise reçue</Label>
+              <Select value={receivingCurrency} onValueChange={(v) => setReceivingCurrency(normalizeCurrency(v))}>
+                <SelectTrigger className="w-full h-11"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="USD">USD - Dollar américain</SelectItem>
+                  <SelectItem value="CDF">CDF - Franc congolais</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -252,14 +285,17 @@ export default function SendScreen() {
               <Label htmlFor="receiver" className="text-sm font-medium">
                 {t('send.recipient_phone')}
               </Label>
+              <CountrySelect value={receiverCountry} onValueChange={(next) => { setReceiverCountry(next); setReceiverPhone('') }} />
               <div className="relative">
                 <Input
                   id="receiver"
                   type="tel"
-                  placeholder="+243 000 000 000"
+                  inputMode="tel"
+                  placeholder={countryInfo?.exampleNational ?? 'Numéro national'}
                   value={receiverPhone}
                   onChange={(e) => setReceiverPhone(e.target.value)}
-                  className="h-11"
+                  className="h-12"
+                  autoComplete="tel-national"
                 />
                 {lookingUp && (
                   <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -267,7 +303,7 @@ export default function SendScreen() {
                   </div>
                 )}
               </div>
-              {receiverPhone.length >= 8 && !lookingUp && lookupDone && (
+              {normalizedReceiverPhone && !lookingUp && lookupDone && (
                 receiverName ? (
                   <div className="flex items-center gap-2 text-sm text-emerald-600 font-medium">
                     <User className="h-3.5 w-3.5" />
@@ -334,6 +370,8 @@ export default function SendScreen() {
                   <span className="text-muted-foreground">{t('send.total')}</span>
                   <span className="font-bold text-foreground">{fmtCur(total, currency)}</span>
                 </div>
+                {currency !== receivingCurrency && <div className="flex justify-between text-sm"><span className="text-muted-foreground">Taux appliqué</span><span>1 USD = {formatExchangeRate(exchangeRate)} CDF</span></div>}
+                <div className="flex justify-between text-sm"><span className="font-medium">Le bénéficiaire reçoit</span><span className="font-bold text-primary">{fmtCur(receivedAmount, receivingCurrency)}</span></div>
                 {total > availableBalance && (
                   <p className="text-xs text-red-500 mt-1">{t('send.insufficient_short')}</p>
                 )}
@@ -369,7 +407,7 @@ export default function SendScreen() {
           <div className="rounded-xl bg-muted/50 p-4 space-y-2 my-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">{t('send.recipient')}</span>
-              <span className="font-medium">{receiverPhone}</span>
+              <span className="font-medium">{normalizedReceiverPhone}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">{t('send.amount')}</span>
@@ -379,6 +417,8 @@ export default function SendScreen() {
               <span className="text-muted-foreground">{t('send.fees')}</span>
               <span className="font-medium">{fmtCur(fee, currency)}</span>
             </div>
+            {currency !== receivingCurrency && <div className="flex justify-between text-sm"><span className="text-muted-foreground">Taux appliqué</span><span>1 USD = {formatExchangeRate(exchangeRate)} CDF</span></div>}
+            <div className="flex justify-between text-sm"><span className="font-medium">Le bénéficiaire reçoit</span><span className="font-bold text-primary">{fmtCur(receivedAmount, receivingCurrency)}</span></div>
             <div className="border-t pt-2 flex justify-between text-sm">
               <span className="font-medium">{t('send.total')}</span>
               <span className="font-bold text-emerald-600">{fmtCur(total, currency)}</span>

@@ -78,7 +78,7 @@ const LANGUAGES = [
 ];
 
 const MAIN_MENU = [
-  { id: '1', label: 'Solde (USD/FC)', icon: Wallet, step: 'balance' as UssdStep },
+  { id: '1', label: 'Solde (USD/CDF)', icon: Wallet, step: 'balance' as UssdStep },
   { id: '2', label: 'Transférer de l\'argent', icon: Send, step: 'transfer-currency' as UssdStep },
   { id: '3', label: 'Retrait via agent', icon: ArrowDownToLine, step: 'withdraw-currency' as UssdStep },
   { id: '4', label: 'Dépôt via agent', icon: ArrowUpFromLine, step: 'deposit-currency' as UssdStep },
@@ -570,7 +570,7 @@ export default function USSDScreen() {
           <div className="space-y-3 w-full max-w-[280px]">
             <Button className="w-full h-14 rounded-xl font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
               onClick={() => { setCurrency('FC'); setStep(nextSteps.fc); }}>
-              Franc Congolais (FC)
+              Franc congolais (CDF)
             </Button>
             <Button variant="outline" className="w-full h-14 rounded-xl font-semibold border-emerald-200 hover:bg-emerald-50"
               onClick={() => { setCurrency('USD'); setStep(nextSteps.usd); }}>
@@ -1261,7 +1261,7 @@ export default function USSDScreen() {
       '━━━━━━━━━━━━━━━',
       '🔗 Générez un lien de paiement',
       '📱 Partagez par SMS/WhatsApp',
-      '💳 Paiement par wallet/MPESA/Orange',
+      '💳 Paiement entre comptes Wallet Trait',
       '━━━━━━━━━━━━━━━',
       'Dans l\'app TRAIT:',
       'Menu > Liens de Paiement',
@@ -1299,9 +1299,9 @@ export default function USSDScreen() {
     return renderInfoScreen('Transfert International', <Globe className="size-8 text-emerald-700" />, [
       'TRANSFERT INTERNATIONAL',
       '━━━━━━━━━━━━━━━',
-      '🌍 Envoi vers l\'étranger',
-      '💰 USD, EUR, GBP, XAF...',
-      '🏦 Virement bancaire / Mobile Money',
+      '🌍 Vers un numéro inscrit à Trait, dans tous les pays',
+      '💰 USD ou CDF',
+      '📱 Le destinataire doit posséder un compte Trait',
       '━━━━━━━━━━━━━━━',
       'Frais compétitifs',
       'Taux de change préférentiel',
@@ -1314,8 +1314,8 @@ export default function USSDScreen() {
     return renderInfoScreen('Cartes TRAIT', <CreditCard className="size-8 text-emerald-700" />, [
       'CARTES TRAIT',
       '━━━━━━━━━━━━━━━',
-      '💳 Carte Virtuelle USD/FC',
-      '📱 Paiement mobile et NFC',
+      '💳 Carte Trait en USD ou CDF',
+      '🔒 Paiements entre comptes et cartes Trait',
       '🔒 Sécurisée par PIN et 2FA',
       '━━━━━━━━━━━━━━━',
       '• Commandez depuis l\'app',

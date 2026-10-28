@@ -22,7 +22,8 @@ export function withdrawalMethodLabel(method: string): string {
 }
 
 export function formatAmount(amount: number, currency: string): string {
-  const cur = currency === 'FC' ? 'FC' : currency || 'USD';
-  if (cur === 'FC') return `${amount.toFixed(2)} FC`;
-  return `$${amount.toFixed(2)}`;
+  if (currency === 'FC' || currency === 'CDF') {
+    return `${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(amount)} CDF`;
+  }
+  return `${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount)} USD`;
 }

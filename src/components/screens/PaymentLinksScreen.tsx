@@ -6,7 +6,6 @@ import {
   ArrowLeft, Plus, Copy, Share2, Link, ExternalLink, Check,
   Loader2, X, DollarSign, Globe, Calendar, Hash, Trash2,
   BarChart3, TrendingUp, Zap, QrCode, ChevronDown, ChevronUp,
-  CheckSquare, Square,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -29,13 +28,9 @@ import { QRCodeSVG } from 'qrcode.react';
 import { useAppStore } from '@/lib/store';
 import { toast } from 'sonner';
 
-// ── Operators catalogue (extensible) ──────────────────────────────────────
+// Payments are currently settled only between Trait accounts.
 const OPERATORS = [
   { id: 'wallet',    label: 'Wallet TRAIT',  logo: '💳', color: 'text-[#0D5C63]' },
-  { id: 'mpesa',     label: 'M-Pesa',         logo: '📱', color: 'text-emerald-600' },
-  { id: 'orange',    label: 'Orange Money',   logo: '🟠', color: 'text-orange-600' },
-  { id: 'airtel',    label: 'Airtel Money',   logo: '📶', color: 'text-red-600' },
-  { id: 'afrimoney', label: 'Afrimoney',      logo: '🏦', color: 'text-purple-600' },
 ] as const;
 
 interface PaymentLink {
@@ -79,11 +74,10 @@ export default function PaymentLinksScreen() {
 
   // Create form
   const [formAmount, setFormAmount] = useState('');
-  const [formCurrency, setFormCurrency] = useState('FC');
+  const [formCurrency, setFormCurrency] = useState('CDF');
   const [formDescription, setFormDescription] = useState('');
   const [formMaxUses, setFormMaxUses] = useState('');
   const [formExpiry, setFormExpiry] = useState('');
-  const [formMethods, setFormMethods] = useState<string[]>(['wallet', 'mpesa', 'orange', 'airtel', 'afrimoney']);
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
@@ -103,21 +97,12 @@ export default function PaymentLinksScreen() {
     finally { setLoading(false); }
   }
 
-  function toggleMethod(id: string) {
-    setFormMethods(prev =>
-      prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]
-    );
-  }
-
   async function handleCreate() {
     if (!formAmount || parseFloat(formAmount) <= 0) {
       toast.error('Veuillez entrer un montant valide'); return;
     }
     if (!formDescription.trim()) {
       toast.error('Veuillez entrer une description'); return;
-    }
-    if (formMethods.length === 0) {
-      toast.error('Sélectionnez au moins un mode de paiement'); return;
     }
     setCreating(true);
     try {
@@ -130,16 +115,15 @@ export default function PaymentLinksScreen() {
           description: formDescription,
           maxUses: formMaxUses ? parseInt(formMaxUses) : null,
           expiresAt: formExpiry || null,
-          allowedMethods: formMethods,
+          allowedMethods: ['wallet'],
         }),
       });
       const data = await res.json();
       if (data.success) {
         toast.success('✅ Lien créé avec succès !');
         setShowCreate(false);
-        setFormAmount(''); setFormCurrency('FC'); setFormDescription('');
+        setFormAmount(''); setFormCurrency('CDF'); setFormDescription('');
         setFormMaxUses(''); setFormExpiry('');
-        setFormMethods(['wallet', 'mpesa', 'orange', 'airtel', 'afrimoney']);
         fetchLinks();
       } else {
         toast.error(data.message || 'Erreur lors de la création');
@@ -177,7 +161,7 @@ export default function PaymentLinksScreen() {
 
   async function handleShare(link: PaymentLink) {
     const url = getShareUrl(link.code);
-    const text = `💳 Payez-moi ${link.currency === 'FC' ? `${link.amount.toLocaleString('fr-FR')} FC` : `$${link.amount.toFixed(2)}`} via TRAIT: ${url}`;
+    const text = `💳 Payez-moi ${link.currency === 'FC' ? `${link.amount.toLocaleString('fr-FR')} CDF` : `${link.amount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`} via Trait Fintech : ${url}`;
     try {
       await navigator.share({ title: 'Lien de paiement TRAIT', text, url });
     } catch {
@@ -187,8 +171,8 @@ export default function PaymentLinksScreen() {
 
   const fmt = (amount: number, currency: string) =>
     currency === 'FC'
-      ? `${amount.toLocaleString('fr-FR')} FC`
-      : `$${amount.toFixed(2)}`;
+      ? `${amount.toLocaleString('fr-FR')} CDF`
+      : `${amount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`;
 
   return (
     <div className="min-h-screen bg-background pb-28">
@@ -287,8 +271,7 @@ export default function PaymentLinksScreen() {
         ) : (
           <div className="space-y-3">
             {links.map((link, idx) => {
-              const methods = link.allowedMethods?.split(',') || [];
-              const methodIcons = OPERATORS.filter(o => methods.includes(o.id));
+              const methodIcons = OPERATORS;
               return (
                 <motion.div
                   key={link.id}
@@ -432,7 +415,7 @@ export default function PaymentLinksScreen() {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="USD">USD ($)</SelectItem>
-                    <SelectItem value="FC">Franc Congolais (FC)</SelectItem>
+                    <SelectItem value="CDF">Franc congolais (CDF)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -457,30 +440,15 @@ export default function PaymentLinksScreen() {
               </div>
             </div>
 
-            {/* Operators */}
+            {/* Trait wallet only until external settlement providers are connected. */}
             <div className="space-y-2">
-              <Label>Modes de paiement acceptés</Label>
-              <div className="space-y-2">
-                {OPERATORS.map(op => {
-                  const active = formMethods.includes(op.id);
-                  return (
-                    <button
-                      key={op.id}
-                      type="button"
-                      onClick={() => toggleMethod(op.id)}
-                      className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
-                        active ? 'border-[#0D5C63]/40 bg-[#0D5C63]/5' : 'border-border bg-card'
-                      }`}
-                    >
-                      {active
-                        ? <CheckSquare className="h-4 w-4 text-[#0D5C63] shrink-0" />
-                        : <Square className="h-4 w-4 text-muted-foreground shrink-0" />
-                      }
-                      <span className="text-base">{op.logo}</span>
-                      <span className={`text-sm font-semibold ${active ? op.color : 'text-foreground'}`}>{op.label}</span>
-                    </button>
-                  );
-                })}
+              <Label>Mode de paiement</Label>
+              <div className="flex items-center gap-3 p-3 rounded-xl border border-[#0D5C63]/40 bg-[#0D5C63]/5">
+                <span className="text-base">💳</span>
+                <div>
+                  <p className="text-sm font-semibold text-[#0D5C63]">Wallet Trait</p>
+                  <p className="text-xs text-muted-foreground">Le payeur doit avoir un compte Trait.</p>
+                </div>
               </div>
             </div>
           </div>

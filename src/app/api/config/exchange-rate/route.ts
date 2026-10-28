@@ -1,17 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { NextResponse } from 'next/server'
+import { getUsdCdfExchangeRate } from '@/lib/currency-server'
+import { DEFAULT_USD_CDF_RATE } from '@/lib/currency'
 
 export async function GET() {
   try {
-    const config = await db.systemConfig.findUnique({
-      where: { key: 'exchange_rate_usd_fc' },
-    })
-
-    const rate = config ? parseFloat(config.value) : 2850
-
-    return NextResponse.json({ success: true, rate })
+    const rate = await getUsdCdfExchangeRate()
+    return NextResponse.json({ success: true, rate, baseCurrency: 'USD', quoteCurrency: 'CDF', currencies: ['USD', 'CDF'] }, { headers: { 'Cache-Control': 'no-store, max-age=0' } })
   } catch (error) {
     console.error('Exchange rate error:', error)
-    return NextResponse.json({ success: true, rate: 2850 })
+    return NextResponse.json({ success: true, rate: DEFAULT_USD_CDF_RATE, baseCurrency: 'USD', quoteCurrency: 'CDF', currencies: ['USD', 'CDF'] }, { headers: { 'Cache-Control': 'no-store, max-age=0' } })
   }
 }

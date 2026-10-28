@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAppStore } from '@/lib/store';
+import { DEFAULT_USD_CDF_RATE } from '@/lib/currency';
 import { useTranslation } from '@/lib/i18n';
 import { toast } from 'sonner';
 import TraitCard from '@/components/trait/TraitCard';
@@ -116,8 +117,10 @@ function getTypeIcon(type: string) {
 }
 
 function fmtCurrency(amount: number, currency: string) {
-  const symbol = currency === 'FC' ? '' : '$';
-  return `${symbol}${amount.toFixed(2)} ${currency === 'FC' ? 'FC' : 'USD'}`;
+  if (currency === 'FC' || currency === 'CDF') {
+    return `${amount.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} CDF`;
+  }
+  return `${amount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`;
 }
 
 function formatDate(dateStr: string, lang: string): string {
@@ -160,7 +163,7 @@ export default function HomeScreen() {
   const realBalanceFC = user?.realBalanceFC ?? 0;
   const bonusBalanceFC = user?.bonusBalanceFC ?? 0;
   const totalFC = realBalanceFC + bonusBalanceFC;
-  const [exchangeRate, setExchangeRate] = useState(2850);
+  const [exchangeRate, setExchangeRate] = useState(DEFAULT_USD_CDF_RATE);
   const totalConvertedUSD = totalUSD + totalFC / exchangeRate;
 
   useEffect(() => {
@@ -295,7 +298,7 @@ export default function HomeScreen() {
                   </p>
                 </div>
                 <div className="flex-1 rounded-xl bg-white/5 p-3">
-                  <p className="text-[9px] text-gray-500 font-semibold tracking-wider uppercase mb-1">FC</p>
+                  <p className="text-[9px] text-gray-500 font-semibold tracking-wider uppercase mb-1">CDF</p>
                   <p className="text-lg font-bold text-white">
                     {showBalance ? totalFC.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '••••'}
                   </p>

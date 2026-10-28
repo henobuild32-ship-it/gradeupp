@@ -241,7 +241,7 @@ export default function MicroCreditScreen() {
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="USD">USD</SelectItem>
-                        <SelectItem value="FC">FC</SelectItem>
+                        <SelectItem value="FC">CDF</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -309,7 +309,7 @@ export default function MicroCreditScreen() {
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="text-base font-bold text-foreground">
-                            {credit.currency === 'FC' ? '' : '$'}{credit.amount.toFixed(2)} {credit.currency === 'FC' ? 'FC' : 'USD'}
+                            {credit.currency === 'FC' ? `${credit.amount.toLocaleString('fr-FR')} CDF` : `${credit.amount.toFixed(2)} USD`}
                           </p>
                           <p className="text-[10px] text-muted-foreground">
                             Durée: {credit.duration} jours

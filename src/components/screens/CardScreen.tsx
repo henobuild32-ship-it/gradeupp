@@ -787,7 +787,7 @@ export default function CardScreen() {
                         </div>
                       </div>
                       <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                        +{item.currency === 'FC' ? '' : '$'}{item.amount.toFixed(item.currency === 'FC' ? 0 : 2)} {item.currency}
+                        +{item.currency === 'FC' ? `${item.amount.toLocaleString('fr-FR')} CDF` : `${item.amount.toFixed(2)} USD`}
                       </span>
                     </div>
                   ))}

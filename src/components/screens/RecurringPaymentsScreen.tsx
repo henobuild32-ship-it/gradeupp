@@ -238,7 +238,7 @@ export default function RecurringPaymentsScreen() {
                     <div className="flex items-end justify-between">
                       <div>
                         <p className="text-lg font-bold text-foreground">
-                          {p.currency === 'FC' ? '' : '$'}{p.amount.toFixed(2)} {p.currency === 'FC' ? 'FC' : 'USD'}
+                          {p.currency === 'FC' ? `${p.amount.toLocaleString('fr-FR')} CDF` : `${p.amount.toFixed(2)} USD`}
                         </p>
                         <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                           <Calendar className="h-3 w-3" />
@@ -307,7 +307,7 @@ export default function RecurringPaymentsScreen() {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="USD">USD</SelectItem>
-                    <SelectItem value="FC">FC</SelectItem>
+                    <SelectItem value="FC">CDF</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -357,7 +357,7 @@ export default function RecurringPaymentsScreen() {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="USD">USD</SelectItem>
-                  <SelectItem value="FC">FC</SelectItem>
+                  <SelectItem value="FC">CDF</SelectItem>
                 </SelectContent>
               </Select>
             </div>

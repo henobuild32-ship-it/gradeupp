@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
     const { amount, currency } = body;
 
     const validAmount = parseFloat(amount) || 2500;
-    const validCurrency = currency === 'FC' || currency === 'USD' ? currency : 'FC';
+    const validCurrency = currency === 'CDF' || currency === 'FC' ? 'CDF' : currency === 'USD' ? 'USD' : 'CDF';
 
     // Simulate payment processing delay
     await new Promise((resolve) => setTimeout(resolve, 800));

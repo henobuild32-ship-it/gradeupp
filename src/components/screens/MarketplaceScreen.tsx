@@ -127,7 +127,7 @@ export default function MarketplaceScreen() {
 
   const formatPrice = (price: number, currency: string) => {
     if (currency === 'FC') {
-      return `${price.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} FC`;
+      return `${price.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} CDF`;
     }
     return `$${price.toFixed(2)}`;
   };

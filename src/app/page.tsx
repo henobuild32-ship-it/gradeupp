@@ -305,6 +305,7 @@ export default function TraitApp() {
   const { currentPage, user, admin, navigateTo } = useAppStore();
   const Screen = screenMap[currentPage];
   const [appLocked, setAppLocked] = useState(false);
+  const needsRestoreUnlock = !!user && !isFreshAuth();
 
   // Enable real-time WebSocket for notifications and balance updates
   useRealtime();
@@ -316,21 +317,12 @@ export default function TraitApp() {
     if (user && !isFreshAuth()) {
       setAppLocked(true);
     }
-     
-  }, []);
+  }, [user?.id]);
 
   // Retour au premier plan après inactivité → reverrouiller
   useEffect(() => {
-    let hiddenAt: number | null = null;
     const onVisibility = () => {
-      if (document.hidden) {
-        hiddenAt = Date.now();
-      } else {
-        if (hiddenAt && useAppStore.getState().user && Date.now() - hiddenAt > 60_000) {
-          setAppLocked(true);
-        }
-        hiddenAt = null;
-      }
+      if (document.hidden && useAppStore.getState().user) setAppLocked(true);
     };
     document.addEventListener('visibilitychange', onVisibility);
     return () => document.removeEventListener('visibilitychange', onVisibility);
@@ -479,6 +471,16 @@ export default function TraitApp() {
     }
   }, [user, navigateTo])
 
+  // Open the confirmed payment receipt after a public payment link returns to the app.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !user) return
+    const params = new URLSearchParams(window.location.search)
+    const transactionId = params.get('receipt')
+    if (!transactionId) return
+    window.history.replaceState({}, '', '/')
+    navigateTo('receipt', { transactionId })
+  }, [user, navigateTo])
+
   // Synchronize Push Notifications subscription (re-sync existing, don't auto-request)
   useEffect(() => {
     if (!user) return
@@ -565,7 +567,7 @@ export default function TraitApp() {
         </Suspense>
       )}
       <OfflineBanner />
-      {user && appLocked && (
+      {user && (appLocked || needsRestoreUnlock) && (
         <AppLock onUnlock={() => setAppLocked(false)} />
       )}
     </div>

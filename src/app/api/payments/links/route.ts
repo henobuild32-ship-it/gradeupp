@@ -65,24 +65,27 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { amount, currency, description, maxUses, expiresAt, allowedMethods } = body
+    const { amount, currency, description, maxUses, expiresAt } = body
 
     if (!amount || amount <= 0) {
       return NextResponse.json({ success: false, message: 'Montant invalide' }, { status: 400 })
+    }
+    if (currency !== undefined && !['USD', 'CDF', 'FC'].includes(currency)) {
+      return NextResponse.json({ success: false, message: 'Seules les devises USD et CDF sont disponibles.' }, { status: 400 })
     }
 
     const code = crypto.randomBytes(5).toString('hex')
 
     // Build allowedMethods string
-    const methodsStr = Array.isArray(allowedMethods) && allowedMethods.length > 0
-      ? allowedMethods.join(',')
-      : 'wallet,mpesa,orange,airtel,afrimoney'
+    // Payments are settled only between Trait accounts until external providers
+    // are actually integrated and can confirm settlement.
+    const methodsStr = 'wallet'
 
     const link = await prisma.paymentLink.create({
       data: {
         userId: auth.userId,
         amount: parseFloat(amount),
-        currency: currency || 'FC',
+        currency: currency === 'CDF' ? 'FC' : (currency || 'FC'),
         description: description || null,
         code,
         maxUses: maxUses ? parseInt(maxUses) : 0,

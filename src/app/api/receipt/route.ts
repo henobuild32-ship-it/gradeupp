@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
-import { getAuthUser } from '@/lib/auth'
+import { getAuthUser, requireAdmin } from '@/lib/auth'
 
 const invoiceNumberFrom = (description: string | null | undefined) => description?.match(/\bFAC-[A-Z0-9]+\b/i)?.[0]?.toUpperCase() ?? null
 
 export async function POST(request: NextRequest) {
   try {
     const auth = await getAuthUser(request)
+    let isAdmin = false
     if (!auth) {
-      return NextResponse.json({ success: false, message: 'Non authentifié' }, { status: 401 })
+      const admin = await requireAdmin(request)
+      if (admin instanceof NextResponse) {
+        return NextResponse.json({ success: false, message: 'Non authentifié' }, { status: 401 })
+      }
+      isAdmin = true
     }
 
     const body = await request.json()
@@ -30,8 +35,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Transaction introuvable' }, { status: 404 })
     }
 
-    if (transaction.senderId !== auth.userId && transaction.receiverId !== auth.userId) {
-      return NextResponse.json({ success: false, message: 'Non autorisé' }, { status: 403 })
+    if (transaction.status !== 'completed') {
+      return NextResponse.json(
+        { success: false, message: 'Un reçu est disponible uniquement après confirmation de la transaction.', code: 'RECEIPT_NOT_READY' },
+        { status: 409, headers: { 'Cache-Control': 'private, no-store' } },
+      )
+    }
+
+    if (!isAdmin && transaction.senderId !== auth?.userId && transaction.receiverId !== auth?.userId) {
+      const admin = await requireAdmin(request)
+      if (admin instanceof NextResponse) {
+        return NextResponse.json({ success: false, message: 'Non autorisé' }, { status: 403 })
+      }
     }
 
     const paymentRequest = await prisma.paymentRequest.findUnique({
@@ -49,6 +64,9 @@ export async function POST(request: NextRequest) {
         amount: transaction.amount,
         fee: transaction.fee,
         currency: transaction.currency,
+        receivingCurrency: transaction.receivingCurrency,
+        amountReceived: transaction.amountReceived,
+        exchangeRate: transaction.exchangeRate,
         status: transaction.status,
         description: transaction.description,
         createdAt: transaction.createdAt,
@@ -66,6 +84,7 @@ export async function POST(request: NextRequest) {
         phone: transaction.receiver.phone,
       },
       generatedAt: new Date().toISOString(),
+      brand: 'Trait Fintech',
     }
 
     return NextResponse.json({ success: true, receipt })

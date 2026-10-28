@@ -23,7 +23,7 @@ type PendingItem = {
 };
 
 function fmtCur(amount: number, currency: string) {
-  return currency === 'FC' ? `${amount.toFixed(2)} FC` : `$${amount.toFixed(2)}`;
+  return currency === 'FC' || currency === 'CDF' ? `${amount.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} CDF` : `${amount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`;
 }
 
 function authHeaders(): Record<string, string> {

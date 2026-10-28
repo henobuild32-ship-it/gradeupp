@@ -19,23 +19,9 @@ import { markFreshAuth } from '@/lib/session-flag';
 import { useTranslation } from '@/lib/i18n';
 import { toast } from 'sonner';
 import Image from 'next/image';
+import { CountrySelect } from '@/components/shared/CountrySelect';
+import { normalizeInternationalPhone } from '@/lib/countries';
 
-const countryCodes = [
-  { code: '+228', label: '+228', country: 'Togo' },
-  { code: '+229', label: '+229', country: 'Bénin' },
-  { code: '+225', label: '+225', country: "Côte d'Ivoire" },
-  { code: '+224', label: '+224', country: 'Guinée' },
-  { code: '+237', label: '+237', country: 'Cameroun' },
-  { code: '+243', label: '+243', country: 'RDC' },
-  { code: '+221', label: '+221', country: 'Sénégal' },
-  { code: '+223', label: '+223', country: 'Mali' },
-  { code: '+226', label: '+226', country: 'Burkina Faso' },
-  { code: '+234', label: '+234', country: 'Nigeria' },
-  { code: '+233', label: '+233', country: 'Ghana' },
-  { code: '+1', label: '+1', country: 'US/CA' },
-  { code: '+33', label: '+33', country: 'France' },
-  { code: '+44', label: '+44', country: 'UK' },
-];
 
 export default function AuthLoginScreen() {
   const navigateTo = useAppStore((s) => s.navigateTo);
@@ -44,7 +30,7 @@ export default function AuthLoginScreen() {
   const { t } = useTranslation();
 
   const [selectedRole, setSelectedRole] = useState<'client' | 'agent' | 'seller'>('client');
-  const [countryCode, setCountryCode] = useState('+243');
+  const [countryCode, setCountryCode] = useState('CD');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -55,8 +41,8 @@ export default function AuthLoginScreen() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const cleanedPhone = phone.replace(/\s/g, '');
-    if (!cleanedPhone || cleanedPhone.length < 6) {
+    const fullPhone = normalizeInternationalPhone(phone, countryCode);
+    if (!fullPhone) {
       toast.error(t('validation.phone_required'));
       return;
     }
@@ -66,7 +52,6 @@ export default function AuthLoginScreen() {
       return;
     }
 
-    const fullPhone = `${countryCode}${cleanedPhone}`;
     setLoading(true);
 
     try {
@@ -131,8 +116,8 @@ export default function AuthLoginScreen() {
 
   const handleTwoFactorSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!challengeToken || !/^\d{6}$/.test(twoFactorCode)) {
-      toast.error('Saisissez le code à 6 chiffres de votre application d’authentification.');
+    if (!challengeToken || !/^(?:\d{6}|[A-F0-9]{24})$/i.test(twoFactorCode)) {
+      toast.error('Saisissez le code de votre application ou un code de secours.');
       return;
     }
 
@@ -233,26 +218,26 @@ export default function AuthLoginScreen() {
         {challengeToken ? (
           <form onSubmit={handleTwoFactorSubmit} className="flex flex-col gap-5">
             <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
-              La vérification en deux étapes est activée. Saisissez le code à 6 chiffres de votre application d’authentification.
+              La vérification en deux étapes est activée. Saisissez un code d’application ou un code de secours.
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="login-2fa-code">Code de vérification</Label>
               <Input
                 id="login-2fa-code"
                 type="text"
-                inputMode="numeric"
+                inputMode="text"
                 autoComplete="one-time-code"
-                pattern="[0-9]{6}"
-                maxLength={6}
+                pattern="(?:[0-9]{6}|[A-Fa-f0-9]{24})"
+                maxLength={24}
                 value={twoFactorCode}
-                onChange={(event) => setTwoFactorCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                onChange={(event) => setTwoFactorCode(event.target.value.replace(/[^A-Fa-f0-9]/g, '').slice(0, 24).toUpperCase())}
                 className="h-12 text-center text-xl tracking-[0.4em]"
                 aria-describedby="login-2fa-help"
                 disabled={loading}
               />
-              <p id="login-2fa-help" className="text-xs text-muted-foreground">Le code expire régulièrement. Vous pouvez revenir à l’écran de connexion.</p>
+              <p id="login-2fa-help" className="text-xs text-muted-foreground">Chaque code de secours ne peut être utilisé qu’une fois.</p>
             </div>
-            <Button type="submit" disabled={loading || twoFactorCode.length !== 6} className="w-full h-12 text-base font-semibold bg-[#0D5C63] hover:bg-[#083A3E] text-white rounded-xl">
+            <Button type="submit" disabled={loading || !/^(?:\d{6}|[A-F0-9]{24})$/i.test(twoFactorCode)} className="w-full h-12 text-base font-semibold bg-[#0D5C63] hover:bg-[#083A3E] text-white rounded-xl">
               {loading ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Vérification…</> : 'Vérifier et continuer'}
             </Button>
           </form>
@@ -305,18 +290,7 @@ export default function AuthLoginScreen() {
               {t('auth.phone')}
             </Label>
             <div className="flex gap-2">
-              <Select value={countryCode} onValueChange={setCountryCode}>
-                <SelectTrigger className="w-[100px] shrink-0 ">
-                  <SelectValue placeholder={t('common.code')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {countryCodes.map((item) => (
-                    <SelectItem key={item.code + item.country} value={item.code}>
-                      <span className="text-xs">{item.code} {item.country}</span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <CountrySelect value={countryCode} onValueChange={setCountryCode} className="w-[46%] shrink-0" />
               <Input
                 id="login-phone"
                 type="tel"
@@ -324,7 +298,7 @@ export default function AuthLoginScreen() {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="flex-1  focus-visible:border-blue-500 focus-visible:ring-blue-500/20 h-12 text-base"
-                autoComplete="tel"
+                autoComplete="tel-national"
                 disabled={loading}
               />
             </div>

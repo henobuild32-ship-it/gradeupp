@@ -1,11 +1,13 @@
 import webpush from 'web-push'
 import { db } from '@/lib/db'
 
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT || 'mailto:trait@gmail.com',
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '',
-  process.env.VAPID_PRIVATE_KEY || ''
-)
+const vapidPublicKey = process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY
+const vapidSubject = process.env.VAPID_SUBJECT || 'mailto:support@traitfintech.com'
+
+if (vapidPublicKey && vapidPrivateKey) {
+  webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey)
+}
 
 export interface PushPayload {
   title: string
@@ -16,6 +18,10 @@ export interface PushPayload {
 
 export async function sendPushToUser(userId: string, payload: PushPayload): Promise<void> {
   try {
+    if (!vapidPublicKey || !vapidPrivateKey) {
+      console.error('Push delivery skipped: server VAPID keys are not configured.')
+      return
+    }
     const subscriptions = await db.pushSubscription.findMany({
       where: { userId },
     })
@@ -63,6 +69,9 @@ export async function sendPushToMany(userIds: string[], payload: PushPayload): P
 
 export async function sendPushToAll(payload: PushPayload & { tag?: string }) {
   try {
+    if (!vapidPublicKey || !vapidPrivateKey) {
+      return { sent: 0, total: 0, failed: 0, error: 'VAPID keys are not configured' }
+    }
     const subscriptions = await db.pushSubscription.findMany()
     const total = subscriptions.length
     if (total === 0) return { sent: 0, total: 0, failed: 0 }

@@ -6,10 +6,10 @@ import { I18nProviderWrapper } from "@/components/providers/I18nProviderWrapper"
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://trait-rho.vercel.app"),
-  title: "TRAIT v2.0 - Transfert, Paiement QR, Marketplace & Troc",
-  description: "Plateforme numérique innovante combinant transfert d'argent, paiement par QR, troc digital et marketplace. Version 2.0 — Accessible avec ou sans internet via USSD.",
-  keywords: ["Trait", "transfert", "argent", "troc", "marketplace", "USSD", "fintech", "mobile money", "RDC", "Congo", "QR payment"],
-  authors: [{ name: "Trait Team" }],
+  title: "Trait Fintech — Transferts, portefeuille et paiements Trait",
+  description: "Trait Fintech : transferts de portefeuille à portefeuille, paiements QR, marketplace et services numériques en USD et CDF.",
+  keywords: ["Trait Fintech", "transfert", "portefeuille", "USD", "CDF", "troc", "marketplace", "QR payment"],
+  authors: [{ name: "Trait Fintech" }],
   icons: {
     icon: [
       { url: "/favicon-16.png?v=2", sizes: "16x16", type: "image/png" },
@@ -22,11 +22,11 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "TRAIT v2.0",
+    title: "Trait Fintech",
   },
   openGraph: {
-    title: "TRAIT v2.0 - Transfert, Paiement QR, Marketplace & Troc",
-    description: "Plateforme numérique innovante combinant transfert d'argent, paiement par QR, troc digital et marketplace. Version 2.0.",
+    title: "Trait Fintech — Transferts et paiements",
+    description: "Portefeuille, transferts Trait, paiements QR, marketplace et troc en USD et CDF.",
     type: "website",
     images: ["/icon-512.png?v=2"],
   },
@@ -51,7 +51,7 @@ export default function RootLayout({
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="TRAIT" />
+        <meta name="apple-mobile-web-app-title" content="Trait Fintech" />
         <meta name="mobile-web-app-capable" content="yes" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" />
         <link rel="apple-touch-startup-image" href="/icon-512.png?v=2" />

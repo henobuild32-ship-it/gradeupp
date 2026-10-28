@@ -1,0 +1,2002 @@
+[
+  {
+    "code": "AF",
+    "nameFr": "Afghanistan",
+    "nameEn": "Afghanistan",
+    "callingCode": "+93",
+    "flag": "🇦🇫",
+    "exampleNational": "070 123 4567"
+  },
+  {
+    "code": "ZA",
+    "nameFr": "Afrique du Sud",
+    "nameEn": "South Africa",
+    "callingCode": "+27",
+    "flag": "🇿🇦",
+    "exampleNational": "071 123 4567"
+  },
+  {
+    "code": "AX",
+    "nameFr": "Åland",
+    "nameEn": "Åland Islands",
+    "callingCode": "+358",
+    "flag": "🇦🇽",
+    "exampleNational": "041 2345678"
+  },
+  {
+    "code": "AL",
+    "nameFr": "Albanie",
+    "nameEn": "Albania",
+    "callingCode": "+355",
+    "flag": "🇦🇱",
+    "exampleNational": "067 212 3456"
+  },
+  {
+    "code": "DZ",
+    "nameFr": "Algérie",
+    "nameEn": "Algeria",
+    "callingCode": "+213",
+    "flag": "🇩🇿",
+    "exampleNational": "0551 23 45 67"
+  },
+  {
+    "code": "DE",
+    "nameFr": "Allemagne",
+    "nameEn": "Germany",
+    "callingCode": "+49",
+    "flag": "🇩🇪",
+    "exampleNational": "01512 3456789"
+  },
+  {
+    "code": "AD",
+    "nameFr": "Andorre",
+    "nameEn": "Andorra",
+    "callingCode": "+376",
+    "flag": "🇦🇩",
+    "exampleNational": "312 345"
+  },
+  {
+    "code": "AO",
+    "nameFr": "Angola",
+    "nameEn": "Angola",
+    "callingCode": "+244",
+    "flag": "🇦🇴",
+    "exampleNational": "923 123 456"
+  },
+  {
+    "code": "AI",
+    "nameFr": "Anguilla",
+    "nameEn": "Anguilla",
+    "callingCode": "+1",
+    "flag": "🇦🇮",
+    "exampleNational": "(264) 235-1234"
+  },
+  {
+    "code": "AQ",
+    "nameFr": "Antarctique",
+    "nameEn": "Antarctica",
+    "callingCode": null,
+    "flag": "🇦🇶",
+    "exampleNational": null
+  },
+  {
+    "code": "AG",
+    "nameFr": "Antigua-et-Barbuda",
+    "nameEn": "Antigua and Barbuda",
+    "callingCode": "+1",
+    "flag": "🇦🇬",
+    "exampleNational": "(268) 464-1234"
+  },
+  {
+    "code": "SA",
+    "nameFr": "Arabie Saoudite",
+    "nameEn": "Saudi Arabia",
+    "callingCode": "+966",
+    "flag": "🇸🇦",
+    "exampleNational": "051 234 5678"
+  },
+  {
+    "code": "AR",
+    "nameFr": "Argentine",
+    "nameEn": "Argentina",
+    "callingCode": "+54",
+    "flag": "🇦🇷",
+    "exampleNational": "011 15-2345-6789"
+  },
+  {
+    "code": "AM",
+    "nameFr": "Arménie",
+    "nameEn": "Armenia",
+    "callingCode": "+374",
+    "flag": "🇦🇲",
+    "exampleNational": "077 123456"
+  },
+  {
+    "code": "AW",
+    "nameFr": "Aruba",
+    "nameEn": "Aruba",
+    "callingCode": "+297",
+    "flag": "🇦🇼",
+    "exampleNational": "560 1234"
+  },
+  {
+    "code": "AU",
+    "nameFr": "Australie",
+    "nameEn": "Australia",
+    "callingCode": "+61",
+    "flag": "🇦🇺",
+    "exampleNational": "0412 345 678"
+  },
+  {
+    "code": "AT",
+    "nameFr": "Autriche",
+    "nameEn": "Austria",
+    "callingCode": "+43",
+    "flag": "🇦🇹",
+    "exampleNational": "0664 123456"
+  },
+  {
+    "code": "AZ",
+    "nameFr": "Azerbaïdjan",
+    "nameEn": "Azerbaijan",
+    "callingCode": "+994",
+    "flag": "🇦🇿",
+    "exampleNational": "040 123 45 67"
+  },
+  {
+    "code": "BS",
+    "nameFr": "Bahamas",
+    "nameEn": "Bahamas",
+    "callingCode": "+1",
+    "flag": "🇧🇸",
+    "exampleNational": "(242) 359-1234"
+  },
+  {
+    "code": "BH",
+    "nameFr": "Bahreïn",
+    "nameEn": "Bahrain",
+    "callingCode": "+973",
+    "flag": "🇧🇭",
+    "exampleNational": "3600 1234"
+  },
+  {
+    "code": "BD",
+    "nameFr": "Bangladesh",
+    "nameEn": "Bangladesh",
+    "callingCode": "+880",
+    "flag": "🇧🇩",
+    "exampleNational": "01812-345678"
+  },
+  {
+    "code": "BB",
+    "nameFr": "Barbade",
+    "nameEn": "Barbados",
+    "callingCode": "+1",
+    "flag": "🇧🇧",
+    "exampleNational": "(246) 250-1234"
+  },
+  {
+    "code": "BE",
+    "nameFr": "Belgique",
+    "nameEn": "Belgium",
+    "callingCode": "+32",
+    "flag": "🇧🇪",
+    "exampleNational": "0450 00 12 34"
+  },
+  {
+    "code": "BZ",
+    "nameFr": "Belize",
+    "nameEn": "Belize",
+    "callingCode": "+501",
+    "flag": "🇧🇿",
+    "exampleNational": "622-1234"
+  },
+  {
+    "code": "BJ",
+    "nameFr": "Bénin",
+    "nameEn": "Benin",
+    "callingCode": "+229",
+    "flag": "🇧🇯",
+    "exampleNational": "01 95 12 34 56"
+  },
+  {
+    "code": "BM",
+    "nameFr": "Bermudes",
+    "nameEn": "Bermuda",
+    "callingCode": "+1",
+    "flag": "🇧🇲",
+    "exampleNational": "(441) 370-1234"
+  },
+  {
+    "code": "BT",
+    "nameFr": "Bhoutan",
+    "nameEn": "Bhutan",
+    "callingCode": "+975",
+    "flag": "🇧🇹",
+    "exampleNational": "17 12 34 56"
+  },
+  {
+    "code": "BY",
+    "nameFr": "Biélorussie",
+    "nameEn": "Belarus",
+    "callingCode": "+375",
+    "flag": "🇧🇾",
+    "exampleNational": "8 029 491-19-11"
+  },
+  {
+    "code": "BO",
+    "nameFr": "Bolivie",
+    "nameEn": "Bolivia",
+    "callingCode": "+591",
+    "flag": "🇧🇴",
+    "exampleNational": "71234567"
+  },
+  {
+    "code": "BQ",
+    "nameFr": "Bonaire, Saint-Eustache et Saba",
+    "nameEn": "Bonaire, Sint Eustatius and Saba",
+    "callingCode": "+599",
+    "flag": "🇧🇶",
+    "exampleNational": "318 1234"
+  },
+  {
+    "code": "BA",
+    "nameFr": "Bosnie-Herzégovine",
+    "nameEn": "Bosnia and Herzegovina",
+    "callingCode": "+387",
+    "flag": "🇧🇦",
+    "exampleNational": "061 123 456"
+  },
+  {
+    "code": "BW",
+    "nameFr": "Botswana",
+    "nameEn": "Botswana",
+    "callingCode": "+267",
+    "flag": "🇧🇼",
+    "exampleNational": "71 123 456"
+  },
+  {
+    "code": "BR",
+    "nameFr": "Brésil",
+    "nameEn": "Brazil",
+    "callingCode": "+55",
+    "flag": "🇧🇷",
+    "exampleNational": "(11) 96123-4567"
+  },
+  {
+    "code": "BN",
+    "nameFr": "Brunei Darussalam",
+    "nameEn": "Brunei Darussalam",
+    "callingCode": "+673",
+    "flag": "🇧🇳",
+    "exampleNational": "712 3456"
+  },
+  {
+    "code": "BG",
+    "nameFr": "Bulgarie",
+    "nameEn": "Bulgaria",
+    "callingCode": "+359",
+    "flag": "🇧🇬",
+    "exampleNational": "043 012 345"
+  },
+  {
+    "code": "BF",
+    "nameFr": "Burkina Faso",
+    "nameEn": "Burkina Faso",
+    "callingCode": "+226",
+    "flag": "🇧🇫",
+    "exampleNational": "70 12 34 56"
+  },
+  {
+    "code": "BI",
+    "nameFr": "Burundi",
+    "nameEn": "Burundi",
+    "callingCode": "+257",
+    "flag": "🇧🇮",
+    "exampleNational": "79 56 12 34"
+  },
+  {
+    "code": "KH",
+    "nameFr": "Cambodge",
+    "nameEn": "Cambodia",
+    "callingCode": "+855",
+    "flag": "🇰🇭",
+    "exampleNational": "091 234 567"
+  },
+  {
+    "code": "CM",
+    "nameFr": "Cameroun",
+    "nameEn": "Cameroon",
+    "callingCode": "+237",
+    "flag": "🇨🇲",
+    "exampleNational": "6 71 23 45 67"
+  },
+  {
+    "code": "CA",
+    "nameFr": "Canada",
+    "nameEn": "Canada",
+    "callingCode": "+1",
+    "flag": "🇨🇦",
+    "exampleNational": "(506) 234-5678"
+  },
+  {
+    "code": "CV",
+    "nameFr": "Cap-Vert",
+    "nameEn": "Cape Verde",
+    "callingCode": "+238",
+    "flag": "🇨🇻",
+    "exampleNational": "991 12 34"
+  },
+  {
+    "code": "CL",
+    "nameFr": "Chili",
+    "nameEn": "Chile",
+    "callingCode": "+56",
+    "flag": "🇨🇱",
+    "exampleNational": "(2) 2123 4567"
+  },
+  {
+    "code": "CN",
+    "nameFr": "Chine",
+    "nameEn": "People's Republic of China",
+    "callingCode": "+86",
+    "flag": "🇨🇳",
+    "exampleNational": "131 2345 6789"
+  },
+  {
+    "code": "CY",
+    "nameFr": "Chypre",
+    "nameEn": "Cyprus",
+    "callingCode": "+357",
+    "flag": "🇨🇾",
+    "exampleNational": "96 123456"
+  },
+  {
+    "code": "CO",
+    "nameFr": "Colombie",
+    "nameEn": "Colombia",
+    "callingCode": "+57",
+    "flag": "🇨🇴",
+    "exampleNational": "321 1234567"
+  },
+  {
+    "code": "KM",
+    "nameFr": "Comores",
+    "nameEn": "Comoros",
+    "callingCode": "+269",
+    "flag": "🇰🇲",
+    "exampleNational": "321 23 45"
+  },
+  {
+    "code": "KP",
+    "nameFr": "Corée du Nord",
+    "nameEn": "North Korea",
+    "callingCode": "+850",
+    "flag": "🇰🇵",
+    "exampleNational": "0192 123 4567"
+  },
+  {
+    "code": "KR",
+    "nameFr": "Corée du Sud",
+    "nameEn": "South Korea",
+    "callingCode": "+82",
+    "flag": "🇰🇷",
+    "exampleNational": "010-2000-0000"
+  },
+  {
+    "code": "CR",
+    "nameFr": "Costa Rica",
+    "nameEn": "Costa Rica",
+    "callingCode": "+506",
+    "flag": "🇨🇷",
+    "exampleNational": "8312 3456"
+  },
+  {
+    "code": "CI",
+    "nameFr": "Côte-d'Ivoire",
+    "nameEn": "Cote d'Ivoire",
+    "callingCode": "+225",
+    "flag": "🇨🇮",
+    "exampleNational": "01 23 45 6789"
+  },
+  {
+    "code": "HR",
+    "nameFr": "Croatie",
+    "nameEn": "Croatia",
+    "callingCode": "+385",
+    "flag": "🇭🇷",
+    "exampleNational": "092 123 4567"
+  },
+  {
+    "code": "CU",
+    "nameFr": "Cuba",
+    "nameEn": "Cuba",
+    "callingCode": "+53",
+    "flag": "🇨🇺",
+    "exampleNational": "05 1234567"
+  },
+  {
+    "code": "CW",
+    "nameFr": "Curaçao",
+    "nameEn": "Curaçao",
+    "callingCode": "+599",
+    "flag": "🇨🇼",
+    "exampleNational": "9 518 1234"
+  },
+  {
+    "code": "DK",
+    "nameFr": "Danemark",
+    "nameEn": "Denmark",
+    "callingCode": "+45",
+    "flag": "🇩🇰",
+    "exampleNational": "34 41 23 45"
+  },
+  {
+    "code": "DJ",
+    "nameFr": "Djibouti",
+    "nameEn": "Djibouti",
+    "callingCode": "+253",
+    "flag": "🇩🇯",
+    "exampleNational": "77 83 10 01"
+  },
+  {
+    "code": "DM",
+    "nameFr": "Dominique",
+    "nameEn": "Dominica",
+    "callingCode": "+1",
+    "flag": "🇩🇲",
+    "exampleNational": "(767) 225-1234"
+  },
+  {
+    "code": "EG",
+    "nameFr": "Égypte",
+    "nameEn": "Egypt",
+    "callingCode": "+20",
+    "flag": "🇪🇬",
+    "exampleNational": "010 01234567"
+  },
+  {
+    "code": "SV",
+    "nameFr": "El Salvador",
+    "nameEn": "El Salvador",
+    "callingCode": "+503",
+    "flag": "🇸🇻",
+    "exampleNational": "7012 3456"
+  },
+  {
+    "code": "AE",
+    "nameFr": "Émirats Arabes Unis",
+    "nameEn": "United Arab Emirates",
+    "callingCode": "+971",
+    "flag": "🇦🇪",
+    "exampleNational": "050 123 4567"
+  },
+  {
+    "code": "EC",
+    "nameFr": "Équateur",
+    "nameEn": "Ecuador",
+    "callingCode": "+593",
+    "flag": "🇪🇨",
+    "exampleNational": "099 123 4567"
+  },
+  {
+    "code": "ER",
+    "nameFr": "Érythrée",
+    "nameEn": "Eritrea",
+    "callingCode": "+291",
+    "flag": "🇪🇷",
+    "exampleNational": "07 123 456"
+  },
+  {
+    "code": "ES",
+    "nameFr": "Espagne",
+    "nameEn": "Spain",
+    "callingCode": "+34",
+    "flag": "🇪🇸",
+    "exampleNational": "612 34 56 78"
+  },
+  {
+    "code": "EE",
+    "nameFr": "Estonie",
+    "nameEn": "Estonia",
+    "callingCode": "+372",
+    "flag": "🇪🇪",
+    "exampleNational": "5123 4567"
+  },
+  {
+    "code": "US",
+    "nameFr": "États-Unis d'Amérique",
+    "nameEn": "United States of America",
+    "callingCode": "+1",
+    "flag": "🇺🇸",
+    "exampleNational": "(201) 555-0123"
+  },
+  {
+    "code": "ET",
+    "nameFr": "Éthiopie",
+    "nameEn": "Ethiopia",
+    "callingCode": "+251",
+    "flag": "🇪🇹",
+    "exampleNational": "091 123 4567"
+  },
+  {
+    "code": "FJ",
+    "nameFr": "Fidji",
+    "nameEn": "Fiji",
+    "callingCode": "+679",
+    "flag": "🇫🇯",
+    "exampleNational": "701 2345"
+  },
+  {
+    "code": "FI",
+    "nameFr": "Finlande",
+    "nameEn": "Finland",
+    "callingCode": "+358",
+    "flag": "🇫🇮",
+    "exampleNational": "041 2345678"
+  },
+  {
+    "code": "FR",
+    "nameFr": "France",
+    "nameEn": "France",
+    "callingCode": "+33",
+    "flag": "🇫🇷",
+    "exampleNational": "06 12 34 56 78"
+  },
+  {
+    "code": "GA",
+    "nameFr": "Gabon",
+    "nameEn": "Gabon",
+    "callingCode": "+241",
+    "flag": "🇬🇦",
+    "exampleNational": "06 03 12 34"
+  },
+  {
+    "code": "GM",
+    "nameFr": "Gambie",
+    "nameEn": "Republic of The Gambia",
+    "callingCode": "+220",
+    "flag": "🇬🇲",
+    "exampleNational": "301 2345"
+  },
+  {
+    "code": "GE",
+    "nameFr": "Géorgie",
+    "nameEn": "Georgia",
+    "callingCode": "+995",
+    "flag": "🇬🇪",
+    "exampleNational": "555 12 34 56"
+  },
+  {
+    "code": "GS",
+    "nameFr": "Géorgie du Sud-et-les Îles Sandwich du Sud",
+    "nameEn": "South Georgia and the South Sandwich Islands",
+    "callingCode": null,
+    "flag": "🇬🇸",
+    "exampleNational": null
+  },
+  {
+    "code": "GH",
+    "nameFr": "Ghana",
+    "nameEn": "Ghana",
+    "callingCode": "+233",
+    "flag": "🇬🇭",
+    "exampleNational": "023 123 4567"
+  },
+  {
+    "code": "GI",
+    "nameFr": "Gibraltar",
+    "nameEn": "Gibraltar",
+    "callingCode": "+350",
+    "flag": "🇬🇮",
+    "exampleNational": "57123456"
+  },
+  {
+    "code": "GR",
+    "nameFr": "Grèce",
+    "nameEn": "Greece",
+    "callingCode": "+30",
+    "flag": "🇬🇷",
+    "exampleNational": "691 234 5678"
+  },
+  {
+    "code": "GD",
+    "nameFr": "Grenade",
+    "nameEn": "Grenada",
+    "callingCode": "+1",
+    "flag": "🇬🇩",
+    "exampleNational": "(473) 403-1234"
+  },
+  {
+    "code": "GL",
+    "nameFr": "Groenland",
+    "nameEn": "Greenland",
+    "callingCode": "+299",
+    "flag": "🇬🇱",
+    "exampleNational": "22 12 34"
+  },
+  {
+    "code": "GP",
+    "nameFr": "Guadeloupe",
+    "nameEn": "Guadeloupe",
+    "callingCode": "+590",
+    "flag": "🇬🇵",
+    "exampleNational": "0690 00 12 34"
+  },
+  {
+    "code": "GU",
+    "nameFr": "Guam",
+    "nameEn": "Guam",
+    "callingCode": "+1",
+    "flag": "🇬🇺",
+    "exampleNational": "(671) 300-1234"
+  },
+  {
+    "code": "GT",
+    "nameFr": "Guatemala",
+    "nameEn": "Guatemala",
+    "callingCode": "+502",
+    "flag": "🇬🇹",
+    "exampleNational": "5123 4567"
+  },
+  {
+    "code": "GG",
+    "nameFr": "Guernesey",
+    "nameEn": "Guernsey",
+    "callingCode": "+44",
+    "flag": "🇬🇬",
+    "exampleNational": "07781 123456"
+  },
+  {
+    "code": "GN",
+    "nameFr": "Guinée",
+    "nameEn": "Guinea",
+    "callingCode": "+224",
+    "flag": "🇬🇳",
+    "exampleNational": "601 12 34 56"
+  },
+  {
+    "code": "GQ",
+    "nameFr": "Guinée équatoriale",
+    "nameEn": "Equatorial Guinea",
+    "callingCode": "+240",
+    "flag": "🇬🇶",
+    "exampleNational": "222 123 456"
+  },
+  {
+    "code": "GW",
+    "nameFr": "Guinée-Bissau",
+    "nameEn": "Guinea-Bissau",
+    "callingCode": "+245",
+    "flag": "🇬🇼",
+    "exampleNational": "955 012 345"
+  },
+  {
+    "code": "GY",
+    "nameFr": "Guyana",
+    "nameEn": "Guyana",
+    "callingCode": "+592",
+    "flag": "🇬🇾",
+    "exampleNational": "609 1234"
+  },
+  {
+    "code": "GF",
+    "nameFr": "Guyane française",
+    "nameEn": "French Guiana",
+    "callingCode": "+594",
+    "flag": "🇬🇫",
+    "exampleNational": "0694 20 12 34"
+  },
+  {
+    "code": "HT",
+    "nameFr": "Haïti",
+    "nameEn": "Haiti",
+    "callingCode": "+509",
+    "flag": "🇭🇹",
+    "exampleNational": "34 10 1234"
+  },
+  {
+    "code": "HN",
+    "nameFr": "Honduras",
+    "nameEn": "Honduras",
+    "callingCode": "+504",
+    "flag": "🇭🇳",
+    "exampleNational": "9123-4567"
+  },
+  {
+    "code": "HK",
+    "nameFr": "Hong Kong",
+    "nameEn": "Hong Kong",
+    "callingCode": "+852",
+    "flag": "🇭🇰",
+    "exampleNational": "5123 4567"
+  },
+  {
+    "code": "HU",
+    "nameFr": "Hongrie",
+    "nameEn": "Hungary",
+    "callingCode": "+36",
+    "flag": "🇭🇺",
+    "exampleNational": "06 20 123 4567"
+  },
+  {
+    "code": "BV",
+    "nameFr": "Île Bouvet",
+    "nameEn": "Bouvet Island",
+    "callingCode": null,
+    "flag": "🇧🇻",
+    "exampleNational": null
+  },
+  {
+    "code": "CX",
+    "nameFr": "Île Christmas",
+    "nameEn": "Christmas Island",
+    "callingCode": "+61",
+    "flag": "🇨🇽",
+    "exampleNational": "0412 345 678"
+  },
+  {
+    "code": "IM",
+    "nameFr": "Île de Man",
+    "nameEn": "Isle of Man",
+    "callingCode": "+44",
+    "flag": "🇮🇲",
+    "exampleNational": "07924 123456"
+  },
+  {
+    "code": "NF",
+    "nameFr": "Île Norfolk",
+    "nameEn": "Norfolk Island",
+    "callingCode": "+672",
+    "flag": "🇳🇫",
+    "exampleNational": "3 81234"
+  },
+  {
+    "code": "KY",
+    "nameFr": "Îles Caïmans",
+    "nameEn": "Cayman Islands",
+    "callingCode": "+1",
+    "flag": "🇰🇾",
+    "exampleNational": "(345) 323-1234"
+  },
+  {
+    "code": "CC",
+    "nameFr": "Îles Cocos",
+    "nameEn": "Cocos (Keeling) Islands",
+    "callingCode": "+61",
+    "flag": "🇨🇨",
+    "exampleNational": "0412 345 678"
+  },
+  {
+    "code": "CK",
+    "nameFr": "Îles Cook",
+    "nameEn": "Cook Islands",
+    "callingCode": "+682",
+    "flag": "🇨🇰",
+    "exampleNational": "71 234"
+  },
+  {
+    "code": "FO",
+    "nameFr": "Îles Féroé",
+    "nameEn": "Faroe Islands",
+    "callingCode": "+298",
+    "flag": "🇫🇴",
+    "exampleNational": "21 12 34"
+  },
+  {
+    "code": "HM",
+    "nameFr": "Îles Heard-et-MacDonald",
+    "nameEn": "Heard Island and McDonald Islands",
+    "callingCode": null,
+    "flag": "🇭🇲",
+    "exampleNational": null
+  },
+  {
+    "code": "FK",
+    "nameFr": "Îles Malouines",
+    "nameEn": "Falkland Islands (Malvinas)",
+    "callingCode": "+500",
+    "flag": "🇫🇰",
+    "exampleNational": "51234"
+  },
+  {
+    "code": "MP",
+    "nameFr": "Îles Mariannes du Nord",
+    "nameEn": "Northern Mariana Islands",
+    "callingCode": "+1",
+    "flag": "🇲🇵",
+    "exampleNational": "(670) 234-5678"
+  },
+  {
+    "code": "MH",
+    "nameFr": "Îles Marshall",
+    "nameEn": "Marshall Islands",
+    "callingCode": "+692",
+    "flag": "🇲🇭",
+    "exampleNational": "235-1234"
+  },
+  {
+    "code": "UM",
+    "nameFr": "Îles mineures éloignées des États-Unis",
+    "nameEn": "United States Minor Outlying Islands",
+    "callingCode": null,
+    "flag": "🇺🇲",
+    "exampleNational": null
+  },
+  {
+    "code": "PN",
+    "nameFr": "Îles Pitcairn",
+    "nameEn": "Pitcairn",
+    "callingCode": null,
+    "flag": "🇵🇳",
+    "exampleNational": null
+  },
+  {
+    "code": "SB",
+    "nameFr": "Îles Salomon",
+    "nameEn": "Solomon Islands",
+    "callingCode": "+677",
+    "flag": "🇸🇧",
+    "exampleNational": "74 21234"
+  },
+  {
+    "code": "TC",
+    "nameFr": "Îles Turques-et-Caïques",
+    "nameEn": "Turks and Caicos Islands",
+    "callingCode": "+1",
+    "flag": "🇹🇨",
+    "exampleNational": "(649) 231-1234"
+  },
+  {
+    "code": "VI",
+    "nameFr": "Îles vierges américaines",
+    "nameEn": "Virgin Islands, U.S.",
+    "callingCode": "+1",
+    "flag": "🇻🇮",
+    "exampleNational": "(340) 642-1234"
+  },
+  {
+    "code": "VG",
+    "nameFr": "Îles vierges britanniques",
+    "nameEn": "Virgin Islands, British",
+    "callingCode": "+1",
+    "flag": "🇻🇬",
+    "exampleNational": "(284) 300-1234"
+  },
+  {
+    "code": "IN",
+    "nameFr": "Inde",
+    "nameEn": "India",
+    "callingCode": "+91",
+    "flag": "🇮🇳",
+    "exampleNational": "081234 56789"
+  },
+  {
+    "code": "ID",
+    "nameFr": "Indonésie",
+    "nameEn": "Indonesia",
+    "callingCode": "+62",
+    "flag": "🇮🇩",
+    "exampleNational": "0812-345-678"
+  },
+  {
+    "code": "IQ",
+    "nameFr": "Irak",
+    "nameEn": "Iraq",
+    "callingCode": "+964",
+    "flag": "🇮🇶",
+    "exampleNational": "0791 234 5678"
+  },
+  {
+    "code": "IR",
+    "nameFr": "Iran",
+    "nameEn": "Islamic Republic of Iran",
+    "callingCode": "+98",
+    "flag": "🇮🇷",
+    "exampleNational": "0912 345 6789"
+  },
+  {
+    "code": "IE",
+    "nameFr": "Irlande",
+    "nameEn": "Ireland",
+    "callingCode": "+353",
+    "flag": "🇮🇪",
+    "exampleNational": "085 012 3456"
+  },
+  {
+    "code": "IS",
+    "nameFr": "Islande",
+    "nameEn": "Iceland",
+    "callingCode": "+354",
+    "flag": "🇮🇸",
+    "exampleNational": "611 1234"
+  },
+  {
+    "code": "IL",
+    "nameFr": "Israël",
+    "nameEn": "Israel",
+    "callingCode": "+972",
+    "flag": "🇮🇱",
+    "exampleNational": "050-234-5678"
+  },
+  {
+    "code": "IT",
+    "nameFr": "Italie",
+    "nameEn": "Italy",
+    "callingCode": "+39",
+    "flag": "🇮🇹",
+    "exampleNational": "312 345 6789"
+  },
+  {
+    "code": "JM",
+    "nameFr": "Jamaïque",
+    "nameEn": "Jamaica",
+    "callingCode": "+1",
+    "flag": "🇯🇲",
+    "exampleNational": "(876) 210-1234"
+  },
+  {
+    "code": "JP",
+    "nameFr": "Japon",
+    "nameEn": "Japan",
+    "callingCode": "+81",
+    "flag": "🇯🇵",
+    "exampleNational": "090-1234-5678"
+  },
+  {
+    "code": "JE",
+    "nameFr": "Jersey",
+    "nameEn": "Jersey",
+    "callingCode": "+44",
+    "flag": "🇯🇪",
+    "exampleNational": "07797 712345"
+  },
+  {
+    "code": "JO",
+    "nameFr": "Jordanie",
+    "nameEn": "Jordan",
+    "callingCode": "+962",
+    "flag": "🇯🇴",
+    "exampleNational": "07 9012 3456"
+  },
+  {
+    "code": "KZ",
+    "nameFr": "Kazakhstan",
+    "nameEn": "Kazakhstan",
+    "callingCode": "+7",
+    "flag": "🇰🇿",
+    "exampleNational": "8 (771) 000 9998"
+  },
+  {
+    "code": "KE",
+    "nameFr": "Kenya",
+    "nameEn": "Kenya",
+    "callingCode": "+254",
+    "flag": "🇰🇪",
+    "exampleNational": "0712 123456"
+  },
+  {
+    "code": "KG",
+    "nameFr": "Kirghizistan",
+    "nameEn": "Kyrgyzstan",
+    "callingCode": "+996",
+    "flag": "🇰🇬",
+    "exampleNational": "0700 123 456"
+  },
+  {
+    "code": "KI",
+    "nameFr": "Kiribati",
+    "nameEn": "Kiribati",
+    "callingCode": "+686",
+    "flag": "🇰🇮",
+    "exampleNational": "72001234"
+  },
+  {
+    "code": "XK",
+    "nameFr": "Kosovo",
+    "nameEn": "Kosovo",
+    "callingCode": "+383",
+    "flag": "🇽🇰",
+    "exampleNational": "043 201 234"
+  },
+  {
+    "code": "KW",
+    "nameFr": "Koweït",
+    "nameEn": "Kuwait",
+    "callingCode": "+965",
+    "flag": "🇰🇼",
+    "exampleNational": "500 12345"
+  },
+  {
+    "code": "LA",
+    "nameFr": "Laos",
+    "nameEn": "Lao People's Democratic Republic",
+    "callingCode": "+856",
+    "flag": "🇱🇦",
+    "exampleNational": "020 23 123 456"
+  },
+  {
+    "code": "LS",
+    "nameFr": "Lesotho",
+    "nameEn": "Lesotho",
+    "callingCode": "+266",
+    "flag": "🇱🇸",
+    "exampleNational": "5012 3456"
+  },
+  {
+    "code": "LV",
+    "nameFr": "Lettonie",
+    "nameEn": "Latvia",
+    "callingCode": "+371",
+    "flag": "🇱🇻",
+    "exampleNational": "21 234 567"
+  },
+  {
+    "code": "LB",
+    "nameFr": "Liban",
+    "nameEn": "Lebanon",
+    "callingCode": "+961",
+    "flag": "🇱🇧",
+    "exampleNational": "71 123 456"
+  },
+  {
+    "code": "LR",
+    "nameFr": "Libéria",
+    "nameEn": "Liberia",
+    "callingCode": "+231",
+    "flag": "🇱🇷",
+    "exampleNational": "077 012 3456"
+  },
+  {
+    "code": "LY",
+    "nameFr": "Libye",
+    "nameEn": "Libya",
+    "callingCode": "+218",
+    "flag": "🇱🇾",
+    "exampleNational": "091-2345678"
+  },
+  {
+    "code": "LI",
+    "nameFr": "Liechtenstein",
+    "nameEn": "Liechtenstein",
+    "callingCode": "+423",
+    "flag": "🇱🇮",
+    "exampleNational": "660 234 567"
+  },
+  {
+    "code": "LT",
+    "nameFr": "Lituanie",
+    "nameEn": "Lithuania",
+    "callingCode": "+370",
+    "flag": "🇱🇹",
+    "exampleNational": "(0-612) 34567"
+  },
+  {
+    "code": "LU",
+    "nameFr": "Luxembourg",
+    "nameEn": "Luxembourg",
+    "callingCode": "+352",
+    "flag": "🇱🇺",
+    "exampleNational": "628 123 456"
+  },
+  {
+    "code": "MO",
+    "nameFr": "Macao",
+    "nameEn": "Macao",
+    "callingCode": "+853",
+    "flag": "🇲🇴",
+    "exampleNational": "6612 3456"
+  },
+  {
+    "code": "MK",
+    "nameFr": "Macédoine du Nord",
+    "nameEn": "The Republic of North Macedonia",
+    "callingCode": "+389",
+    "flag": "🇲🇰",
+    "exampleNational": "072 345 678"
+  },
+  {
+    "code": "MG",
+    "nameFr": "Madagascar",
+    "nameEn": "Madagascar",
+    "callingCode": "+261",
+    "flag": "🇲🇬",
+    "exampleNational": "032 12 345 67"
+  },
+  {
+    "code": "MY",
+    "nameFr": "Malaisie",
+    "nameEn": "Malaysia",
+    "callingCode": "+60",
+    "flag": "🇲🇾",
+    "exampleNational": "012-345 6789"
+  },
+  {
+    "code": "MW",
+    "nameFr": "Malawi",
+    "nameEn": "Malawi",
+    "callingCode": "+265",
+    "flag": "🇲🇼",
+    "exampleNational": "0991 23 45 67"
+  },
+  {
+    "code": "MV",
+    "nameFr": "Maldives",
+    "nameEn": "Maldives",
+    "callingCode": "+960",
+    "flag": "🇲🇻",
+    "exampleNational": "771-2345"
+  },
+  {
+    "code": "ML",
+    "nameFr": "Mali",
+    "nameEn": "Mali",
+    "callingCode": "+223",
+    "flag": "🇲🇱",
+    "exampleNational": "65 01 23 45"
+  },
+  {
+    "code": "MT",
+    "nameFr": "Malte",
+    "nameEn": "Malta",
+    "callingCode": "+356",
+    "flag": "🇲🇹",
+    "exampleNational": "9696 1234"
+  },
+  {
+    "code": "MA",
+    "nameFr": "Maroc",
+    "nameEn": "Morocco",
+    "callingCode": "+212",
+    "flag": "🇲🇦",
+    "exampleNational": "06 50 12 34 56"
+  },
+  {
+    "code": "MQ",
+    "nameFr": "Martinique",
+    "nameEn": "Martinique",
+    "callingCode": "+596",
+    "flag": "🇲🇶",
+    "exampleNational": "0696 20 12 34"
+  },
+  {
+    "code": "MU",
+    "nameFr": "Maurice",
+    "nameEn": "Mauritius",
+    "callingCode": "+230",
+    "flag": "🇲🇺",
+    "exampleNational": "5251 2345"
+  },
+  {
+    "code": "MR",
+    "nameFr": "Mauritanie",
+    "nameEn": "Mauritania",
+    "callingCode": "+222",
+    "flag": "🇲🇷",
+    "exampleNational": "22 12 34 56"
+  },
+  {
+    "code": "YT",
+    "nameFr": "Mayotte",
+    "nameEn": "Mayotte",
+    "callingCode": "+262",
+    "flag": "🇾🇹",
+    "exampleNational": "0639 01 23 45"
+  },
+  {
+    "code": "MX",
+    "nameFr": "Mexique",
+    "nameEn": "Mexico",
+    "callingCode": "+52",
+    "flag": "🇲🇽",
+    "exampleNational": "222 123 4567"
+  },
+  {
+    "code": "FM",
+    "nameFr": "Micronésie",
+    "nameEn": "Micronesia, Federated States of",
+    "callingCode": "+691",
+    "flag": "🇫🇲",
+    "exampleNational": "350 1234"
+  },
+  {
+    "code": "MD",
+    "nameFr": "Moldavie",
+    "nameEn": "Moldova, Republic of",
+    "callingCode": "+373",
+    "flag": "🇲🇩",
+    "exampleNational": "0621 12 345"
+  },
+  {
+    "code": "MC",
+    "nameFr": "Monaco",
+    "nameEn": "Monaco",
+    "callingCode": "+377",
+    "flag": "🇲🇨",
+    "exampleNational": "06 12 34 56 78"
+  },
+  {
+    "code": "MN",
+    "nameFr": "Mongolie",
+    "nameEn": "Mongolia",
+    "callingCode": "+976",
+    "flag": "🇲🇳",
+    "exampleNational": "8812 3456"
+  },
+  {
+    "code": "ME",
+    "nameFr": "Monténégro",
+    "nameEn": "Montenegro",
+    "callingCode": "+382",
+    "flag": "🇲🇪",
+    "exampleNational": "060 123 456"
+  },
+  {
+    "code": "MS",
+    "nameFr": "Montserrat",
+    "nameEn": "Montserrat",
+    "callingCode": "+1",
+    "flag": "🇲🇸",
+    "exampleNational": "(664) 492-3456"
+  },
+  {
+    "code": "MZ",
+    "nameFr": "Mozambique",
+    "nameEn": "Mozambique",
+    "callingCode": "+258",
+    "flag": "🇲🇿",
+    "exampleNational": "82 123 4567"
+  },
+  {
+    "code": "MM",
+    "nameFr": "Myanmar",
+    "nameEn": "Myanmar",
+    "callingCode": "+95",
+    "flag": "🇲🇲",
+    "exampleNational": "09 212 3456"
+  },
+  {
+    "code": "NA",
+    "nameFr": "Namibie",
+    "nameEn": "Namibia",
+    "callingCode": "+264",
+    "flag": "🇳🇦",
+    "exampleNational": "081 123 4567"
+  },
+  {
+    "code": "NR",
+    "nameFr": "Nauru",
+    "nameEn": "Nauru",
+    "callingCode": "+674",
+    "flag": "🇳🇷",
+    "exampleNational": "555 1234"
+  },
+  {
+    "code": "NP",
+    "nameFr": "Népal",
+    "nameEn": "Nepal",
+    "callingCode": "+977",
+    "flag": "🇳🇵",
+    "exampleNational": "984-1234567"
+  },
+  {
+    "code": "NI",
+    "nameFr": "Nicaragua",
+    "nameEn": "Nicaragua",
+    "callingCode": "+505",
+    "flag": "🇳🇮",
+    "exampleNational": "8123 4567"
+  },
+  {
+    "code": "NE",
+    "nameFr": "Niger",
+    "nameEn": "Niger",
+    "callingCode": "+227",
+    "flag": "🇳🇪",
+    "exampleNational": "93 12 34 56"
+  },
+  {
+    "code": "NG",
+    "nameFr": "Nigéria",
+    "nameEn": "Nigeria",
+    "callingCode": "+234",
+    "flag": "🇳🇬",
+    "exampleNational": "0802 123 4567"
+  },
+  {
+    "code": "NU",
+    "nameFr": "Niué",
+    "nameEn": "Niue",
+    "callingCode": "+683",
+    "flag": "🇳🇺",
+    "exampleNational": "888 4012"
+  },
+  {
+    "code": "NO",
+    "nameFr": "Norvège",
+    "nameEn": "Norway",
+    "callingCode": "+47",
+    "flag": "🇳🇴",
+    "exampleNational": "40 61 23 45"
+  },
+  {
+    "code": "NC",
+    "nameFr": "Nouvelle-Calédonie",
+    "nameEn": "New Caledonia",
+    "callingCode": "+687",
+    "flag": "🇳🇨",
+    "exampleNational": "75.12.34"
+  },
+  {
+    "code": "NZ",
+    "nameFr": "Nouvelle-Zélande",
+    "nameEn": "New Zealand",
+    "callingCode": "+64",
+    "flag": "🇳🇿",
+    "exampleNational": "021 123 4567"
+  },
+  {
+    "code": "IO",
+    "nameFr": "Océan Indien Britannique",
+    "nameEn": "British Indian Ocean Territory",
+    "callingCode": "+246",
+    "flag": "🇮🇴",
+    "exampleNational": "380 1234"
+  },
+  {
+    "code": "OM",
+    "nameFr": "Oman",
+    "nameEn": "Oman",
+    "callingCode": "+968",
+    "flag": "🇴🇲",
+    "exampleNational": "9212 3456"
+  },
+  {
+    "code": "UG",
+    "nameFr": "Ouganda",
+    "nameEn": "Uganda",
+    "callingCode": "+256",
+    "flag": "🇺🇬",
+    "exampleNational": "0712 345678"
+  },
+  {
+    "code": "UZ",
+    "nameFr": "Ouzbékistan",
+    "nameEn": "Uzbekistan",
+    "callingCode": "+998",
+    "flag": "🇺🇿",
+    "exampleNational": "91 234 56 78"
+  },
+  {
+    "code": "PK",
+    "nameFr": "Pakistan",
+    "nameEn": "Pakistan",
+    "callingCode": "+92",
+    "flag": "🇵🇰",
+    "exampleNational": "0301 2345678"
+  },
+  {
+    "code": "PW",
+    "nameFr": "Palaos",
+    "nameEn": "Palau",
+    "callingCode": "+680",
+    "flag": "🇵🇼",
+    "exampleNational": "620 1234"
+  },
+  {
+    "code": "PS",
+    "nameFr": "Palestine",
+    "nameEn": "State of Palestine",
+    "callingCode": "+970",
+    "flag": "🇵🇸",
+    "exampleNational": "0599 123 456"
+  },
+  {
+    "code": "PA",
+    "nameFr": "Panama",
+    "nameEn": "Panama",
+    "callingCode": "+507",
+    "flag": "🇵🇦",
+    "exampleNational": "6123-4567"
+  },
+  {
+    "code": "PG",
+    "nameFr": "Papouasie-Nouvelle-Guinée",
+    "nameEn": "Papua New Guinea",
+    "callingCode": "+675",
+    "flag": "🇵🇬",
+    "exampleNational": "7012 3456"
+  },
+  {
+    "code": "PY",
+    "nameFr": "Paraguay",
+    "nameEn": "Paraguay",
+    "callingCode": "+595",
+    "flag": "🇵🇾",
+    "exampleNational": "0961 456789"
+  },
+  {
+    "code": "NL",
+    "nameFr": "Pays-Bas",
+    "nameEn": "Netherlands",
+    "callingCode": "+31",
+    "flag": "🇳🇱",
+    "exampleNational": "06 12345678"
+  },
+  {
+    "code": "PE",
+    "nameFr": "Pérou",
+    "nameEn": "Peru",
+    "callingCode": "+51",
+    "flag": "🇵🇪",
+    "exampleNational": "912 345 678"
+  },
+  {
+    "code": "PH",
+    "nameFr": "Philippines",
+    "nameEn": "Philippines",
+    "callingCode": "+63",
+    "flag": "🇵🇭",
+    "exampleNational": "0905 123 4567"
+  },
+  {
+    "code": "PL",
+    "nameFr": "Pologne",
+    "nameEn": "Poland",
+    "callingCode": "+48",
+    "flag": "🇵🇱",
+    "exampleNational": "512 345 678"
+  },
+  {
+    "code": "PF",
+    "nameFr": "Polynésie française",
+    "nameEn": "French Polynesia",
+    "callingCode": "+689",
+    "flag": "🇵🇫",
+    "exampleNational": "87 12 34 56"
+  },
+  {
+    "code": "PR",
+    "nameFr": "Porto Rico",
+    "nameEn": "Puerto Rico",
+    "callingCode": "+1",
+    "flag": "🇵🇷",
+    "exampleNational": "(787) 234-5678"
+  },
+  {
+    "code": "PT",
+    "nameFr": "Portugal",
+    "nameEn": "Portugal",
+    "callingCode": "+351",
+    "flag": "🇵🇹",
+    "exampleNational": "912 345 678"
+  },
+  {
+    "code": "QA",
+    "nameFr": "Qatar",
+    "nameEn": "Qatar",
+    "callingCode": "+974",
+    "flag": "🇶🇦",
+    "exampleNational": "3312 3456"
+  },
+  {
+    "code": "CF",
+    "nameFr": "République Centrafricaine",
+    "nameEn": "Central African Republic",
+    "callingCode": "+236",
+    "flag": "🇨🇫",
+    "exampleNational": "70 01 23 45"
+  },
+  {
+    "code": "CD",
+    "nameFr": "République démocratique du Congo",
+    "nameEn": "Democratic Republic of the Congo",
+    "callingCode": "+243",
+    "flag": "🇨🇩",
+    "exampleNational": "0991 234 567"
+  },
+  {
+    "code": "DO",
+    "nameFr": "République Dominicaine",
+    "nameEn": "Dominican Republic",
+    "callingCode": "+1",
+    "flag": "🇩🇴",
+    "exampleNational": "(809) 234-5678"
+  },
+  {
+    "code": "CG",
+    "nameFr": "République du Congo",
+    "nameEn": "Republic of the Congo",
+    "callingCode": "+242",
+    "flag": "🇨🇬",
+    "exampleNational": "06 123 4567"
+  },
+  {
+    "code": "CZ",
+    "nameFr": "République Tchèque",
+    "nameEn": "Czech Republic",
+    "callingCode": "+420",
+    "flag": "🇨🇿",
+    "exampleNational": "601 123 456"
+  },
+  {
+    "code": "TZ",
+    "nameFr": "République unie de Tanzanie",
+    "nameEn": "United Republic of Tanzania",
+    "callingCode": "+255",
+    "flag": "🇹🇿",
+    "exampleNational": "0621 234 567"
+  },
+  {
+    "code": "RE",
+    "nameFr": "Réunion",
+    "nameEn": "Reunion",
+    "callingCode": "+262",
+    "flag": "🇷🇪",
+    "exampleNational": "0692 12 34 56"
+  },
+  {
+    "code": "RO",
+    "nameFr": "Roumanie",
+    "nameEn": "Romania",
+    "callingCode": "+40",
+    "flag": "🇷🇴",
+    "exampleNational": "0712 034 567"
+  },
+  {
+    "code": "SZ",
+    "nameFr": "Royaume d'Eswatini",
+    "nameEn": "Eswatini",
+    "callingCode": "+268",
+    "flag": "🇸🇿",
+    "exampleNational": "7612 3456"
+  },
+  {
+    "code": "GB",
+    "nameFr": "Royaume-Uni",
+    "nameEn": "United Kingdom",
+    "callingCode": "+44",
+    "flag": "🇬🇧",
+    "exampleNational": "07400 123456"
+  },
+  {
+    "code": "RU",
+    "nameFr": "Russie",
+    "nameEn": "Russian Federation",
+    "callingCode": "+7",
+    "flag": "🇷🇺",
+    "exampleNational": "8 (912) 345-67-89"
+  },
+  {
+    "code": "RW",
+    "nameFr": "Rwanda",
+    "nameEn": "Rwanda",
+    "callingCode": "+250",
+    "flag": "🇷🇼",
+    "exampleNational": "0720 123 456"
+  },
+  {
+    "code": "EH",
+    "nameFr": "Sahara occidental",
+    "nameEn": "Western Sahara",
+    "callingCode": "+212",
+    "flag": "🇪🇭",
+    "exampleNational": "06 50 12 34 56"
+  },
+  {
+    "code": "BL",
+    "nameFr": "Saint-Barthélemy",
+    "nameEn": "Saint Barthélemy",
+    "callingCode": "+590",
+    "flag": "🇧🇱",
+    "exampleNational": "0690 00 12 34"
+  },
+  {
+    "code": "KN",
+    "nameFr": "Saint-Christophe-et-Niévès",
+    "nameEn": "Saint Kitts and Nevis",
+    "callingCode": "+1",
+    "flag": "🇰🇳",
+    "exampleNational": "(869) 765-2917"
+  },
+  {
+    "code": "SM",
+    "nameFr": "Saint-Marin",
+    "nameEn": "San Marino",
+    "callingCode": "+378",
+    "flag": "🇸🇲",
+    "exampleNational": "66 66 12 12"
+  },
+  {
+    "code": "MF",
+    "nameFr": "Saint-Martin (partie française)",
+    "nameEn": "Saint Martin (French part)",
+    "callingCode": "+590",
+    "flag": "🇲🇫",
+    "exampleNational": "0690 00 12 34"
+  },
+  {
+    "code": "SX",
+    "nameFr": "Saint-Martin (partie néerlandaise)",
+    "nameEn": "Sint Maarten (Dutch part)",
+    "callingCode": "+1",
+    "flag": "🇸🇽",
+    "exampleNational": "(721) 520-5678"
+  },
+  {
+    "code": "PM",
+    "nameFr": "Saint-Pierre-et-Miquelon",
+    "nameEn": "Saint Pierre and Miquelon",
+    "callingCode": "+508",
+    "flag": "🇵🇲",
+    "exampleNational": "055 12 34"
+  },
+  {
+    "code": "VA",
+    "nameFr": "Saint-Siège (Vatican)",
+    "nameEn": "Holy See (Vatican City State)",
+    "callingCode": "+39",
+    "flag": "🇻🇦",
+    "exampleNational": "312 345 6789"
+  },
+  {
+    "code": "VC",
+    "nameFr": "Saint-Vincent-et-les-Grenadines",
+    "nameEn": "Saint Vincent and the Grenadines",
+    "callingCode": "+1",
+    "flag": "🇻🇨",
+    "exampleNational": "(784) 430-1234"
+  },
+  {
+    "code": "SH",
+    "nameFr": "Sainte-Hélène",
+    "nameEn": "Saint Helena",
+    "callingCode": "+290",
+    "flag": "🇸🇭",
+    "exampleNational": "51234"
+  },
+  {
+    "code": "LC",
+    "nameFr": "Sainte-Lucie",
+    "nameEn": "Saint Lucia",
+    "callingCode": "+1",
+    "flag": "🇱🇨",
+    "exampleNational": "(758) 284-5678"
+  },
+  {
+    "code": "WS",
+    "nameFr": "Samoa",
+    "nameEn": "Samoa",
+    "callingCode": "+685",
+    "flag": "🇼🇸",
+    "exampleNational": "72 12345"
+  },
+  {
+    "code": "AS",
+    "nameFr": "Samoa américaines",
+    "nameEn": "American Samoa",
+    "callingCode": "+1",
+    "flag": "🇦🇸",
+    "exampleNational": "(684) 733-1234"
+  },
+  {
+    "code": "ST",
+    "nameFr": "São Tomé-et-Principe",
+    "nameEn": "Sao Tome and Principe",
+    "callingCode": "+239",
+    "flag": "🇸🇹",
+    "exampleNational": "981 2345"
+  },
+  {
+    "code": "SN",
+    "nameFr": "Sénégal",
+    "nameEn": "Senegal",
+    "callingCode": "+221",
+    "flag": "🇸🇳",
+    "exampleNational": "70 123 45 67"
+  },
+  {
+    "code": "RS",
+    "nameFr": "Serbie",
+    "nameEn": "Serbia",
+    "callingCode": "+381",
+    "flag": "🇷🇸",
+    "exampleNational": "060 1234567"
+  },
+  {
+    "code": "SC",
+    "nameFr": "Seychelles",
+    "nameEn": "Seychelles",
+    "callingCode": "+248",
+    "flag": "🇸🇨",
+    "exampleNational": "2 510 123"
+  },
+  {
+    "code": "SL",
+    "nameFr": "Sierra Leone",
+    "nameEn": "Sierra Leone",
+    "callingCode": "+232",
+    "flag": "🇸🇱",
+    "exampleNational": "(025) 123456"
+  },
+  {
+    "code": "SG",
+    "nameFr": "Singapour",
+    "nameEn": "Singapore",
+    "callingCode": "+65",
+    "flag": "🇸🇬",
+    "exampleNational": "8123 4567"
+  },
+  {
+    "code": "SK",
+    "nameFr": "Slovaquie",
+    "nameEn": "Slovakia",
+    "callingCode": "+421",
+    "flag": "🇸🇰",
+    "exampleNational": "0912 123 456"
+  },
+  {
+    "code": "SI",
+    "nameFr": "Slovénie",
+    "nameEn": "Slovenia",
+    "callingCode": "+386",
+    "flag": "🇸🇮",
+    "exampleNational": "031 234 567"
+  },
+  {
+    "code": "SO",
+    "nameFr": "Somalie",
+    "nameEn": "Somalia",
+    "callingCode": "+252",
+    "flag": "🇸🇴",
+    "exampleNational": "7 1123456"
+  },
+  {
+    "code": "SD",
+    "nameFr": "Soudan",
+    "nameEn": "Sudan",
+    "callingCode": "+249",
+    "flag": "🇸🇩",
+    "exampleNational": "091 123 1234"
+  },
+  {
+    "code": "SS",
+    "nameFr": "Soudan du Sud",
+    "nameEn": "South Sudan",
+    "callingCode": "+211",
+    "flag": "🇸🇸",
+    "exampleNational": "0977 123 456"
+  },
+  {
+    "code": "LK",
+    "nameFr": "Sri Lanka",
+    "nameEn": "Sri Lanka",
+    "callingCode": "+94",
+    "flag": "🇱🇰",
+    "exampleNational": "071 234 5678"
+  },
+  {
+    "code": "SE",
+    "nameFr": "Suède",
+    "nameEn": "Sweden",
+    "callingCode": "+46",
+    "flag": "🇸🇪",
+    "exampleNational": "070-123 45 67"
+  },
+  {
+    "code": "CH",
+    "nameFr": "Suisse",
+    "nameEn": "Switzerland",
+    "callingCode": "+41",
+    "flag": "🇨🇭",
+    "exampleNational": "078 123 45 67"
+  },
+  {
+    "code": "SR",
+    "nameFr": "Suriname",
+    "nameEn": "Suriname",
+    "callingCode": "+597",
+    "flag": "🇸🇷",
+    "exampleNational": "741-2345"
+  },
+  {
+    "code": "SJ",
+    "nameFr": "Svalbard et Île Jan Mayen",
+    "nameEn": "Svalbard and Jan Mayen",
+    "callingCode": "+47",
+    "flag": "🇸🇯",
+    "exampleNational": "41 23 45 67"
+  },
+  {
+    "code": "SY",
+    "nameFr": "Syrie",
+    "nameEn": "Syrian Arab Republic",
+    "callingCode": "+963",
+    "flag": "🇸🇾",
+    "exampleNational": "0944 567 890"
+  },
+  {
+    "code": "TJ",
+    "nameFr": "Tadjikistan",
+    "nameEn": "Tajikistan",
+    "callingCode": "+992",
+    "flag": "🇹🇯",
+    "exampleNational": "91 712 3456"
+  },
+  {
+    "code": "TW",
+    "nameFr": "Taïwan",
+    "nameEn": "Taiwan, Province of China",
+    "callingCode": "+886",
+    "flag": "🇹🇼",
+    "exampleNational": "0912 345 678"
+  },
+  {
+    "code": "TD",
+    "nameFr": "Tchad",
+    "nameEn": "Chad",
+    "callingCode": "+235",
+    "flag": "🇹🇩",
+    "exampleNational": "63 01 23 45"
+  },
+  {
+    "code": "TF",
+    "nameFr": "Terres australes françaises",
+    "nameEn": "French Southern Territories",
+    "callingCode": null,
+    "flag": "🇹🇫",
+    "exampleNational": null
+  },
+  {
+    "code": "TH",
+    "nameFr": "Thaïlande",
+    "nameEn": "Thailand",
+    "callingCode": "+66",
+    "flag": "🇹🇭",
+    "exampleNational": "081 234 5678"
+  },
+  {
+    "code": "TL",
+    "nameFr": "Timor-Leste",
+    "nameEn": "Timor-Leste",
+    "callingCode": "+670",
+    "flag": "🇹🇱",
+    "exampleNational": "7721 2345"
+  },
+  {
+    "code": "TG",
+    "nameFr": "Togo",
+    "nameEn": "Togo",
+    "callingCode": "+228",
+    "flag": "🇹🇬",
+    "exampleNational": "90 11 23 45"
+  },
+  {
+    "code": "TK",
+    "nameFr": "Tokelau",
+    "nameEn": "Tokelau",
+    "callingCode": "+690",
+    "flag": "🇹🇰",
+    "exampleNational": "7290"
+  },
+  {
+    "code": "TO",
+    "nameFr": "Tonga",
+    "nameEn": "Tonga",
+    "callingCode": "+676",
+    "flag": "🇹🇴",
+    "exampleNational": "771 5123"
+  },
+  {
+    "code": "TT",
+    "nameFr": "Trinité-et-Tobago",
+    "nameEn": "Trinidad and Tobago",
+    "callingCode": "+1",
+    "flag": "🇹🇹",
+    "exampleNational": "(868) 291-1234"
+  },
+  {
+    "code": "TN",
+    "nameFr": "Tunisie",
+    "nameEn": "Tunisia",
+    "callingCode": "+216",
+    "flag": "🇹🇳",
+    "exampleNational": "20 123 456"
+  },
+  {
+    "code": "TM",
+    "nameFr": "Turkménistan",
+    "nameEn": "Turkmenistan",
+    "callingCode": "+993",
+    "flag": "🇹🇲",
+    "exampleNational": "8 66 123456"
+  },
+  {
+    "code": "TR",
+    "nameFr": "Turquie",
+    "nameEn": "Türkiye",
+    "callingCode": "+90",
+    "flag": "🇹🇷",
+    "exampleNational": "0501 234 56 78"
+  },
+  {
+    "code": "TV",
+    "nameFr": "Tuvalu",
+    "nameEn": "Tuvalu",
+    "callingCode": "+688",
+    "flag": "🇹🇻",
+    "exampleNational": "90 1234"
+  },
+  {
+    "code": "UA",
+    "nameFr": "Ukraine",
+    "nameEn": "Ukraine",
+    "callingCode": "+380",
+    "flag": "🇺🇦",
+    "exampleNational": "050 123 4567"
+  },
+  {
+    "code": "UY",
+    "nameFr": "Uruguay",
+    "nameEn": "Uruguay",
+    "callingCode": "+598",
+    "flag": "🇺🇾",
+    "exampleNational": "094 231 234"
+  },
+  {
+    "code": "VU",
+    "nameFr": "Vanuatu",
+    "nameEn": "Vanuatu",
+    "callingCode": "+678",
+    "flag": "🇻🇺",
+    "exampleNational": "591 2345"
+  },
+  {
+    "code": "VE",
+    "nameFr": "Venezuela",
+    "nameEn": "Venezuela",
+    "callingCode": "+58",
+    "flag": "🇻🇪",
+    "exampleNational": "0412-1234567"
+  },
+  {
+    "code": "VN",
+    "nameFr": "Vietnam",
+    "nameEn": "Vietnam",
+    "callingCode": "+84",
+    "flag": "🇻🇳",
+    "exampleNational": "0912 345 678"
+  },
+  {
+    "code": "WF",
+    "nameFr": "Wallis-et-Futuna",
+    "nameEn": "Wallis and Futuna",
+    "callingCode": "+681",
+    "flag": "🇼🇫",
+    "exampleNational": "82 12 34"
+  },
+  {
+    "code": "YE",
+    "nameFr": "Yémen",
+    "nameEn": "Yemen",
+    "callingCode": "+967",
+    "flag": "🇾🇪",
+    "exampleNational": "0712 345 678"
+  },
+  {
+    "code": "ZM",
+    "nameFr": "Zambie",
+    "nameEn": "Zambia",
+    "callingCode": "+260",
+    "flag": "🇿🇲",
+    "exampleNational": "095 5123456"
+  },
+  {
+    "code": "ZW",
+    "nameFr": "Zimbabwe",
+    "nameEn": "Zimbabwe",
+    "callingCode": "+263",
+    "flag": "🇿🇼",
+    "exampleNational": "071 234 5678"
+  }
+]

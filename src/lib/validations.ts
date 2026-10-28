@@ -3,7 +3,9 @@ import { z } from 'zod'
 export const SendMoneySchema = z.object({
   receiverPhone: z.string().min(8).max(20),
   amount: z.number().positive(),
-  currency: z.enum(['USD', 'FC']),
+  currency: z.enum(['USD', 'CDF', 'FC']),
+  receivingCurrency: z.enum(['USD', 'CDF', 'FC']).optional(),
+  traitCardTransfer: z.boolean().optional(),
   pin: z.string().min(4).max(8).optional(),
   description: z.string().max(200).optional(),
 })

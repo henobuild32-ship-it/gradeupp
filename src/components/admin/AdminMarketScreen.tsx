@@ -74,7 +74,7 @@ const categories = [
 
 const currencies = [
   { value: 'USD', label: 'USD ($)' },
-  { value: 'FC', label: 'FC (Franc Congolais)' },
+  { value: 'FC', label: 'CDF (Franc congolais)' },
 ];
 
 function getCategoryConfig(cat: string) {
@@ -103,7 +103,7 @@ function formatDate(dateStr: string): string {
 
 function formatPrice(amount: number, currency: string): string {
   if (currency === 'FC') {
-    return `${amount.toLocaleString('fr-FR')} FC`;
+    return `${amount.toLocaleString('fr-FR')} CDF`;
   }
   return `$${amount.toFixed(2)}`;
 }

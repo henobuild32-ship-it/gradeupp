@@ -5,6 +5,8 @@ import { requireUser } from '@/lib/auth';
 import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { safeDeductWithFee } from '@/lib/balance';
 import { formatAmount } from '@/lib/tx-labels';
+import { getUsdCdfExchangeRate } from '@/lib/currency-server';
+import { normalizeCurrency } from '@/lib/currency';
 
 function round2(n: number) {
   return Math.round(n * 100) / 100;
@@ -33,19 +35,26 @@ export async function POST(request: NextRequest) {
       agentCode?: string;
     };
 
+    if (method !== undefined && method !== 'agent') {
+      return NextResponse.json(
+        { success: false, message: 'Les retraits par prestataire externe ne sont pas activés. Utilisez un agent Trait.' },
+        { status: 410 },
+      );
+    }
+
     const userId = auth.userId
 
     if (
       typeof amount !== 'number' ||
       amount <= 0 ||
       !currency ||
-      !['USD', 'FC'].includes(currency) ||
+      !['USD', 'CDF', 'FC'].includes(currency) ||
       !agentCode?.trim()
     ) {
       return NextResponse.json(
         {
           success: false,
-          message: 'Montant positif, devise (USD/FC) et code agent requis',
+          message: 'Montant positif, devise (USD/CDF) et code agent requis',
         },
         { status: 400 },
       );
@@ -103,18 +112,7 @@ export async function POST(request: NextRequest) {
 
     // Referral limit check: Referred users can withdraw up to $20 only
     if (user.referredBy) {
-      let exchangeRate = 2500;
-      try {
-        const rateConfig = await db.systemConfig.findUnique({
-          where: { key: 'exchange_rate_usd_fc' },
-        });
-        if (rateConfig && rateConfig.value) {
-          const val = parseFloat(rateConfig.value);
-          if (!isNaN(val) && val > 0) exchangeRate = val;
-        }
-      } catch (e) {
-        console.error('Error fetching exchange rate:', e);
-      }
+      const exchangeRate = await getUsdCdfExchangeRate();
 
       const userWithdrawals = await db.withdrawal.findMany({
         where: {
@@ -144,7 +142,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const cur = currency;
+    const cur = normalizeCurrency(currency);
     const fee = round2(amount * 0.007);
 
     // Atomic balance check + deduction (race-condition safe)

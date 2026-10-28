@@ -4,6 +4,7 @@ import { hashPassword } from '@/lib/auth'
 import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { RegisterSchema, validateRequest } from '@/lib/validations'
 import crypto from 'crypto'
+import { normalizeInternationalPhone } from '@/lib/countries'
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,6 +34,10 @@ export async function POST(request: NextRequest) {
       photoId,
       referralCode,
     } = validation.data
+    const canonicalPhone = normalizeInternationalPhone(phone)
+    if (!canonicalPhone) {
+      return NextResponse.json({ success: false, message: 'Le numéro doit être valide et inclure son indicatif international.' }, { status: 400 })
+    }
     if (!phone || !name || !pseudo || !role || !password) {
       return NextResponse.json(
         { success: false, message: 'Tous les champs requis doivent être remplis' },
@@ -41,7 +46,7 @@ export async function POST(request: NextRequest) {
     }
 
     const existingUser = await db.user.findUnique({
-      where: { phone },
+      where: { phone: canonicalPhone },
     })
 
     if (existingUser) {
@@ -107,7 +112,7 @@ export async function POST(request: NextRequest) {
 
     const user = await db.user.create({
       data: {
-        phone,
+        phone: canonicalPhone,
         name,
         pseudo,
         country: country || 'CD',

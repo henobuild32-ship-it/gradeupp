@@ -136,14 +136,14 @@ export default function AgentDepositScreen() {
                     onClick={() => setCurrency(value)}
                     disabled={loading}
                   >
-                    {value}
+                    {value === 'FC' ? 'CDF' : value}
                   </Button>
                 ))}
               </div>
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label className="text-foreground font-medium">Montant ({currency})</Label>
+              <Label className="text-foreground font-medium">Montant ({currency === 'FC' ? 'CDF' : currency})</Label>
               <Input
                 type="number"
                 placeholder="0.00"
@@ -165,7 +165,7 @@ export default function AgentDepositScreen() {
                   onClick={() => setAmount(amt.toString())}
                   disabled={loading}
                 >
-                  {currency === 'USD' ? '$' : ''}{amt}{currency === 'FC' ? ' FC' : ''}
+                  {currency === 'USD' ? '$' : ''}{amt}{currency === 'FC' ? ' CDF' : ''}
                 </Button>
               ))}
             </div>

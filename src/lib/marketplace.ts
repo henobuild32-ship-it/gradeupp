@@ -82,10 +82,10 @@ export function validatePaymentMethodsList(raw: unknown): { ok: boolean; error?:
 }
 
 export function formatMarketPrice(price: number, currency: string): string {
-  if (currency === 'FC') {
-    return `${price.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} FC`
+  if (currency === 'FC' || currency === 'CDF') {
+    return `${price.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} CDF`
   }
-  return `$${price.toFixed(2)}`
+  return `${price.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`
 }
 
 export function remainingChatTime(createdAt: string | Date): number {

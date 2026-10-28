@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { signToken, setTokenCookie } from '@/lib/auth';
 import { verifyFirebaseIdToken } from '@/lib/firebase-admin';
 import crypto from 'crypto';
+import { normalizeInternationalPhone } from '@/lib/countries';
 
 // POST /api/auth/google
 // Body: { idToken: string, mode: 'login' | 'register', phone?: string, country?: string, role?: string, referralCode?: string }
@@ -113,6 +114,8 @@ export async function POST(request: NextRequest) {
         { status: 206 } // Partial content: need more profile fields
       );
     }
+    const canonicalPhone = normalizeInternationalPhone(phone)
+    if (!canonicalPhone) return NextResponse.json({ success: false, message: 'Numéro de téléphone international invalide.' }, { status: 400 })
 
     if (!role || !['client', 'agent', 'seller'].includes(role)) {
       return NextResponse.json(
@@ -122,7 +125,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check phone uniqueness
-    const existingPhone = await db.user.findUnique({ where: { phone: phone.trim() } });
+    const existingPhone = await db.user.findUnique({ where: { phone: canonicalPhone } });
     if (existingPhone) {
       return NextResponse.json(
         { success: false, message: 'Ce numéro de téléphone est déjà enregistré' },
@@ -167,7 +170,7 @@ export async function POST(request: NextRequest) {
 
     const newUser = await db.user.create({
       data: {
-        phone: phone.trim(),
+        phone: canonicalPhone,
         name: userDisplayName,
         pseudo,
         email: email?.toLowerCase() || null,

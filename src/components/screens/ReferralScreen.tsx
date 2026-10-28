@@ -200,7 +200,7 @@ export default function ReferralScreen() {
                             <p className="text-[10px] text-muted-foreground">{new Date(reward.createdAt).toLocaleDateString('fr-FR')}</p>
                           </div>
                           <span className="text-sm font-bold text-emerald-600">
-                            +{reward.currency === 'FC' ? '' : '$'}{reward.amount.toFixed(2)} {reward.currency === 'FC' ? 'FC' : ''}
+                            +{reward.currency === 'FC' ? `${reward.amount.toLocaleString('fr-FR')} CDF` : `${reward.amount.toFixed(2)} USD`}
                           </span>
                         </CardContent>
                       </Card>

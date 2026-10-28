@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getAuthUser } from '@/lib/auth'
-import { safeDeduct } from '@/lib/balance'
 import { updateBalanceAndNotify } from '@/lib/notifications'
 
 export async function GET(
@@ -39,7 +38,7 @@ export async function GET(
         currency: link.currency,
         description: link.description,
         status: link.status,
-        allowedMethods: link.allowedMethods || 'wallet,mpesa,orange,airtel,afrimoney',
+        allowedMethods: 'wallet',
         owner: link.user,
       },
     })
@@ -57,7 +56,12 @@ export async function POST(
     const { code } = await params
     const body = await request.json().catch(() => ({}))
     const method = (body as any).method as string | undefined
-    const mobileNumber = (body as any).mobileNumber as string | undefined
+    if (method && method !== 'wallet') {
+      return NextResponse.json(
+        { success: false, message: 'Les prestataires externes ne sont pas activés. Le paiement par lien utilise le Wallet Trait.' },
+        { status: 410 },
+      )
+    }
 
     const link = await prisma.paymentLink.findUnique({
       where: { code },
@@ -81,40 +85,6 @@ export async function POST(
       return NextResponse.json({ success: false, message: 'Ce lien de paiement a atteint le nombre maximal d\'utilisations' }, { status: 400 })
     }
 
-    // ── Mobile Money payment (no auth required) ──
-    if (method && method !== 'wallet') {
-      if (!mobileNumber?.trim()) {
-        return NextResponse.json({ success: false, message: 'Numéro de téléphone requis' }, { status: 400 })
-      }
-
-      // Log the mobile money payment request
-      const txDescription = `Paiement ${method.toUpperCase()} (${mobileNumber.trim()}) via lien ${link.code}`
-      await prisma.$transaction([
-        prisma.transaction.create({
-          data: {
-            type: 'payment_link',
-            amount: link.amount,
-            fee: 0,
-            currency: link.currency,
-            status: 'pending', // pending until mobile money confirms
-            senderId: link.userId, // placeholder sender = owner
-            receiverId: link.userId,
-            description: txDescription,
-          },
-        }),
-        prisma.paymentLink.update({
-          where: { id: link.id },
-          data: { useCount: { increment: 1 } },
-        }),
-      ])
-
-      return NextResponse.json({
-        success: true,
-        method,
-        message: `Demande de paiement ${method} soumise. Le destinataire recevra les fonds après confirmation de l'opérateur.`,
-      })
-    }
-
     // ── TRAIT Wallet payment (requires auth) ──
     const auth = await getAuthUser(request)
     if (!auth) {
@@ -125,16 +95,28 @@ export async function POST(
       return NextResponse.json({ success: false, message: 'Vous ne pouvez pas payer votre propre lien' }, { status: 400 })
     }
 
-    const isFC = link.currency === 'FC'
+    const isFC = link.currency === 'FC' || link.currency === 'CDF'
+    const balanceField = isFC ? 'realBalanceFC' : 'realBalance'
+    const now = new Date()
+    const transaction = await prisma.$transaction(async (tx) => {
+      const linkUse = await tx.paymentLink.updateMany({
+        where: {
+          id: link.id,
+          status: 'active',
+          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+          ...(link.maxUses > 0 ? { useCount: { lt: link.maxUses } } : {}),
+        },
+        data: { useCount: { increment: 1 } },
+      })
+      if (linkUse.count !== 1) throw new Error('PAYMENT_LINK_EXPIRED_OR_EXHAUSTED')
 
-    // Atomic balance check + deduction (race-condition safe)
-    const deductResult = await safeDeduct(auth.userId, link.amount, link.currency)
-    if (!deductResult.success) {
-      return NextResponse.json({ success: false, message: deductResult.message }, { status: 400 })
-    }
+      const debit = await tx.user.updateMany({
+        where: { id: auth.userId, [balanceField]: { gte: link.amount }, tempBlocked: false, suspended: false },
+        data: { [balanceField]: { decrement: link.amount } },
+      })
+      if (debit.count !== 1) throw new Error('PAYMENT_LINK_INSUFFICIENT_BALANCE_OR_BLOCKED')
 
-    const [transaction] = await prisma.$transaction([
-      prisma.transaction.create({
+      const createdTransaction = await tx.transaction.create({
         data: {
           type: 'payment_link',
           amount: link.amount,
@@ -145,26 +127,29 @@ export async function POST(
           receiverId: link.userId,
           description: `Paiement via lien ${link.code}`,
         },
-      }),
-      prisma.user.update({ where: { id: link.userId }, data: isFC ? { realBalanceFC: { increment: link.amount } } : { realBalance: { increment: link.amount } } }),
-      prisma.paymentLink.update({ where: { id: link.id }, data: { useCount: { increment: 1 } } }),
-      prisma.notification.create({
+      })
+      await tx.user.update({
+        where: { id: link.userId },
+        data: isFC ? { realBalanceFC: { increment: link.amount } } : { realBalance: { increment: link.amount } },
+      })
+      await tx.notification.create({
         data: {
           userId: link.userId,
           title: 'Paiement reçu',
           message: `Vous avez reçu ${link.amount.toFixed(2)} ${link.currency} via votre lien de paiement.`,
           type: 'transfer_received',
         },
-      }),
-      prisma.notification.create({
+      })
+      await tx.notification.create({
         data: {
           userId: auth.userId,
           title: 'Paiement effectué',
           message: `Paiement de ${link.amount.toFixed(2)} ${link.currency} envoyé via lien de paiement.`,
           type: 'transfer_sent',
         },
-      }),
-    ])
+      })
+      return createdTransaction
+    })
 
     // Push notification to link owner
     try {
@@ -215,6 +200,12 @@ export async function POST(
       },
     })
   } catch (error) {
+    if (error instanceof Error && error.message === 'PAYMENT_LINK_INSUFFICIENT_BALANCE_OR_BLOCKED') {
+      return NextResponse.json({ success: false, message: 'Solde insuffisant ou compte bloqué.' }, { status: 400 })
+    }
+    if (error instanceof Error && error.message === 'PAYMENT_LINK_EXPIRED_OR_EXHAUSTED') {
+      return NextResponse.json({ success: false, message: 'Ce lien a expiré ou atteint sa limite d’utilisations.' }, { status: 409 })
+    }
     console.error('Payment link POST error:', error)
     return NextResponse.json({ success: false, message: 'Erreur interne du serveur' }, { status: 500 })
   }

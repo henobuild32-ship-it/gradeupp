@@ -146,7 +146,7 @@ export default function ContactPayScreen() {
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-sm font-semibold text-foreground">
-                    {contact.lastCurrency === 'FC' ? '' : '$'}{contact.lastAmount.toFixed(2)} {contact.lastCurrency === 'FC' ? 'FC' : ''}
+                    {contact.lastCurrency === 'FC' ? '' : '$'}{contact.lastAmount.toFixed(2)} {contact.lastCurrency === 'FC' ? 'CDF' : 'USD'}
                   </p>
                 </div>
               </motion.button>

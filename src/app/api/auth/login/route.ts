@@ -4,6 +4,7 @@ import { logSecurityEvent } from '@/lib/security'
 import { verifyAndMigratePassword, signToken, signLoginChallengeToken, setTokenCookie, clearTokenCookie } from '@/lib/auth'
 import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { LoginSchema, validateRequest } from '@/lib/validations'
+import { normalizeInternationalPhone } from '@/lib/countries'
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,7 +26,8 @@ export async function POST(request: NextRequest) {
     }
 
     const { phone, password } = validation.data
-    const normalizedPhone = phone.trim()
+    const normalizedPhone = normalizeInternationalPhone(phone)
+    if (!normalizedPhone) return NextResponse.json({ success: false, message: 'Numéro de téléphone international invalide.' }, { status: 400 })
 
     let user = await db.user.findUnique({
       where: { phone: normalizedPhone },
@@ -33,17 +35,7 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       const digits = normalizedPhone.replace(/\D/g, '')
-      if (digits.length >= 8) {
-        user = await db.user.findFirst({
-          where: {
-            OR: [
-              { phone: digits },
-              { phone: `+${digits}` },
-              { phone: { endsWith: digits.slice(-9) } },
-            ],
-          },
-        })
-      }
+      user = await db.user.findFirst({ where: { OR: [{ phone: digits }, { phone: `+${digits}` }] } })
     }
 
     if (!user) {

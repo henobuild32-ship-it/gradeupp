@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "TRAIT v2.0 - Transfert, Paiement QR & Troc",
-  "short_name": "TRAIT",
-  "description": "Plateforme numérique innovante combinant transfert d'argent, troc digital et marketplace. Accessible avec ou sans internet via USSD.",
+  "name": "Trait Fintech",
+  "short_name": "Trait",
+  "description": "Portefeuille, transferts Trait, paiements QR, marketplace et troc en USD et CDF.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

@@ -21,6 +21,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAppStore } from '@/lib/store';
 import { useTranslation } from '@/lib/i18n';
 import { toast } from 'sonner';
+import { formatCurrencyAmount, formatExchangeRate, normalizeCurrency } from '@/lib/currency';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface ReceiptData {
   id: string;
@@ -31,6 +33,9 @@ interface ReceiptData {
   fee: number;
   total: number;
   currency: string;
+  receivingCurrency?: string | null;
+  amountReceived?: number | null;
+  exchangeRate?: number | null;
   status: string;
   description: string;
   createdAt: string;
@@ -44,6 +49,7 @@ export default function ReceiptScreen() {
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [verificationUrl, setVerificationUrl] = useState('');
 
   const transactionId = pageParams?.transactionId;
 
@@ -51,6 +57,12 @@ export default function ReceiptScreen() {
     if (!transactionId) { setLoading(false); return; }
     fetchReceipt();
   }, [transactionId]);
+
+  useEffect(() => {
+    if (receipt && typeof window !== 'undefined') {
+      setVerificationUrl(`${window.location.origin}/receipt/verify/${encodeURIComponent(receipt.id)}`);
+    }
+  }, [receipt?.id]);
 
   async function fetchReceipt() {
     try {
@@ -73,6 +85,9 @@ export default function ReceiptScreen() {
           fee: transaction.fee,
           total: transaction.amount + transaction.fee,
           currency: transaction.currency,
+          receivingCurrency: transaction.receivingCurrency ?? transaction.currency,
+          amountReceived: transaction.amountReceived ?? transaction.amount,
+          exchangeRate: transaction.exchangeRate ?? null,
           status: transaction.status,
           description: transaction.description || '',
           createdAt: transaction.createdAt,
@@ -95,20 +110,30 @@ export default function ReceiptScreen() {
   }
 
   function formatDate(dateStr: string) {
-    return new Date(dateStr).toLocaleDateString('fr-FR', {
-      day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
-    });
+    return new Intl.DateTimeFormat(undefined, {
+      dateStyle: 'long', timeStyle: 'short', timeZoneName: 'short',
+    }).format(new Date(dateStr));
+  }
+
+  function money(amount: number, currency: string) {
+    return formatCurrencyAmount(amount, normalizeCurrency(currency));
   }
 
   async function handleShare() {
     if (!receipt) return;
-    const text = `TRAIT - Reçu de transaction\nN°: ${receipt.receiptNumber}${receipt.invoiceNumber ? `\nFacture: ${receipt.invoiceNumber}` : ''}\nMontant: ${receipt.currency === 'FC' ? '' : '$'}${receipt.amount.toFixed(2)} ${receipt.currency === 'FC' ? 'FC' : 'USD'}\nDe: ${receipt.sender.name}\nÀ: ${receipt.receiver.name}\nDate: ${formatDate(receipt.createdAt)}`;
-    try { await navigator.share({ title: 'Reçu TRAIT', text }); } catch {}
+    const text = `Trait Fintech — Reçu de transaction\nN°: ${receipt.receiptNumber}${receipt.invoiceNumber ? `\nFacture: ${receipt.invoiceNumber}` : ''}\nEnvoyé: ${money(receipt.amount, receipt.currency)}\nReçu: ${money(receipt.amountReceived ?? receipt.amount, receipt.receivingCurrency || receipt.currency)}\nDe: ${receipt.sender.name}\nÀ: ${receipt.receiver.name}\nDate: ${formatDate(receipt.createdAt)}`;
+    try {
+      if (navigator.share) await navigator.share({ title: 'Reçu Trait Fintech', text });
+      else {
+        await navigator.clipboard.writeText(text);
+        toast.success('Détails du reçu copiés.');
+      }
+    } catch { toast.error('Le partage n’a pas abouti.'); }
   }
 
   async function handleCopy() {
     if (!receipt) return;
-    const text = `Reçu TRAIT\n${receipt.receiptNumber}${receipt.invoiceNumber ? `\nFacture: ${receipt.invoiceNumber}` : ''}\n${formatDate(receipt.createdAt)}\nDe: ${receipt.sender.name} (${receipt.sender.phone})\nÀ: ${receipt.receiver.name} (${receipt.receiver.phone})\nMontant: ${receipt.currency === 'FC' ? '' : '$'}${receipt.amount.toFixed(2)} ${receipt.currency === 'FC' ? 'FC' : 'USD'}\nFrais: ${receipt.currency === 'FC' ? '' : '$'}${receipt.fee.toFixed(2)} ${receipt.currency === 'FC' ? 'FC' : 'USD'}\nTotal: ${receipt.currency === 'FC' ? '' : '$'}${receipt.total.toFixed(2)} ${receipt.currency === 'FC' ? 'FC' : 'USD'}\nStatut: ${receipt.status}`;
+    const text = `Reçu Trait Fintech\n${receipt.receiptNumber}${receipt.invoiceNumber ? `\nFacture: ${receipt.invoiceNumber}` : ''}\n${formatDate(receipt.createdAt)}\nDe: ${receipt.sender.name} (${receipt.sender.phone})\nÀ: ${receipt.receiver.name} (${receipt.receiver.phone})\nEnvoyé: ${money(receipt.amount, receipt.currency)}\nFrais: ${money(receipt.fee, receipt.currency)}\nTotal débité: ${money(receipt.total, receipt.currency)}\nReçu: ${money(receipt.amountReceived ?? receipt.amount, receipt.receivingCurrency || receipt.currency)}${receipt.exchangeRate ? `\nTaux: 1 USD = ${formatExchangeRate(receipt.exchangeRate)} CDF` : ''}\nStatut: ${receipt.status}`;
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -119,15 +144,9 @@ export default function ReceiptScreen() {
 
   function handleDownload() {
     if (!receipt) return;
-    const text = `TRAIT - Reçu de Transaction\n${'='.repeat(40)}\nN° Reçu: ${receipt.receiptNumber}${receipt.invoiceNumber ? `\nN° Facture: ${receipt.invoiceNumber}` : ''}\nDate: ${formatDate(receipt.createdAt)}\n\n--- EXPÉDITEUR ---\nNom: ${receipt.sender.name}\nTéléphone: ${receipt.sender.phone}\n\n--- DESTINATAIRE ---\nNom: ${receipt.receiver.name}\nTéléphone: ${receipt.receiver.phone}\n\n--- DÉTAILS ---\nDescription: ${receipt.description || 'N/A'}\nMontant: ${receipt.currency === 'FC' ? '' : '$'}${receipt.amount.toFixed(2)} ${receipt.currency === 'FC' ? 'FC' : 'USD'}\nFrais: ${receipt.currency === 'FC' ? '' : '$'}${receipt.fee.toFixed(2)} ${receipt.currency === 'FC' ? 'FC' : 'USD'}\nTotal: ${receipt.currency === 'FC' ? '' : '$'}${receipt.total.toFixed(2)} ${receipt.currency === 'FC' ? 'FC' : 'USD'}\nStatut: ${receipt.status}\n\n${'='.repeat(40)}\nMerci d'utiliser TRAIT !`;
-    const blob = new Blob([text], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `recu-${receipt.receiptNumber}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success('Reçu téléchargé !');
+    document.body.classList.add('receipt-print-mode');
+    window.addEventListener('afterprint', () => document.body.classList.remove('receipt-print-mode'), { once: true });
+    window.print();
   }
 
   if (loading) {
@@ -159,9 +178,9 @@ export default function ReceiptScreen() {
       </div>
 
       <div className="px-4 py-4 max-w-md mx-auto print:max-w-none print:p-0">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-border overflow-hidden print:rounded-none print:shadow-none">
-          <div className="bg-[#0D5C63] p-6 text-white text-center">
-            <p className="text-lg font-bold">TRAIT</p>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="receipt-print-area bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-border overflow-hidden print:rounded-none print:shadow-none">
+          <div className="receipt-print-header bg-[#0D5C63] p-6 text-white text-center">
+            <p className="text-lg font-bold">Trait Fintech</p>
             <p className="text-[10px] opacity-80 mt-0.5">Transfert d&apos;argent sécurisé</p>
             <div className="mt-4">
             <p className="text-[10px] opacity-70">N° reçu {receipt.receiptNumber}</p>
@@ -176,7 +195,7 @@ export default function ReceiptScreen() {
               <p className={`text-3xl font-bold mt-2 ${
                 receipt.status === 'failed' ? 'text-red-600' : 'text-gray-900 dark:text-white'
               }`}>
-                {receipt.currency === 'FC' ? '' : '$'}{receipt.amount.toFixed(2)} {receipt.currency === 'FC' ? 'FC' : 'USD'}
+                {money(receipt.amount, receipt.currency)}
               </p>
               {receipt.description && (
                 <p className="text-xs text-muted-foreground mt-1">{receipt.description}</p>
@@ -198,18 +217,36 @@ export default function ReceiptScreen() {
 
             <div className="border-t border-border pt-4 space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Montant</span>
-                <span className="font-medium">{receipt.currency === 'FC' ? '' : '$'}{receipt.amount.toFixed(2)} {receipt.currency === 'FC' ? 'FC' : 'USD'}</span>
+                <span className="text-muted-foreground">Montant envoyé</span>
+                <span className="font-medium">{money(receipt.amount, receipt.currency)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Frais</span>
-                <span className="font-medium">{receipt.currency === 'FC' ? '' : '$'}{receipt.fee.toFixed(2)} {receipt.currency === 'FC' ? 'FC' : 'USD'}</span>
+                <span className="font-medium">{money(receipt.fee, receipt.currency)}</span>
+              </div>
+              {receipt.exchangeRate && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Taux appliqué</span>
+                  <span className="font-medium">1 USD = {formatExchangeRate(receipt.exchangeRate)} CDF</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Montant reçu</span>
+                <span className="font-medium">{money(receipt.amountReceived ?? receipt.amount, receipt.receivingCurrency || receipt.currency)}</span>
               </div>
               <div className="flex justify-between text-sm font-bold pt-2 border-t">
                 <span>Total</span>
-                <span className="text-[#0D5C63]">{receipt.currency === 'FC' ? '' : '$'}{receipt.total.toFixed(2)} {receipt.currency === 'FC' ? 'FC' : 'USD'}</span>
+                <span className="text-[#0D5C63]">{money(receipt.total, receipt.currency)}</span>
               </div>
             </div>
+
+            {verificationUrl && (
+              <div className="border-t border-border pt-4 text-center">
+                <p className="text-xs font-semibold text-foreground">Vérifier l’authenticité du reçu</p>
+                <QRCodeSVG value={verificationUrl} size={116} level="M" includeMargin className="mx-auto mt-2" aria-label="QR code de vérification du reçu" />
+                <p className="break-all text-[10px] text-muted-foreground print:hidden">{verificationUrl}</p>
+              </div>
+            )}
           </div>
         </motion.div>
 
@@ -218,9 +255,9 @@ export default function ReceiptScreen() {
             <Share2 className="h-4 w-4 mr-2" />Partager
           </Button>
           <Button variant="outline" className="flex-1 rounded-xl" onClick={handleDownload}>
-            <Download className="h-4 w-4 mr-2" />Télécharger
+            <Download className="h-4 w-4 mr-2" />Enregistrer en PDF
           </Button>
-          <Button variant="outline" className="flex-1 rounded-xl" onClick={() => window.print()}>
+          <Button variant="outline" className="flex-1 rounded-xl" onClick={handleDownload}>
             <Printer className="h-4 w-4 mr-2" />Imprimer / PDF
           </Button>
           <Button variant="outline" className="flex-1 rounded-xl" onClick={handleCopy}>

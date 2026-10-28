@@ -70,7 +70,7 @@ function formatDate(dateStr: string): string {
 
 function formatAmount(amount: number, currency: string): string {
   if (currency === 'FC') {
-    return `${amount.toLocaleString('fr-FR')} FC`;
+    return `${amount.toLocaleString('fr-FR')} CDF`;
   }
   return `$${amount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }

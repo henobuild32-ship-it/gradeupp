@@ -71,4 +71,13 @@ function getTOTPUri(secret: string, email: string, issuer = 'TRAIT'): string {
   return `otpauth://totp/${encodedIssuer}:${encodedEmail}?secret=${secret}&issuer=${encodedIssuer}&algorithm=SHA1&digits=${DIGITS}&period=${PERIOD}`
 }
 
-export { generateSecret, generateTOTP, verifyTOTP, getTOTPUri }
+function generateRecoveryCodes(count = 10): { codes: string[]; hashes: string[] } {
+  const codes = Array.from({ length: count }, () => crypto.randomBytes(12).toString('hex').toUpperCase())
+  return { codes, hashes: codes.map(hashRecoveryCode) }
+}
+
+function hashRecoveryCode(code: string): string {
+  return crypto.createHash('sha256').update(code.replace(/\s+/g, '').toUpperCase()).digest('hex')
+}
+
+export { generateSecret, generateTOTP, verifyTOTP, getTOTPUri, generateRecoveryCodes, hashRecoveryCode }

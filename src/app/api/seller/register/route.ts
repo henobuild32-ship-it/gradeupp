@@ -3,9 +3,11 @@ import { db } from '@/lib/db'
 import { hashPassword } from '@/lib/auth'
 import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { z } from 'zod'
+import { normalizeInternationalPhone } from '@/lib/countries'
 
 const SellerRegisterSchema = z.object({
   phone: z.string().regex(/^\+[1-9]\d{7,19}$/, 'Numéro de téléphone invalide'),
+  country: z.string().regex(/^[A-Z]{2}$/, 'Pays invalide').optional().default('CD'),
   name: z.string().trim().min(1, 'Le nom complet est obligatoire').max(100),
   email: z.string().trim().email('Adresse email invalide').max(254),
   city: z.string().trim().min(1, 'La ville est obligatoire').max(100),
@@ -30,10 +32,12 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    const { phone, name, email, city, address, businessName, businessType, location, password } = validation.data
+    const { phone, country, name, email, city, address, businessName, businessType, location, password } = validation.data
+    const canonicalPhone = normalizeInternationalPhone(phone)
+    if (!canonicalPhone) return NextResponse.json({ success: false, message: 'Numéro de téléphone international invalide.' }, { status: 400 })
 
     const existingUser = await db.user.findUnique({
-      where: { phone },
+      where: { phone: canonicalPhone },
     })
 
     if (existingUser) {
@@ -59,12 +63,12 @@ export async function POST(request: NextRequest) {
 
     const user = await db.user.create({
       data: {
-        phone,
+        phone: canonicalPhone,
         name,
         email: email.toLowerCase(),
         city,
         address: address || null,
-        country: 'CD',
+        country,
         businessName,
         businessType,
         location,

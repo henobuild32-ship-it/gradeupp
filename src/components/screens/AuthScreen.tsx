@@ -27,22 +27,8 @@ import { toast } from 'sonner';
 import Image from 'next/image';
 import GoogleAuthButton from '@/components/auth/GoogleAuthButton';
 import GoogleSignupModal from '@/components/auth/GoogleSignupModal';
-
-const countryCodes = [
-  { code: '+228', label: '+228', country: 'Togo' },
-  { code: '+229', label: '+229', country: 'Bénin' },
-  { code: '+225', label: '+225', country: "Côte d'Ivoire" },
-  { code: '+224', label: '+224', country: 'Guinée' },
-  { code: '+237', label: '+237', country: 'Cameroun' },
-  { code: '+243', label: '+243', country: 'RDC' },
-  { code: '+221', label: '+221', country: 'Sénégal' },
-  { code: '+223', label: '+223', country: 'Mali' },
-  { code: '+226', label: '+226', country: 'Burkina Faso' },
-  { code: '+234', label: '+234', country: 'Nigeria' },
-  { code: '+233', label: '+233', country: 'Ghana' },
-  { code: '+1', label: '+1', country: 'US/CA' },
-  { code: '+33', label: '+33', country: 'France' },
-];
+import { CountrySelect } from '@/components/shared/CountrySelect';
+import { getCountry, normalizeInternationalPhone } from '@/lib/countries';
 
 type AuthMode = 'login' | 'register';
 type Role = 'client' | 'agent' | 'seller';
@@ -90,7 +76,7 @@ export default function AuthScreen() {
   }, [pageParams?.mode, pageParams?.role]);
 
   // Login fields
-  const [loginCountryCode, setLoginCountryCode] = useState('+243');
+  const [loginCountryCode, setLoginCountryCode] = useState('CD');
   const [loginPhone, setLoginPhone] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
@@ -100,7 +86,7 @@ export default function AuthScreen() {
   // Register fields
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
-  const [regCountryCode, setRegCountryCode] = useState('+243');
+  const [regCountryCode, setRegCountryCode] = useState('CD');
   const [regPhone, setRegPhone] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [showRegPassword, setShowRegPassword] = useState(false);
@@ -120,8 +106,8 @@ export default function AuthScreen() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanedPhone = loginPhone.replace(/\D/g, '');
-    if (!cleanedPhone || cleanedPhone.length < 6) {
+    const fullPhone = normalizeInternationalPhone(loginPhone, loginCountryCode);
+    if (!fullPhone) {
       toast.error(t('validation.phone_required'));
       return;
     }
@@ -129,7 +115,6 @@ export default function AuthScreen() {
       toast.error(t('validation.password_required'));
       return;
     }
-    const fullPhone = `${loginCountryCode}${cleanedPhone}`;
     setLoginLoading(true);
     try {
       const res = await fetch('/api/auth/login', {
@@ -190,8 +175,8 @@ export default function AuthScreen() {
 
   const handleTwoFactorSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!challengeToken || !/^\d{6}$/.test(twoFactorCode)) {
-      toast.error('Saisissez le code à 6 chiffres de votre application d’authentification.');
+    if (!challengeToken || !/^(?:\d{6}|[A-F0-9]{24})$/i.test(twoFactorCode)) {
+      toast.error('Saisissez le code de votre application ou un code de secours.');
       return;
     }
 
@@ -232,7 +217,7 @@ export default function AuthScreen() {
       navigateTo('seller-register');
       return;
     }
-    const cleanedPhone = regPhone.replace(/\D/g, '');
+    const fullPhone = normalizeInternationalPhone(regPhone, regCountryCode);
     if (!regName.trim()) {
       toast.error(t('validation.name_required'));
       return;
@@ -241,7 +226,7 @@ export default function AuthScreen() {
       toast.error(t('validation.email_required'));
       return;
     }
-    if (!cleanedPhone || cleanedPhone.length < 6) {
+    if (!fullPhone) {
       toast.error(t('validation.phone_required'));
       return;
     }
@@ -258,9 +243,7 @@ export default function AuthScreen() {
       return;
     }
 
-    const fullPhone = `${regCountryCode}${cleanedPhone}`;
-    const countryEntry = countryCodes.find((c) => c.code === regCountryCode);
-    const country = countryEntry?.country || 'Togo';
+    const country = regCountryCode;
     setRegisterLoading(true);
     try {
       const res = await fetch('/api/auth/register', {
@@ -481,7 +464,7 @@ export default function AuthScreen() {
                     <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#0D5C63]/10 text-[#0D5C63]"><LockKeyhole className="h-5 w-5" /></span>
                     <div>
                       <h1 className="text-xl font-bold text-foreground">Vérification en deux étapes</h1>
-                      <p className="mt-1 text-sm text-muted-foreground">Saisissez le code de votre application d’authentification.</p>
+                      <p className="mt-1 text-sm text-muted-foreground">Saisissez le code de l’application ou l’un de vos codes de secours.</p>
                     </div>
                   </div>
                   <div className="flex flex-col gap-2">
@@ -489,20 +472,20 @@ export default function AuthScreen() {
                     <Input
                       id="login-2fa-code"
                       type="text"
-                      inputMode="numeric"
+                      inputMode="text"
                       autoComplete="one-time-code"
-                      pattern="[0-9]{6}"
-                      maxLength={6}
+                      pattern="(?:[0-9]{6}|[A-Fa-f0-9]{24})"
+                      maxLength={24}
                       value={twoFactorCode}
-                      onChange={(event) => setTwoFactorCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                      onChange={(event) => setTwoFactorCode(event.target.value.replace(/[^A-Fa-f0-9]/g, '').slice(0, 24).toUpperCase())}
                       className="h-14 text-center text-2xl tracking-[0.5em]"
                       aria-describedby="login-2fa-help"
                       disabled={loginLoading}
                       autoFocus
                     />
-                    <p id="login-2fa-help" className="text-xs text-muted-foreground">Le code change régulièrement. Ne le partagez avec personne.</p>
+                    <p id="login-2fa-help" className="text-xs text-muted-foreground">Un code de secours ne peut être utilisé qu’une fois.</p>
                   </div>
-                  <Button type="submit" disabled={loginLoading || twoFactorCode.length !== 6} className="h-12 w-full rounded-xl bg-[#0D5C63] text-base font-semibold text-white hover:bg-[#083A3E]">
+                  <Button type="submit" disabled={loginLoading || !/^(?:\d{6}|[A-F0-9]{24})$/i.test(twoFactorCode)} className="h-12 w-full rounded-xl bg-[#0D5C63] text-base font-semibold text-white hover:bg-[#083A3E]">
                     {loginLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Vérification…</> : 'Vérifier et continuer'}
                   </Button>
                   <button type="button" onClick={() => { setChallengeToken(null); setTwoFactorCode(''); }} className="self-center text-sm font-semibold text-[#0D5C63] hover:underline">
@@ -522,18 +505,7 @@ export default function AuthScreen() {
                     {t('auth.phone')}
                   </Label>
                   <div className="flex gap-2">
-                    <Select value={loginCountryCode} onValueChange={setLoginCountryCode}>
-                      <SelectTrigger className="w-[100px] shrink-0">
-                        <SelectValue placeholder={t('common.code')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {countryCodes.map((item) => (
-                          <SelectItem key={item.code + item.country} value={item.code}>
-                            <span className="text-xs">{item.code} {item.country}</span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <CountrySelect value={loginCountryCode} onValueChange={setLoginCountryCode} className="w-[46%] shrink-0" />
                     <Input
                       id="login-phone"
                       type="tel"
@@ -541,7 +513,7 @@ export default function AuthScreen() {
                       value={loginPhone}
                       onChange={(e) => setLoginPhone(e.target.value)}
                       className="flex-1 focus-visible:border-blue-500 focus-visible:ring-blue-500/20 h-12 text-base"
-                      autoComplete="tel"
+                      autoComplete="tel-national"
                       disabled={loginLoading}
                     />
                   </div>
@@ -730,18 +702,7 @@ export default function AuthScreen() {
                     {t('auth.phone')}
                   </Label>
                   <div className="flex gap-2">
-                    <Select value={regCountryCode} onValueChange={setRegCountryCode}>
-                      <SelectTrigger className="w-[100px] shrink-0">
-                        <SelectValue placeholder={t('common.code')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {countryCodes.map((item) => (
-                          <SelectItem key={item.code + item.country} value={item.code}>
-                            <span className="text-xs">{item.code} {item.country}</span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <CountrySelect value={regCountryCode} onValueChange={setRegCountryCode} className="w-[46%] shrink-0" />
                     <Input
                       id="reg-phone"
                       type="tel"
@@ -750,7 +711,7 @@ export default function AuthScreen() {
                       value={regPhone}
                       onChange={(e) => setRegPhone(e.target.value)}
                       className="flex-1 focus-visible:border-blue-500 focus-visible:ring-blue-500/20 h-12 text-base"
-                      autoComplete="tel"
+                      autoComplete="tel-national"
                       disabled={registerLoading}
                     />
                   </div>

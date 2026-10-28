@@ -6,37 +6,13 @@ import { Loader2, Gift, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAppStore, type User } from '@/lib/store';
 import { useTranslation } from '@/lib/i18n';
 import { toast } from 'sonner';
+import { CountrySelect } from '@/components/shared/CountrySelect';
+import { parsePhoneNumberFromString } from 'libphonenumber-js/max';
 
-const countries = [
-  { value: 'Togo', label: '🇹🇬 Togo' },
-  { value: 'Bénin', label: '🇧🇯 Bénin' },
-  { value: "Côte d'Ivoire", label: "🇨🇮 Côte d'Ivoire" },
-  { value: 'Sénégal', label: '🇸🇳 Sénégal' },
-  { value: 'Mali', label: '🇲🇱 Mali' },
-  { value: 'Burkina Faso', label: '🇧🇫 Burkina Faso' },
-  { value: 'Niger', label: '🇳🇪 Niger' },
-  { value: 'Guinée', label: '🇬🇳 Guinée' },
-  { value: 'Cameroun', label: '🇨🇲 Cameroun' },
-  { value: 'RDC', label: '🇨🇩 RDC' },
-  { value: 'Congo', label: '🇨🇬 Congo' },
-  { value: 'Gabon', label: '🇬🇦 Gabon' },
-  { value: 'Nigeria', label: '🇳🇬 Nigeria' },
-  { value: 'Ghana', label: '🇬🇭 Ghana' },
-  { value: 'France', label: '🇫🇷 France' },
-  { value: 'US', label: '🇺🇸 États-Unis' },
-  { value: 'Canada', label: '🇨🇦 Canada' },
-  { value: 'UK', label: '🇬🇧 Royaume-Uni' },
-];
 
 export default function AuthProfileScreen() {
   const phoneNumber = useAppStore((s) => s.phoneNumber);
@@ -48,7 +24,9 @@ export default function AuthProfileScreen() {
 
   const [name, setName] = useState('');
   const [pseudo, setPseudo] = useState('');
-  const [country, setCountry] = useState('');
+  const [country, setCountry] = useState<string>(() => {
+    try { return parsePhoneNumberFromString(phoneNumber || '')?.country ?? 'CD' } catch { return 'CD' }
+  });
   const [email, setEmail] = useState('');
   const [gender, setGender] = useState('');
   const [city, setCity] = useState('');
@@ -241,21 +219,10 @@ export default function AuthProfileScreen() {
 
           {/* Country */}
           <div className="flex flex-col gap-2">
-            <Label htmlFor="country" className="text-foreground font-medium">
+            <Label className="text-foreground font-medium">
               {t('auth.country')}
             </Label>
-            <Select value={country} onValueChange={setCountry} disabled={loading}>
-              <SelectTrigger className="w-full h-12  focus:ring-blue-500/20 text-base">
-                <SelectValue placeholder={t('auth.select_country')} />
-              </SelectTrigger>
-              <SelectContent>
-                {countries.map((c) => (
-                  <SelectItem key={c.value} value={c.value}>
-                    {c.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <CountrySelect value={country} onValueChange={setCountry} placeholder={t('auth.select_country')} disabled={loading} />
           </div>
 
           {/* Agent-specific fields */}

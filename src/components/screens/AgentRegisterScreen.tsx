@@ -25,44 +25,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { useAppStore } from '@/lib/store';
 import { useTranslation } from '@/lib/i18n';
 import { toast } from 'sonner';
-
-const countries = [
-  { value: 'CD', label: '🇨🇩 RD Congo' },
-  { value: 'CG', label: '🇨🇬 Congo' },
-  { value: 'CM', label: '🇨🇲 Cameroun' },
-  { value: 'TG', label: '🇹🇬 Togo' },
-  { value: 'BJ', label: '🇧🇯 Bénin' },
-  { value: 'CI', label: "🇨🇮 Côte d'Ivoire" },
-  { value: 'SN', label: '🇸🇳 Sénégal' },
-  { value: 'ML', label: '🇲🇱 Mali' },
-  { value: 'BF', label: '🇧🇫 Burkina Faso' },
-  { value: 'GN', label: '🇬🇳 Guinée' },
-  { value: 'NG', label: '🇳🇬 Nigeria' },
-  { value: 'GA', label: '🇬🇦 Gabon' },
-  { value: 'GH', label: '🇬🇭 Ghana' },
-  { value: 'FR', label: '🇫🇷 France' },
-  { value: 'US', label: '🇺🇸 États-Unis' },
-  { value: 'CA', label: '🇨🇦 Canada' },
-  { value: 'GB', label: '🇬🇧 Royaume-Uni' },
-];
-
-const cities = [
-  'Kinshasa', 'Lubumbashi', 'Mbuji-Mayi', 'Kananga', 'Kisangani',
-  'Goma', 'Bukavu', 'Tshikapa', 'Matadi', 'Mbandaka',
-  'Brazzaville', 'Pointe-Noire', 'Douala', 'Yaoundé',
-  'Lomé', 'Cotonou', 'Abidjan', 'Dakar', 'Bamako',
-  'Ouagadougou', 'Conakry', 'Lagos', 'Libreville', 'Accra',
-];
+import { CountrySelect } from '@/components/shared/CountrySelect';
+import { normalizeInternationalPhone } from '@/lib/countries';
 
 // ─── Animation Variants ──────────────────────────────────────────
 
@@ -88,6 +55,7 @@ export default function AgentRegisterScreen() {
   // Form state
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [phoneCountry, setPhoneCountry] = useState('CD');
   const [email, setEmail] = useState('');
   const [gender, setGender] = useState('');
   const [country, setCountry] = useState('');
@@ -109,20 +77,7 @@ export default function AgentRegisterScreen() {
 
   // ─── Phone Formatting ────────────────────────────────────────
 
-  const handlePhoneChange = (value: string) => {
-    let cleaned = value.replace(/[^\d+]/g, '');
-    // Auto-add +243 prefix if user types without it
-    if (cleaned.length > 0 && !cleaned.startsWith('+')) {
-      if (cleaned.startsWith('243')) {
-        cleaned = '+' + cleaned;
-      } else if (cleaned.startsWith('0')) {
-        cleaned = '+243' + cleaned.substring(1);
-      } else if (!cleaned.startsWith('+')) {
-        cleaned = '+243' + cleaned;
-      }
-    }
-    setPhone(cleaned);
-  };
+  const handlePhoneChange = (value: string) => setPhone(value);
 
   // ─── Photo Handling ──────────────────────────────────────────
 
@@ -183,7 +138,7 @@ export default function AgentRegisterScreen() {
   const isStep1Valid = () => {
     return (
       name.trim().length >= 2 &&
-      phone.length >= 12 &&
+      normalizeInternationalPhone(phone, phoneCountry) !== null &&
       email.includes('@') && email.includes('.') &&
       gender !== '' &&
       country !== '' &&
@@ -210,6 +165,11 @@ export default function AgentRegisterScreen() {
       toast.error('Veuillez remplir tous les champs correctement');
       return;
     }
+    const normalizedPhone = normalizeInternationalPhone(phone, phoneCountry)
+    if (!normalizedPhone) {
+      toast.error('Entrez un numéro valide pour le pays sélectionné.')
+      return
+    }
 
     if (password !== confirmPassword) {
       toast.error('Les mots de passe ne correspondent pas');
@@ -230,7 +190,7 @@ export default function AgentRegisterScreen() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          phone: phone.trim(),
+          phone: normalizedPhone,
           password: password,
           role: 'agent',
           name: name.trim(),
@@ -402,22 +362,22 @@ export default function AgentRegisterScreen() {
                 <Label htmlFor="agent-phone" className="text-foreground font-medium text-sm">
                   Numéro de téléphone <span className="text-red-500">*</span>
                 </Label>
+                <CountrySelect value={phoneCountry} onValueChange={setPhoneCountry} disabled={loading} />
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="agent-phone"
                     type="tel"
-                    placeholder="+243 812 345 678"
+                    inputMode="tel"
+                    placeholder="Numéro national"
                     value={phone}
                     onChange={(e) => handlePhoneChange(e.target.value)}
                     className="h-11 pl-9 text-sm font-mono"
-                    autoComplete="tel"
+                    autoComplete="tel-national"
                     disabled={loading}
                   />
                 </div>
-                <p className="text-[10px] text-muted-foreground">
-                  Format: +243 XXX XXX XXX
-                </p>
+                <p className="text-[10px] text-muted-foreground">L’indicatif du pays sélectionné sera ajouté automatiquement.</p>
               </motion.div>
 
               {/* Email */}
@@ -475,18 +435,7 @@ export default function AgentRegisterScreen() {
                 </Label>
                 <div className="relative">
                   <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
-                  <Select value={country} onValueChange={setCountry} disabled={loading}>
-                    <SelectTrigger className="h-11 pl-9 text-sm">
-                      <SelectValue placeholder="Sélectionner le pays" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {countries.map((c) => (
-                        <SelectItem key={c.value} value={c.value}>
-                          {c.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <CountrySelect value={country} onValueChange={setCountry} placeholder="Sélectionner le pays" disabled={loading} />
                 </div>
               </motion.div>
 
@@ -497,18 +446,7 @@ export default function AgentRegisterScreen() {
                 </Label>
                 <div className="relative">
                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Select value={city} onValueChange={setCity} disabled={loading}>
-                    <SelectTrigger className="h-11 pl-9 text-sm">
-                      <SelectValue placeholder="Sélectionner la ville" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {cities.map((c) => (
-                        <SelectItem key={c} value={c}>
-                          {c}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Input id="agent-city" value={city} onChange={(event) => setCity(event.target.value)} placeholder="Ville" disabled={loading} className="h-11 pl-9 text-sm" />
                 </div>
               </motion.div>
 
@@ -540,7 +478,7 @@ export default function AgentRegisterScreen() {
                       toast.error('Veuillez entrer votre nom complet');
                       return;
                     }
-                    if (phone.length < 12) {
+                    if (!normalizeInternationalPhone(phone, phoneCountry)) {
                       toast.error('Veuillez entrer un numéro de téléphone valide');
                       return;
                     }
@@ -699,7 +637,7 @@ export default function AgentRegisterScreen() {
                       </div>
                       <div>
                         <span className="text-muted-foreground">Téléphone:</span>
-                        <p className="font-medium font-mono text-foreground">{phone}</p>
+                        <p className="font-medium font-mono text-foreground">{normalizeInternationalPhone(phone, phoneCountry)}</p>
                       </div>
                       <div>
                         <span className="text-muted-foreground">Email:</span>

@@ -6,39 +6,12 @@ import { User, Phone, Globe, X, Loader2, Check, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { useAppStore } from '@/lib/store';
 import { routeAfterAuth } from '@/lib/route-after-auth';
 import { markFreshAuth } from '@/lib/session-flag';
 import { toast } from 'sonner';
-
-const countryCodes = [
-  { code: '+228', country: 'Togo' },
-  { code: '+229', country: 'Bénin' },
-  { code: '+225', country: "Côte d'Ivoire" },
-  { code: '+224', country: 'Guinée' },
-  { code: '+237', country: 'Cameroun' },
-  { code: '+243', country: 'RDC' },
-  { code: '+221', country: 'Sénégal' },
-  { code: '+223', country: 'Mali' },
-  { code: '+226', country: 'Burkina Faso' },
-  { code: '+234', country: 'Nigeria' },
-  { code: '+233', country: 'Ghana' },
-  { code: '+1', country: 'US/CA' },
-  { code: '+33', country: 'France' },
-];
-
-const countries = [
-  'Togo', 'Bénin', "Côte d'Ivoire", 'Sénégal', 'Mali', 'Burkina Faso',
-  'Niger', 'Guinée', 'Cameroun', 'RDC', 'Congo', 'Gabon', 'Nigeria',
-  'Ghana', 'France', 'US', 'Canada', 'UK',
-];
+import { CountrySelect } from '@/components/shared/CountrySelect';
+import { normalizeInternationalPhone } from '@/lib/countries';
 
 interface GoogleSignupModalProps {
   open: boolean;
@@ -61,19 +34,20 @@ export default function GoogleSignupModal({
   selectedRole,
 }: GoogleSignupModalProps) {
   const { setUser, setToken, navigateTo } = useAppStore();
-  const [phoneCountryCode, setPhoneCountryCode] = useState('+243');
+  const [phoneCountryCode, setPhoneCountryCode] = useState('CD');
   const [phone, setPhone] = useState('');
   const [country, setCountry] = useState('');
   const [referralCode, setReferralCode] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const isValidPhone = phone.replace(/\s/g, '').length >= 6;
+  const isValidPhone = normalizeInternationalPhone(phone, phoneCountryCode) !== null;
   const canSubmit = isValidPhone && country;
 
   async function handleSubmit() {
     if (!canSubmit || loading) return;
 
-    const fullPhone = `${phoneCountryCode}${phone.replace(/\s/g, '')}`;
+    const fullPhone = normalizeInternationalPhone(phone, phoneCountryCode);
+    if (!fullPhone) return;
     setLoading(true);
 
     try {
@@ -204,26 +178,15 @@ export default function GoogleSignupModal({
                 <Label htmlFor="g-phone" className="text-xs font-medium text-foreground">
                   Téléphone <span className="text-red-500">*</span>
                 </Label>
-                <div className="flex gap-2">
-                  <Select value={phoneCountryCode} onValueChange={setPhoneCountryCode}>
-                    <SelectTrigger className="w-[110px] h-11 shrink-0">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {countryCodes.map((c) => (
-                        <SelectItem key={c.code} value={c.code}>
-                          {c.code} {c.country}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="space-y-2">
+                  <CountrySelect value={phoneCountryCode} onValueChange={setPhoneCountryCode} />
                   <Input
                     id="g-phone"
                     type="tel"
                     placeholder="000 000 000"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="h-11 flex-1"
+                    className="h-11"
                   />
                 </div>
                 <p className="text-[10px] text-muted-foreground">
@@ -236,18 +199,7 @@ export default function GoogleSignupModal({
                 <Label htmlFor="g-country" className="text-xs font-medium text-foreground">
                   Pays <span className="text-red-500">*</span>
                 </Label>
-                <Select value={country} onValueChange={setCountry}>
-                  <SelectTrigger id="g-country" className="h-11">
-                    <SelectValue placeholder="Sélectionnez votre pays" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {countries.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {c}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <CountrySelect value={country} onValueChange={setCountry} placeholder="Sélectionnez votre pays" />
               </div>
 
               {/* Referral code — optional */}
