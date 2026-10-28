@@ -14,13 +14,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Données de subscription invalides' }, { status: 400 })
     }
 
+    const existing = await db.pushSubscription.findUnique({ where: { endpoint }, select: { userId: true } })
+    if (existing && existing.userId !== auth.userId) {
+      return NextResponse.json({ success: false, message: 'Cet appareil est déjà associé à un autre compte.' }, { status: 409 })
+    }
+
     await db.pushSubscription.upsert({
       where: { endpoint },
-      update: { p256dh, auth: authKey, userId: auth.userId },
+      update: { p256dh, auth: authKey },
       create: { endpoint, p256dh, auth: authKey, userId: auth.userId },
     })
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true }, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (error) {
     console.error('Push subscribe error:', error)
     return NextResponse.json({ success: false, message: 'Erreur serveur' }, { status: 500 })
@@ -36,12 +41,12 @@ export async function DELETE(request: NextRequest) {
     const endpoint = searchParams.get('endpoint')
 
     if (endpoint) {
-      await db.pushSubscription.deleteMany({ where: { endpoint } })
+      await db.pushSubscription.deleteMany({ where: { endpoint, userId: auth.userId } })
     } else {
       await db.pushSubscription.deleteMany({ where: { userId: auth.userId } })
     }
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true }, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (error) {
     console.error('Push unsubscribe error:', error)
     return NextResponse.json({ success: false, message: 'Erreur serveur' }, { status: 500 })
