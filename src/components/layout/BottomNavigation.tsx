@@ -2,7 +2,7 @@
 
 import { useAppStore, PageName } from '@/lib/store';
 import { useTranslation } from '@/lib/i18n';
-import { Home, ArrowLeftRight, Store, Settings, Phone, MessageSquare, Globe, Bell, ShieldCheck, ShoppingBag, Handshake } from 'lucide-react';
+import { Home, ArrowLeftRight, Store, Settings, MessageSquare, Globe, Bell, ShieldCheck, ShoppingBag, Handshake } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface NavItem {
@@ -43,7 +43,7 @@ export default function BottomNavigation() {
   const isSeller = user?.role === 'seller';
   const navItems = isSeller ? sellerNavItems : isAgent ? agentNavItems : clientNavItems;
 
-  const clientSubPages: PageName[] = ['withdraw', 'deposit', 'history', 'notifications', 'profile', 'marketplace-detail', 'orders', 'barter', 'barter-detail', 'barter-create', 'barter-chats', 'ussd', 'receipt'];
+  const clientSubPages: PageName[] = ['withdraw', 'deposit', 'history', 'notifications', 'profile', 'marketplace-detail', 'orders', 'barter', 'barter-detail', 'barter-create', 'barter-chats', 'receipt'];
   const agentSubPages: PageName[] = ['agent-activity', 'agent-messages', 'notifications', 'marketplace-detail', 'marketplace-sell', 'orders', 'receipt', 'barter', 'barter-detail', 'barter-create', 'barter-chats', 'profile'];
   const sellerSubPages: PageName[] = ['seller-products', 'seller-qr-scanner', 'orders', 'marketplace', 'marketplace-detail', 'marketplace-sell', 'receipt', 'profile', 'barter', 'barter-detail', 'barter-create', 'barter-chats'];
   const subPages = isSeller ? sellerSubPages : isAgent ? agentSubPages : clientSubPages;

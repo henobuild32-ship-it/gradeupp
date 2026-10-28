@@ -166,21 +166,6 @@ const seed = async () => {
   );
   console.log('🏢 Agent:', agent.name, `(Code: ${agent.agentCode})`);
 
-  // ── User settings ─────────────────────────────────────────────────
-  for (const u of [user1, user2, user3, agent]) {
-    await db.userSettings.upsert({
-      where: { userId: u.id },
-      update: {},
-      create: {
-        userId: u.id,
-        ussdLanguage: 'fr',
-        defaultCurrency: 'USD',
-        smsNotifications: false,
-      },
-    });
-  }
-  console.log('✅ Paramètres utilisateur créés');
-
   // ── App Version ───────────────────────────────────────────────────
   await db.appVersion.upsert({
     where: { version: '2.0.0' },
@@ -199,7 +184,6 @@ const seed = async () => {
         'Système de support client avec historique',
         'Admin KYC : validation documents + selfie',
         'Changement de PIN sécurisé',
-        'USSD 28 menus hors ligne',
         'Scan QR natif via ML Kit',
         'Permissions Android optimisées',
       ].join('\n'),
@@ -220,27 +204,12 @@ const seed = async () => {
         'Système de support client avec historique',
         'Admin KYC : validation documents + selfie',
         'Changement de PIN sécurisé',
-        'USSD 28 menus hors ligne',
         'Scan QR natif via ML Kit',
         'Permissions Android optimisées',
       ].join('\n'),
     },
   });
   console.log('✅ AppVersion 2.0.0 enregistrée');
-
-  // ── Sample favorites ──────────────────────────────────────────────
-  try {
-    await db.ussdFavorite.createMany({
-      data: [
-        { userId: user1.id, label: 'Maman', phone: '+243820000002', type: 'transfer' },
-        { userId: user1.id, label: 'Pierre', phone: '+243830000003', type: 'transfer' },
-      ],
-      skipDuplicates: true,
-    });
-    console.log('✅ Favoris USSD créés');
-  } catch {
-    console.log('ℹ️ Favoris déjà existants');
-  }
 
   // ── Activity log ──────────────────────────────────────────────────
   await db.adminActivityLog.create({

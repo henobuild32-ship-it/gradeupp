@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { resetSessionExpiredFlag } from '@/lib/api';
 import { isFreshAuth } from '@/lib/session-flag';
 import { routeAfterAuth } from '@/lib/route-after-auth';
+import { clearRetiredOfflineData } from '@/lib/legacy-offline-cleanup';
 
 // Auth screens
 const WelcomeScreen = lazy(() => import('@/components/screens/WelcomeScreen'));
@@ -29,7 +30,6 @@ const SendScreen = lazy(() => import('@/components/screens/SendScreen'));
 const WithdrawScreen = lazy(() => import('@/components/screens/WithdrawScreen'));
 const DepositScreen = lazy(() => import('@/components/screens/DepositScreen'));
 const HistoryScreen = lazy(() => import('@/components/screens/HistoryScreen'));
-const USSDScreen = lazy(() => import('@/components/screens/USSDScreen'));
 const MarketplaceScreen = lazy(() => import('@/components/screens/MarketplaceScreen'));
 const MarketplaceDetailScreen = lazy(() => import('@/components/screens/MarketplaceDetailScreen'));
 const BarterScreen = lazy(() => import('@/components/screens/BarterScreen'));
@@ -191,7 +191,6 @@ const screenMap: Record<PageName, React.LazyExoticComponent<React.ComponentType>
   withdraw: WithdrawScreen,
   deposit: DepositScreen,
   history: HistoryScreen,
-  ussd: USSDScreen,
   marketplace: MarketplaceScreen,
   'marketplace-detail': MarketplaceDetailScreen,
   'marketplace-sell': SellerProductsScreen,
@@ -273,7 +272,7 @@ const screenMap: Record<PageName, React.LazyExoticComponent<React.ComponentType>
   'trait-ai-welcome': TraitAIScreen,
 };
 
-const pagesWithNav: PageName[] = ['home', 'send', 'withdraw', 'deposit', 'history', 'ussd', 'marketplace', 'marketplace-detail', 'marketplace-sell', 'orders', 'barter', 'barter-detail', 'barter-create', 'barter-chats', 'notifications', 'settings', 'profile', 'agent-dashboard', 'agent-deposit', 'agent-withdraw-validate', 'agent-activity', 'agent-messages', 'card-request', 'card-payment', 'card', 'virtual-card', 'kyc-verification', 'seller-dashboard', 'seller-products', 'child-sponsorship'];
+const pagesWithNav: PageName[] = ['home', 'send', 'withdraw', 'deposit', 'history', 'marketplace', 'marketplace-detail', 'marketplace-sell', 'orders', 'barter', 'barter-detail', 'barter-create', 'barter-chats', 'notifications', 'settings', 'profile', 'agent-dashboard', 'agent-deposit', 'agent-withdraw-validate', 'agent-activity', 'agent-messages', 'card-request', 'card-payment', 'card', 'virtual-card', 'kyc-verification', 'seller-dashboard', 'seller-products', 'child-sponsorship'];
 
 const adminPages: PageName[] = ['admin-login', 'admin-dashboard', 'admin-users', 'admin-agents', 'admin-transactions', 'admin-market', 'admin-barter', 'admin-notifications', 'admin-activity-log', 'admin-bonus', 'admin-bonus-adjust', 'admin-bonus-history', 'admin-bonus-campaigns', 'admin-agent-validation', 'admin-messages', 'admin-developers', 'admin-card-requests', 'admin-cards', 'admin-client-messages', 'admin-seller-validation', 'admin-sellers', 'admin-children', 'admin-kyc', 'admin-support', 'admin-reports'];
 
@@ -351,6 +350,10 @@ export default function TraitApp() {
 
   // Enable real-time WebSocket for notifications and balance updates
   useRealtime();
+
+  useEffect(() => {
+    clearRetiredOfflineData();
+  }, []);
 
   // Verrouillage à la réouverture de l'app (rechargement / cold start APK) :
   // toute session restaurée depuis le stockage local passe par l'écran de
@@ -492,7 +495,7 @@ export default function TraitApp() {
           // rester sur un écran de transaction — retour forcé à la config.
           if (data.user.pinSet === false) {
             const cur = useAppStore.getState().currentPage;
-            const transactable: PageName[] = ['home', 'send', 'withdraw', 'deposit', 'history', 'ussd', 'marketplace', 'marketplace-detail', 'marketplace-sell', 'orders', 'barter', 'barter-detail', 'barter-create', 'barter-chats', 'bills', 'bundle-catalog', 'micro-credit', 'savings-goals', 'payment-links', 'payment-requests', 'recurring-payments', 'international-transfer', 'card', 'virtual-card', 'card-payment', 'card-request', 'contact-pay', 'agent-dashboard', 'agent-deposit', 'agent-withdraw-validate', 'seller-dashboard', 'seller-products'];
+            const transactable: PageName[] = ['home', 'send', 'withdraw', 'deposit', 'history', 'marketplace', 'marketplace-detail', 'marketplace-sell', 'orders', 'barter', 'barter-detail', 'barter-create', 'barter-chats', 'bills', 'bundle-catalog', 'micro-credit', 'savings-goals', 'payment-links', 'payment-requests', 'recurring-payments', 'international-transfer', 'card', 'virtual-card', 'card-payment', 'card-request', 'contact-pay', 'agent-dashboard', 'agent-deposit', 'agent-withdraw-validate', 'seller-dashboard', 'seller-products'];
             if (transactable.includes(cur)) {
               toast.info('Configurez votre code PIN pour effectuer des transactions');
               useAppStore.getState().navigateTo('pin-setup');

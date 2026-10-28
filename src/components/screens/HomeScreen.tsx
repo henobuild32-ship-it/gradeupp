@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Bell, Send, ArrowDownToLine, ArrowUpFromLine, History, Phone, Store,
+  Bell, Send, ArrowDownToLine, ArrowUpFromLine, History, Store,
   BadgeCheck, Activity, UserPlus, ShieldCheck, Wallet, Globe, MessageSquare,
   Copy, Check, ArrowUpRight, ArrowDownLeft, CreditCard, Clock, ChevronRight,
   QrCode, MessageCircle, Link, Handshake, Repeat, Radio, FileText, PiggyBank,
@@ -89,7 +89,6 @@ const serviceCategories = [
     items: [
       { labelKey: 'home.cat_referral', icon: Gift, page: 'referral' as const, color: '#C026D3' },
       { labelKey: 'home.cat_contacts', icon: Contact, page: 'contact-pay' as const, color: '#65A30D' },
-      { labelKey: 'action.ussd', icon: Phone, page: 'ussd' as const, color: '#7C3AED' },
       { labelKey: 'home.cat_analytics', icon: BarChart3, page: 'analytics' as const, color: '#0891B2' },
     ],
   },
@@ -101,7 +100,6 @@ const agentActions = [
   { labelKey: 'action.agent_activity', icon: Activity, page: 'agent-activity' as const, color: '#D97706' },
   { labelKey: 'action.messages', icon: MessageSquare, page: 'agent-messages' as const, color: '#DC2626' },
   { labelKey: 'action.marketplace', icon: Store, page: 'marketplace' as const, color: '#0891B2' },
-  { labelKey: 'action.ussd', icon: Phone, page: 'ussd' as const, color: '#7C3AED' },
   { labelKey: 'QR Code', icon: QrCode, page: 'my-qr-code' as const, color: '#4F46E5' },
   { labelKey: 'home.extra_support', icon: MessageCircle, page: 'support' as const, color: '#0D9488' },
 ];

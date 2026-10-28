@@ -9,7 +9,6 @@ All 9 screen components have been created at `/home/z/my-project/src/components/
 3. **BarterScreen.tsx** - Barter offer listing with search, category filters (Tout, Services, Produits, Compétences), offer cards with category badges, floating action button
 4. **BarterDetailScreen.tsx** - Offer detail with chat integration, create chat via API, send messages, auto-refresh every 3s
 5. **BarterCreateScreen.tsx** - Form with title, description, category select, offered/wanted items, submit to API
-6. **USSDScreen.tsx** - Phone keypad interface with status bar, display screen, digit grid with letters, call button, preset codes (*1709#, *1709*1#, *1709*2#), simulated responses
 7. **NotificationsScreen.tsx** - Notification list with type-based icons (DollarSign, Shield, Gift, etc.), relative timestamps, unread dot, mark as read, mark all
 8. **SettingsScreen.tsx** - Profile card with avatar, security settings, dark mode toggle (connected to store), language, PWA install, about, logout button
 9. **ProfileScreen.tsx** - Avatar with initials, editable name/pseudo/country, read-only phone, balance info (real + bonus with non-withdrawable note)

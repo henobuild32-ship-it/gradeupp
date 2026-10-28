@@ -94,7 +94,7 @@ export default function WithdrawScreen() {
 
       Promise.all(
         codes.map((c) =>
-          fetch(`/api/ussd/agent-lookup?code=${encodeURIComponent(c)}`, { headers })
+          fetch(`/api/agent/lookup?code=${encodeURIComponent(c)}`, { headers })
             .then((r) => r.json())
             .catch(() => null)
         )

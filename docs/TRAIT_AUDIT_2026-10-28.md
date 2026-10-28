@@ -51,3 +51,14 @@ Principaux parcours identifiés : accueil/authentification; portefeuille et tran
 - KYC, reçus PDF, push, upload média, Marketplace, rôles et actions administrateur existent en code, mais leur parcours complet n'a pas encore été vérifié avec des comptes isolés.
 - Aucun compte de test n'a été créé dans la base distante. Aucune transaction financière ni migration de schéma n'a été exécutée sur la production pendant ce chantier.
 - Le téléphone i5C+ et les autres appareils réels restent à vérifier par l'utilisateur; l'inspection responsive visuelle n'a pas pu être effectuée sans accès navigateur.
+
+## Phase 2 — retrait du module USSD et stabilisation (28 octobre 2026)
+
+- Les écrans, 11 handlers API, la route de réglages/favoris dédiée, le stockage local, la file hors ligne et le raccourci PWA du module USSD sont retirés. L'ancienne entrée persistée est migrée vers l'accueil afin d'éviter une route vide après mise à jour.
+- Les deux tables qui ne servaient qu'à l'ancien menu sont archivées par renommage dans une migration dédiée; aucune ligne n'est supprimée. Un rollback de renommage est fourni. La migration SQL n'a pas été appliquée à la base distante.
+- Les anciens types de transactions d'agent restent lisibles dans l'historique, sans réactiver le module retiré. Les anciennes copies hors ligne sont effacées au démarrage client.
+- Le formulaire de retrait par agent utilise maintenant le handler actif `/api/agent/lookup` plutôt qu'un handler retiré.
+- `npx next build`: réussi, 142 routes générées. `npx tsc --noEmit`: réussi. `npm run lint -- --no-cache`: réussi. `npm test`: 10 réussis, 0 échec. `npx prisma validate`: réussi. `git diff --check`: réussi (avertissements de fin de ligne seulement).
+- `scripts/e2e-smoke.ts` a perdu son nettoyage d'un modèle Prisma supprimé; le script lui-même n'a pas été exécuté, car son accès DB avec `.env` n'est pas isolé.
+- Contrôle statique: aucune fonctionnalité USSD active ne reste dans `src`, `public`, `prisma/seed.ts`, le SQL de déploiement, les tests ou scripts. Les seules références d'exécution conservées sont le nettoyage d'une ancienne clé/cache, la migration de routes persistées et le rendu de vieux libellés de transactions.
+- Le build a généré 142 routes contre 153 au départ, soit les 11 handlers API supprimés. La suppression des noms de tables du schéma Prisma n'a pas fait perdre leurs données archivées.

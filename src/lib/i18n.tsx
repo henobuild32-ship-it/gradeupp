@@ -335,7 +335,6 @@ const translations: Record<string, TranslationDict> = {
     'action.agent_deposit': 'Dépôt client',
     'action.agent_validate': 'Valider retrait',
     'action.agent_activity': 'Mon activité',
-    'action.ussd': 'USSD',
     'action.messages': 'Messages',
 
     // ── Navigation ──
@@ -455,12 +454,6 @@ const translations: Record<string, TranslationDict> = {
     'barter.empty': 'Aucune offre de troc',
     'barter.create': 'Créer une offre',
 
-    // ── USSD ──
-    'ussd.title': 'Services USSD',
-    'ussd.transfer': 'Transfert',
-    'ussd.credit': 'Achat crédit',
-    'ussd.bills': 'Paiement factures',
-    'ussd.balance': 'Solde',
 
     // ── Agent ──
     'agent.dashboard': 'Tableau de bord Agent',
@@ -1089,7 +1082,6 @@ const translations: Record<string, TranslationDict> = {
     'action.agent_deposit': 'Client Deposit',
     'action.agent_validate': 'Validate Withdraw',
     'action.agent_activity': 'My Activity',
-    'action.ussd': 'USSD',
     'action.messages': 'Messages',
 
     // ── Navigation ──
@@ -1256,7 +1248,6 @@ const translations: Record<string, TranslationDict> = {
     'deposit.title': 'Deposit Money',
     'marketplace.title': 'Marketplace',
     'barter.title': 'Digital Barter',
-    'ussd.title': 'USSD Services',
     'agent.dashboard': 'Agent Dashboard',
     'agent.deposit_title': 'Client Deposit',
     'agent.validate_withdraw': 'Validate Withdrawal',
@@ -1356,7 +1347,6 @@ const translations: Record<string, TranslationDict> = {
     'action.agent_deposit': 'Kotia ya mopaya',
     'action.agent_validate': 'Kobakisa kobimisa',
     'action.agent_activity': 'Mokano na ngai',
-    'action.ussd': 'USSD',
     'action.messages': 'Mase',
     'nav.home': 'Eka',
     'nav.send': 'Kolisa',
@@ -1409,7 +1399,6 @@ const translations: Record<string, TranslationDict> = {
     'developer.title': 'Espace Développeur',
     'marketplace.title': 'Marketplace',
     'barter.title': 'Troc Digital',
-    'ussd.title': 'Services USSD',
     'agent.dashboard': 'Tableau de bord Agent',
     'agent.messages': 'Mase',
     'agent.agent_code': 'Code Agent',
@@ -1507,7 +1496,6 @@ const translations: Record<string, TranslationDict> = {
     'action.agent_deposit': 'Weka kwa Mteja',
     'action.agent_validate': 'Thibitisha Toa',
     'action.agent_activity': 'Shughuli Yangu',
-    'action.ussd': 'USSD',
     'nav.home': 'Nyumbani',
     'nav.send': 'Tuma',
     'nav.intl': 'Intl.',
@@ -1559,7 +1547,6 @@ const translations: Record<string, TranslationDict> = {
     'developer.title': 'Nafasi ya Watengenezaji',
     'marketplace.title': 'Sokoni',
     'barter.title': 'Kubadilishana',
-    'ussd.title': 'Huduma za USSD',
     'agent.dashboard': 'Dashibodi ya Mwakilishi',
     'agent.messages': 'Ujumbe',
     'agent.agent_code': 'Kodi ya Mwakilishi',
@@ -1687,7 +1674,6 @@ const translations: Record<string, TranslationDict> = {
     'developer.title': 'Espace Développeur',
     'marketplace.title': 'Marketplace',
     'barter.title': 'Troc Digital',
-    'ussd.title': 'Services USSD',
     'agent.dashboard': 'Tableau de bord Agent',
     'agent.messages': 'Mabunga',
     'agent.agent_code': 'Code Agent',
@@ -1815,7 +1801,6 @@ const translations: Record<string, TranslationDict> = {
     'developer.title': 'Espace Développeur',
     'marketplace.title': 'Marketplace',
     'barter.title': 'Troc Digital',
-    'ussd.title': 'Services USSD',
     'agent.dashboard': 'Tableau de bord Agent',
     'agent.messages': 'Mabunga',
     'agent.agent_code': 'Code Agent',

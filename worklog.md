@@ -163,7 +163,7 @@ Work Log:
 - Launched 6 parallel audit agents to review all 60+ files (auth screens, main screens, agent screens, admin screens, API routes, hooks/utils)
 - Identified 34 issues across severity levels: 10 Critical, 3 High, 10 Medium, 11 Low
 - Fixed 9 Critical API route bugs (currency handling, balance deduction, FK violations, race conditions)
-- Fixed 13 Critical/High frontend bugs (USSD navigation, null safety, password strength, PIN validation)
+- Fixed 13 Critical/High frontend bugs (legacy navigation, null safety, password strength, PIN validation)
 - Cleaned up 12 unused imports/variables across 10 files
 - Fixed lint error in transfer/history route (missing `}` in template literal)
 

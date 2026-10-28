@@ -33,7 +33,7 @@ describe('Trait USD/CDF money arithmetic', () => {
     assert.equal(calculateTransferFee('0.01'), 0)
   })
 
-  it('calculates the USSD one-percent fee exactly', () => {
+  it('calculates a one-percent fee exactly', () => {
     assert.equal(calculatePercentageFee('100.00', 100), 1)
     assert.equal(calculatePercentageFee('0.50', 100), 0.01)
     assert.throws(() => calculatePercentageFee('1', 10001), /Pourcentage invalide/)

@@ -1,6 +1,6 @@
 const depositMethods: Record<string, string> = {
   agent: 'Dépôt via agent',
-  ussd_agent: 'Dépôt via agent (USSD)',
+  ussd_agent: 'Dépôt via agent',
   mobile_money: 'Dépôt Mobile Money',
   bank_transfer: 'Dépôt par virement bancaire',
   card: 'Dépôt par carte',
@@ -8,7 +8,7 @@ const depositMethods: Record<string, string> = {
 
 const withdrawalMethods: Record<string, string> = {
   agent: 'Retrait via agent',
-  ussd_agent: 'Retrait via agent (USSD)',
+  ussd_agent: 'Retrait via agent',
   mobile_money: 'Retrait Mobile Money',
   bank_transfer: 'Retrait par virement bancaire',
 };

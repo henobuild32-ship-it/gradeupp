@@ -51,11 +51,6 @@
       "name": "Envoyer de l'argent",
       "url": "/",
       "description": "Transfert rapide"
-    },
-    {
-      "name": "USSD",
-      "url": "/",
-      "description": "Accès USSD *1709#"
     }
   ]
 }

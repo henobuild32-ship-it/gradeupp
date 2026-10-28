@@ -189,7 +189,6 @@ SendScreen
 WithdrawScreen
 DepositScreen
 HistoryScreen
-USSDScreen
 NotificationsScreen
 SettingsScreen
 ProfileScreen

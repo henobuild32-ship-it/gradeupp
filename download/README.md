@@ -101,7 +101,6 @@ Le projet contient une grande variété d'écrans et d'interface, notamment :
 - WithdrawScreen
 - DepositScreen
 - HistoryScreen
-- USSDScreen
 - NotificationsScreen
 - SettingsScreen
 - ProfileScreen

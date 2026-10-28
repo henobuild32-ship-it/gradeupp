@@ -66,9 +66,6 @@ src/app/api/
 │   └── withdraw/route.ts            # Retrait via agent
 ├── agent/
 │   └── withdrawal/[id]/route.ts     # Validation retrait par agent
-├── ussd/
-│   ├── deposit/route.ts             # Dépôt USSD
-│   └── withdraw/route.ts            # Retrait USSD
 └── … (dépôt, recharge, carte…)
 ```
 
@@ -409,7 +406,6 @@ Vendeur reçoit le montant  réel uniquement (hors bonus)
 
 ### 10.5 Prisma `skipDuplicates`
 
-- `ussdFavorite.createMany({ skipDuplicates: true })` : évite crash seed en re-run
 - Tous les upserts utilisent `where` + `update/create` pour idempotence
 
 ---

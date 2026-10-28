@@ -20,7 +20,6 @@ Fonctionnalités principales :
 - Notifications : suivi des validations, paiements, messages et alertes de sécurité.
 - Marketplace : achat de produits ou services proposés dans l'application.
 - Troc : publication d'offres, consultation et échange avec d'autres utilisateurs.
-- USSD : accès aux fonctions essentielles même avec une expérience proche du téléphone classique.
 - Support : contact et assistance en cas de problème.
 - Paramètres : gestion du profil, langue, thème, sécurité et préférences.
 
@@ -31,7 +30,7 @@ L'agent accompagne les clients pour les opérations de dépôt et retrait.
 Fonctionnalités principales :
 
 - Tableau de bord agent : résumé des dépôts, retraits, clients actifs et volume traité.
-- Code ou numéro agent : identifiant unique utilisé par les clients pour les retraits et opérations USSD.
+- Code ou numéro agent : identifiant unique utilisé par les clients pour les retraits auprès d’un agent.
 - Dépôt client : crédit du compte d'un client à partir de son numéro de téléphone, avec choix USD ou FC.
 - Validation retrait : consultation des retraits en attente, validation ou refus quand une opération nécessite confirmation.
 - Activité agent : historique des opérations traitées pour les clients.

@@ -29,11 +29,10 @@
 21. [Plateforme Développeur (API)](#21-plateforme-développeur-api)
 22. [Support Technique (Tickets)](#22-support-technique-tickets)
 23. [Notifications Push](#23-notifications-push)
-24. [Interface USSD Simulée](#24-interface-ussd-simulée)
-25. [Système de Bonus](#25-système-de-bonus)
-26. [Comptes Fournisseur (Seller)](#26-comptes-fournisseur-seller)
-27. [Paiement de Recharge (Airtime Direct)](#27-paiement-de-recharge-airtime-direct)
-28. [Services Agent](#28-services-agent)
+24. [Système de Bonus](#24-système-de-bonus)
+25. [Comptes Fournisseur (Seller)](#25-comptes-fournisseur-seller)
+26. [Paiement de Recharge (Airtime Direct)](#26-paiement-de-recharge-airtime-direct)
+27. [Services Agent](#27-services-agent)
 
 ---
 
@@ -731,31 +730,7 @@ Notifications push web et mobile via service worker (Web Push API) et Capacitor 
 
 ---
 
-## 24. Interface USSD Simulée
-
-### Description
-Simulation d'un menu USSD dans l'application pour les utilisateurs familiarisés avec le *1709#. Les fonctionnalités incluent : consultation de solde, transfert, achat de crédit, paiement de factures, dépôt, retrait, mini-relevé, blocage temporaire, favoris.
-
-### Routes API (10 routes)
-| Méthode | Route | Description |
-|---------|-------|-------------|
-| POST | `/api/ussd/balance` | Consultation de solde |
-| POST | `/api/ussd/transfer` | Transfert d'argent |
-| POST | `/api/ussd/credit` | Achat de crédit |
-| POST | `/api/ussd/bills` | Paiement de factures |
-| POST | `/api/ussd/deposit` | Dépôt |
-| POST | `/api/ussd/withdraw` | Retrait |
-| POST | `/api/ussd/mini-statement` | Mini-relevé |
-| POST | `/api/ussd/temp-block` | Blocage temporaire |
-| GET/POST | `/api/ussd/favorites` | Gestion des favoris |
-| GET/PUT | `/api/ussd/settings` | Paramètres USSD (langue, etc.) |
-
-### Écran
-- `USSDScreen.tsx` — Interface USSD interactive
-
----
-
-## 25. Système de Bonus
+## 24. Système de Bonus
 
 ### Description
 Système de récompenses et campagnes promotionnelles. Les utilisateurs reçoivent des bonus (montant en USD et FC) qui peuvent être utilisés pour les transactions et les achats marketplace. Les administrateurs peuvent créer des campagnes.
@@ -780,7 +755,7 @@ Système de récompenses et campagnes promotionnelles. Les utilisateurs reçoive
 
 ---
 
-## 26. Comptes Fournisseur (Seller)
+## 25. Comptes Fournisseur (Seller)
 
 ### Description
 Les commerçants peuvent s'inscrire en tant que "Service" (fournisseur), gérer leurs produits, et accepter les paiements via QR code.
@@ -804,7 +779,7 @@ Les commerçants peuvent s'inscrire en tant que "Service" (fournisseur), gérer 
 
 ---
 
-## 27. Paiement de Recharge (Airtime Direct)
+## 26. Paiement de Recharge (Airtime Direct)
 
 ### Description
 Achat direct de crédit de communication (airtime) auprès des opérateurs. Différent du catalogue bundles, celui-ci permet un achat simple par montant et réseau.
@@ -821,7 +796,7 @@ Achat direct de crédit de communication (airtime) auprès des opérateurs. Diff
 
 ---
 
-## 28. Services Agent
+## 27. Services Agent
 
 ### Description
 Les agents TRAIT peuvent effectuer des dépôts et valider des retraits pour les clients qui n'ont pas de compte ou qui préfèrent le cash.

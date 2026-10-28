@@ -468,7 +468,7 @@ function matchMessage(message: string): MatchResult | null {
    ═══════════════════════════════════════════════════════════════ */
 
 const ALLOWED_ACTION_PAGES = new Set([
-  'home', 'send', 'withdraw', 'deposit', 'history', 'ussd', 'marketplace', 'orders',
+  'home', 'send', 'withdraw', 'deposit', 'history', 'marketplace', 'orders',
   'barter', 'notifications', 'settings', 'profile', 'support', 'card', 'virtual-card',
   'card-request', 'card-payment', 'kyc-verification', 'change-pin', 'my-qr-code',
   'savings-goals', 'referral', 'bills', 'bundle-catalog', 'micro-credit', 'payment-links',
@@ -550,7 +550,6 @@ function buildSystemPrompt(context: string): string {
 - Deux comptes de solde, USD et CDF, plus un solde bonus ; conversion selon le taux de change (fourni dans le contexte).
 - Cartes : carte virtuelle sécurisée (numéro, CCV), carte enfant avec plafonds, demande de carte, paiement par carte.
 - Factures : électricité, eau, internet, recharge téléphonique.
-- USSD : services par code téléphone sans internet (solde, transfert, historique…).
 - Marché (Marketplace) : produits de vendeurs locaux, achat sécurisé, suivi de commandes.
 - Troc (Barter) : échange de biens et services entre utilisateurs.
 - Épargne : objectifs d'épargne avec suivi de progression.
@@ -572,7 +571,7 @@ ${context || 'Utilisateur non connecté (contexte fourni par l\u0027application)
 # Boutons d'action (navigation dans l'app)
 Quand ta réponse aide l'utilisateur à agir, termine UNIQUEMENT par une ligne au format exact, sur sa propre ligne :
 ACTIONS:{"actions":[{"label":"Envoyer","page":"send"}]}
-Pages autorisées : home, send, withdraw, deposit, history, marketplace, bills, card, virtual-card, savings-goals, referral, settings, profile, notifications, support, ussd, orders, barter, payment-links, payment-requests, bundle-catalog, micro-credit, international-transfer, contact-pay, kyc-verification, change-pin, my-qr-code, receipt, card-request.
+Pages autorisées : home, send, withdraw, deposit, history, marketplace, bills, card, virtual-card, savings-goals, referral, settings, profile, notifications, support, orders, barter, payment-links, payment-requests, bundle-catalog, micro-credit, international-transfer, kyc-verification, change-pin, my-qr-code, receipt, card-request.
 Maximum 2 boutons, libellés courts (3 mots maximum). Si aucune action n'aide réellement, n'écris PAS la ligne ACTIONS.
 
 Exemples du ton attendu :

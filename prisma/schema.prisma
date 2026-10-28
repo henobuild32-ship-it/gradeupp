@@ -85,8 +85,6 @@ model User {
   agentTransactions      Transaction[]           @relation("AgentTransactions")
   receivedTransactions   Transaction[]           @relation("ReceiverTransactions")
   sentTransactions       Transaction[]           @relation("SenderTransactions")
-  userSettings           UserSettings?
-  ussdFavorites          UssdFavorite[]
   agentWithdrawals       Withdrawal[]            @relation("AgentWithdrawals")
   withdrawals            Withdrawal[]
   supportTickets         SupportTicket[]
@@ -367,29 +365,6 @@ model Notification {
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
-}
-
-model UssdFavorite {
-  id        String   @id @default(cuid())
-  userId    String
-  label     String
-  phone     String
-  type      String   @default("transfer")
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-}
-
-model UserSettings {
-  id               String   @id @default(cuid())
-  userId           String   @unique
-  ussdLanguage     String   @default("fr")
-  defaultCurrency  String   @default("USD")
-  smsNotifications Boolean  @default(false)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model CreditPurchase {

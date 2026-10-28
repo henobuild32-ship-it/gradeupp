@@ -18,7 +18,6 @@ export type PageName =
   | 'withdraw'
   | 'deposit'
   | 'history'
-  | 'ussd'
   | 'marketplace'
   | 'marketplace-detail'
   | 'marketplace-sell'
@@ -244,7 +243,7 @@ function safeRouteParams(params?: Record<string, any>): Record<string, string | 
 }
 
 // Store version for migration
-const STORE_VERSION = 6;
+const STORE_VERSION = 7;
 type PersistedAppState = Pick<
   AppStore,
   'isDarkMode' | 'themeVariant' | 'selectedRole' | 'language' | 'preferredCurrency' | 'lastSeenVersion' | 'lastSeenDeployId' |
@@ -519,6 +518,22 @@ export const useAppStore = create<AppStore>()(
           state.lastAuthenticatedPage = null;
           state.lastAuthenticatedPageParams = {};
           state.lastAuthenticatedAccountId = null;
+        }
+
+        if (version < 7) {
+          // Routes removed from the application must never leave persisted users
+          // on a page that no longer has a screen implementation.
+          if (state.currentPage === 'ussd') {
+            state.currentPage = 'home';
+            state.pageParams = {};
+          }
+          if (state.lastAuthenticatedPage === 'ussd') {
+            state.lastAuthenticatedPage = 'home';
+            state.lastAuthenticatedPageParams = {};
+          }
+          if (Array.isArray(state.navigationStack)) {
+            state.navigationStack = state.navigationStack.filter((entry: any) => entry?.page !== 'ussd');
+          }
         }
 
         return state as PersistedAppState;
