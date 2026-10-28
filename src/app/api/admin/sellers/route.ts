@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
     const limit = Math.min(50, Math.max(1, parseInt(searchParams.get('limit') || '10', 10) || 10));
 
-    const where: any = { role: 'seller' };
+    const where: any = { role: 'seller', deletedAt: null };
 
     if (search) {
       where.OR = [
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       where.suspended = false;
     }
 
-    const base: any = { role: 'seller' };
+    const base: any = { role: 'seller', deletedAt: null };
     const [total, validatedSellers, pendingSellers, rejectedSellers, suspendedSellers, totalFiltered, sellers] =
       await Promise.all([
         db.user.count({ where: base }),
@@ -122,8 +122,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const seller = await db.user.findUnique({
-      where: { id: sellerId },
+    const seller = await db.user.findFirst({
+      where: { id: sellerId, deletedAt: null },
       select: { id: true, role: true, name: true, businessName: true, suspended: true },
     });
 

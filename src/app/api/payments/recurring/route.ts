@@ -16,7 +16,9 @@ export async function GET(request: NextRequest) {
 
     const recipientIds = Array.from(new Set(payments.map((p) => p.recipientId)))
     const recipients = await prisma.user.findMany({
-      where: { id: { in: recipientIds } },
+      where: { id: { in: recipientIds }, deletedAt: null },
+      // Deleted accounts may remain referenced for financial history, but their
+      // private profile and phone number must not be exposed.
       select: { id: true, name: true, phone: true },
     })
 
@@ -73,7 +75,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Date invalide' }, { status: 400 })
     }
 
-    const recipient = await prisma.user.findUnique({ where: { phone: recipientPhone } })
+    const recipient = await prisma.user.findUnique({ where: { phone: recipientPhone, deletedAt: null } })
     if (!recipient) {
       return NextResponse.json({ success: false, message: 'Destinataire non trouvé' }, { status: 404 })
     }

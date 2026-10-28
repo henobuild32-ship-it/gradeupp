@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     if (auth instanceof NextResponse) return auth
 
     const clients = await db.user.findMany({
-      where: { role: 'client' },
+      where: { role: 'client', deletedAt: null },
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,

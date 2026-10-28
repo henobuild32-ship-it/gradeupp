@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
 
-    const where: any = {};
+    const where: any = { deletedAt: null };
 
     if (search) {
       where.OR = [
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = await db.user.findUnique({ where: { id: userId } });
+    const user = await db.user.findFirst({ where: { id: userId, deletedAt: null } });
     if (!user) {
       return NextResponse.json(
         { success: false, message: 'Utilisateur non trouvé' },
@@ -150,24 +150,129 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'delete') {
-      await db.notification.deleteMany({ where: { userId } });
-      await db.barterChatParticipant.deleteMany({ where: { userId } });
-      await db.barterMessage.deleteMany({
-        where: { chat: { participants: { some: { userId } } } },
+      const deletedAt = new Date();
+      await db.$transaction(async (tx) => {
+        await tx.user.update({
+          where: { id: userId },
+          data: {
+            deletedAt,
+            phone: `deleted-${userId}@deleted.invalid`,
+            name: null,
+            pseudo: null,
+            email: null,
+            gender: null,
+            city: null,
+            country: 'ZZ',
+            role: 'deleted',
+            agentCode: null,
+            agentNumber: null,
+            address: null,
+            photoId: null,
+            photoUrl: null,
+            authProvider: 'deleted',
+            firebaseUid: null,
+            businessName: null,
+            businessType: null,
+            location: null,
+            systemPassword: null,
+            systemPasswordSent: false,
+            password: null,
+            pin: null,
+            twoFactorEnabled: false,
+            twoFactorSecret: null,
+            twoFactorRecoveryCodes: [],
+            realBalance: 0,
+            realBalanceFC: 0,
+            bonusBalance: 0,
+            bonusBalanceFC: 0,
+            isVerified: false,
+            suspended: true,
+            suspensionReason: 'Compte supprimé',
+            tempBlocked: true,
+            biometricEnabled: false,
+            kycStatus: 'deleted',
+            kycSubmittedAt: null,
+            kycVerifiedAt: null,
+            kycRejectReason: null,
+            kycDocumentType: null,
+            kycDocumentUrl: null,
+            kycSelfieUrl: null,
+            kycData: null,
+            multiCurrencyBalances: null,
+            referralCode: null,
+            referralCodeUsed: null,
+            referredBy: null,
+            parentId: null,
+          },
+        });
+        await tx.notification.deleteMany({ where: { userId } });
+        await tx.pushSubscription.deleteMany({ where: { userId } });
+        await tx.biometricCredential.deleteMany({ where: { userId } });
+        await tx.adminClientMessage.deleteMany({ where: { recipientId: userId } });
+        await tx.user.updateMany({ where: { parentId: userId }, data: { parentId: null } });
+        await tx.paymentLink.updateMany({ where: { userId }, data: { status: 'disabled' } });
+        await tx.recurringPayment.updateMany({
+          where: { OR: [{ userId }, { recipientId: userId }] },
+          data: { status: 'cancelled' },
+        });
+        await tx.paymentRequest.updateMany({
+          where: { requesterId: userId, status: 'pending' },
+          data: { status: 'cancelled', targetId: null, targetPhone: null },
+        });
+        await tx.paymentRequest.updateMany({
+          where: { OR: [{ targetId: userId }, { targetPhone: user.phone }] },
+          data: { targetId: null, targetPhone: null },
+        });
+        await tx.creditPurchase.updateMany({ where: { phoneNumber: user.phone }, data: { phoneNumber: 'redacted' } });
+        await tx.bundlePurchase.updateMany({ where: { phoneNumber: user.phone }, data: { phoneNumber: null } });
+        await tx.internationalTransfer.updateMany({
+          where: { recipientPhone: user.phone },
+          data: { recipientName: 'Compte supprimé', recipientPhone: null, recipientAccount: null, recipientBank: null, swiftBic: null, iban: null },
+        });
+        await tx.transaction.updateMany({
+          where: { OR: [{ senderId: userId }, { receiverId: userId }], description: { contains: user.phone } },
+          data: { description: null },
+        });
+        await tx.notification.deleteMany({ where: { message: { contains: user.phone } } });
+        await tx.barterMessage.deleteMany({ where: { senderId: userId } });
+        await tx.marketplaceProduct.updateMany({
+          where: { sellerId: userId },
+          data: { active: false, sellerPhone: null, sellerAddress: null },
+        });
+        await tx.barterOffer.updateMany({ where: { offeredBy: userId }, data: { status: 'removed' } });
+        const cards = await tx.traitCard.findMany({ where: { userId }, select: { id: true } });
+        for (const card of cards) {
+          await tx.traitCard.update({
+            where: { id: card.id },
+            data: {
+              cardNumber: null,
+              last4: null,
+              cvv: null,
+              qrCode: `revoked:${card.id}`,
+              expiryDate: null,
+              status: 'revoked',
+              holderName: null,
+              jobTitle: null,
+              birthDate: null,
+              holderPhoto: null,
+            },
+          });
+        }
+        await tx.cardRequest.updateMany({
+          where: { userId },
+          data: { status: 'deleted', holderName: null, jobTitle: null, birthDate: null, photoData: null },
+        });
+        await tx.adminActivityLog.create({
+          data: {
+            adminId,
+            action: 'delete_user',
+            target: userId,
+            details: 'Compte désactivé et données personnelles supprimées; historique financier conservé pour audit.',
+          },
+        });
       });
 
-      await db.user.delete({ where: { id: userId } });
-
-      await db.adminActivityLog.create({
-        data: {
-          adminId,
-          action: 'delete_user',
-          target: userId,
-          details: `Utilisateur ${user.name || user.phone} supprimé définitivement`,
-        },
-      });
-
-      return NextResponse.json({ success: true, message: 'Utilisateur supprimé' });
+      return NextResponse.json({ success: true, message: 'Compte désactivé et données personnelles supprimées' });
     }
 
     if (action === 'validate_seller') {

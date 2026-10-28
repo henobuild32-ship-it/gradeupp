@@ -181,6 +181,14 @@ async function resolveAuthFromRequest(request: NextRequest, cookieName: string) 
   return null
 }
 
+async function resolveActiveUser(payload: { userId: string; role: string }) {
+  const user = await db.user.findUnique({
+    where: { id: payload.userId },
+    select: { id: true, role: true, deletedAt: true },
+  })
+  return user && !user.deletedAt ? { userId: user.id, role: user.role } : null
+}
+
 export async function requireUser(request: NextRequest) {
   try {
     const cookieToken = request.cookies.get(TOKEN_COOKIE)?.value
@@ -194,14 +202,11 @@ export async function requireUser(request: NextRequest) {
     }
     // A signed cookie proves who logged in, but the database remains the
     // authority for account existence and the user's current role.
-    const currentUser = await db.user.findUnique({
-      where: { id: payload.userId },
-      select: { id: true, role: true },
-    })
+    const currentUser = await resolveActiveUser(payload)
     if (!currentUser) {
       return NextResponse.json({ success: false, message: 'Session invalide' }, { status: 401 })
     }
-    return { userId: currentUser.id, role: currentUser.role }
+    return currentUser
   } catch (error) {
     return NextResponse.json({ success: false, message: 'Erreur d\'authentification' }, { status: 500 })
   }
@@ -234,7 +239,7 @@ export async function requireAdmin(request: NextRequest) {
 export async function getAuthUser(request: NextRequest) {
   try {
     const payload = await resolveAuthFromRequest(request, TOKEN_COOKIE)
-    return payload || null
+    return payload ? await resolveActiveUser(payload) : null
   } catch {
     return null
   }

@@ -4,7 +4,10 @@ import { findAgentByIdentifier } from '@/lib/agents'
 
 export async function GET(request: NextRequest) {
   try {
-    await getAuthUser(request)
+    const auth = await getAuthUser(request)
+    if (!auth) {
+      return NextResponse.json({ success: false, message: 'Non authentifié' }, { status: 401 })
+    }
 
     const { searchParams } = new URL(request.url)
     const code = searchParams.get('code')

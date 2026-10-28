@@ -38,6 +38,18 @@ export function normalizeInternationalPhone(input: string, countryCode?: string)
   return parsed?.isValid() ? parsed.number : null
 }
 
+/** Build an exact, active-account lookup. Never route by a phone suffix. */
+export function activePhoneLookupWhere(phone: string) {
+  const normalized = normalizeInternationalPhone((phone || '').trim())
+  if (!normalized) return null
+  const digits = normalized.replace(/\D/g, '')
+
+  return {
+    deletedAt: null,
+    OR: [{ phone: normalized }, { phone: digits }, { phone: `+${digits}` }],
+  }
+}
+
 export function normalizePhoneForCountry(input: string, countryCode: string): string | null {
   const code = countryCode.toUpperCase()
   if (!getCountry(code) || !PHONE_COUNTRIES.has(code)) return null

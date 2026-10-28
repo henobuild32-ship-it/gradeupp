@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     }
 
     const clients = await db.user.findMany({
-      where: { role: 'client' },
+      where: { role: 'client', deletedAt: null },
       select: { id: true, name: true, phone: true, realBalance: true },
     })
 

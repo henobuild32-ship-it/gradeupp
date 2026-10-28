@@ -40,10 +40,10 @@ export async function GET(request: NextRequest) {
       status: string
       description: string
       createdAt: Date
-      counterparty?: { id: string; phone: string; name: string | null; pseudo: string | null } | null
+      counterparty?: { id: string; phone: string | null; name: string | null; pseudo: string | null } | null
     }
 
-    const userInclude = { select: { id: true, phone: true, name: true, pseudo: true } }
+    const userInclude = { select: { id: true, phone: true, name: true, pseudo: true, deletedAt: true } }
     const orderBy = { createdAt: 'desc' as const }
 
     const cursorFilter = cursor ? { createdAt: { lt: new Date(cursor) } } : {}
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
     const deposits = await db.deposit.findMany({
       where: { userId, ...cursorFilter },
       include: {
-        agent: { select: { id: true, agentCode: true, agentNumber: true, name: true, pseudo: true } },
+        agent: { select: { id: true, agentCode: true, agentNumber: true, name: true, pseudo: true, deletedAt: true } },
       },
       orderBy,
       take,
@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
     const withdrawals = await db.withdrawal.findMany({
       where: { userId, ...cursorFilter },
       include: {
-        agent: { select: { id: true, agentCode: true, agentNumber: true, name: true, pseudo: true } },
+        agent: { select: { id: true, agentCode: true, agentNumber: true, name: true, pseudo: true, deletedAt: true } },
       },
       orderBy,
       take,
@@ -95,23 +95,26 @@ export async function GET(request: NextRequest) {
 
     const { depositMethodLabel, withdrawalMethodLabel, formatAmount } = await import('@/lib/tx-labels')
 
-    const agentLabel = (agent: { agentCode: string | null; agentNumber: string | null; name: string | null; pseudo: string | null } | null | undefined) => {
-      if (!agent) return null
+    const agentLabel = (agent: { agentCode: string | null; agentNumber: string | null; name: string | null; pseudo: string | null; deletedAt: Date | null } | null | undefined) => {
+      if (!agent || agent.deletedAt) return null
       return agent.agentCode || agent.agentNumber || agent.name || agent.pseudo || null
     }
+
+    const visibleCounterparty = (person: NonNullable<HistoryItem['counterparty']> & { deletedAt?: Date | null }) =>
+      person.deletedAt ? { id: person.id, name: null, pseudo: null, phone: null } : person
 
     const sentItems: HistoryItem[] = sentTransactions.map((t) => ({
       id: t.id, type: 'send', amount: t.amount, fee: t.fee, currency: t.currency,
       status: t.status,
-      description: t.description || `Transfert de ${formatAmount(t.amount, t.currency)} vers ${t.receiver?.phone || 'inconnu'}`,
-      createdAt: t.createdAt, counterparty: t.receiver,
+      description: t.description || `Transfert de ${formatAmount(t.amount, t.currency)} vers ${t.receiver?.deletedAt ? 'compte supprimé' : t.receiver?.phone || 'inconnu'}`,
+      createdAt: t.createdAt, counterparty: t.receiver ? visibleCounterparty(t.receiver) : null,
     }))
 
     const receivedItems: HistoryItem[] = receivedTransactions.map((t) => ({
       id: t.id, type: 'receive', amount: t.amount, fee: 0, currency: t.currency,
       status: t.status,
-      description: t.description || `Réception de ${formatAmount(t.amount, t.currency)} de ${t.sender?.phone || 'inconnu'}`,
-      createdAt: t.createdAt, counterparty: t.sender,
+      description: t.description || `Réception de ${formatAmount(t.amount, t.currency)} de ${t.sender?.deletedAt ? 'compte supprimé' : t.sender?.phone || 'inconnu'}`,
+      createdAt: t.createdAt, counterparty: t.sender ? visibleCounterparty(t.sender) : null,
     }))
 
     const depositItems: HistoryItem[] = deposits.map((d) => {

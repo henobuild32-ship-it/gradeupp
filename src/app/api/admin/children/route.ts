@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
     const search = new URL(request.url).searchParams.get('search')?.trim();
     const children = await db.user.findMany({
       where: {
+        deletedAt: null,
         parentId: { not: null },
         ...(search ? { OR: [{ name: { contains: search, mode: 'insensitive' as const } }, { phone: { contains: search } }, { parent: { name: { contains: search, mode: 'insensitive' as const } } }] } : {}),
       },

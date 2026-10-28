@@ -20,8 +20,8 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
       take: 1000,
       include: {
-        sender: { select: { name: true, phone: true } },
-        receiver: { select: { name: true, phone: true } },
+        sender: { select: { name: true, phone: true, deletedAt: true } },
+        receiver: { select: { name: true, phone: true, deletedAt: true } },
       },
     })
 
@@ -56,8 +56,8 @@ export async function GET(request: NextRequest) {
         t.fee.toFixed(2),
         statusLabel,
         `"${(t.description || '').replace(/"/g, '""')}"`,
-        t.sender?.name || t.sender?.phone || '',
-        t.receiver?.name || t.receiver?.phone || '',
+        t.sender?.deletedAt ? 'Compte supprimé' : t.sender?.name || t.sender?.phone || '',
+        t.receiver?.deletedAt ? 'Compte supprimé' : t.receiver?.name || t.receiver?.phone || '',
       ].join(',')
     }).join('\n')
 

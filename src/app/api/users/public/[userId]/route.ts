@@ -7,8 +7,8 @@ export async function GET(
 ) {
   try {
     const { userId } = await params;
-    const user = await db.user.findUnique({
-      where: { id: userId },
+    const user = await db.user.findFirst({
+      where: { id: userId, deletedAt: null },
       select: {
         id: true,
         name: true,

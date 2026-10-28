@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const where: any = { role: 'agent', validationStatus: status }
+    const where: any = { role: 'agent', validationStatus: status, deletedAt: null }
 
     if (search) {
       where.OR = [
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
     const normalizedAction = action === 'approve' ? 'accept' : action
 
     if (normalizedAction === 'accept') {
-      const agent = await db.user.findUnique({ where: { id: targetId } })
+      const agent = await db.user.findFirst({ where: { id: targetId, deletedAt: null } })
       if (!agent) {
         return NextResponse.json(
           { success: false, message: 'Agent non trouvé' },
@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (normalizedAction === 'reject') {
-      const agent = await db.user.findUnique({ where: { id: targetId } })
+      const agent = await db.user.findFirst({ where: { id: targetId, deletedAt: null } })
       if (!agent) {
         return NextResponse.json(
           { success: false, message: 'Agent non trouvé' },
@@ -213,7 +213,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (normalizedAction === 'suspend') {
-      const agent = await db.user.findUnique({ where: { id: targetId } })
+      const agent = await db.user.findFirst({ where: { id: targetId, deletedAt: null } })
       if (!agent) {
         return NextResponse.json(
           { success: false, message: 'Agent non trouvé' },
@@ -239,7 +239,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (normalizedAction === 'resend_credentials') {
-      const agent = await db.user.findUnique({ where: { id: targetId } })
+      const agent = await db.user.findFirst({ where: { id: targetId, deletedAt: null } })
       if (!agent) {
         return NextResponse.json(
           { success: false, message: 'Agent non trouvé' },

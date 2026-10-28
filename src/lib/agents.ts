@@ -50,6 +50,7 @@ const agentWhereFromIdentifier = (identifier: string) => {
 
   return {
     role: 'agent' as const,
+    deletedAt: null,
     OR: [
       { agentCode: { in: candidates } },
       { agentNumber: { in: candidates } },
@@ -81,6 +82,7 @@ export async function findAgentByIdentifier(identifier: string) {
     const fallback = await db.user.findFirst({
       where: {
         role: 'agent',
+        deletedAt: null,
         OR: [
           { agentCode: { contains: digit } },
           { agentNumber: { contains: digit } },
@@ -97,6 +99,7 @@ export async function findAgentByIdentifier(identifier: string) {
       return db.user.findFirst({
         where: {
           role: 'agent',
+          deletedAt: null,
           OR: [
             { agentCode: { endsWith: bare } },
             { agentNumber: { endsWith: bare } },

@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     const limitedPhones = phones.slice(0, MAX_CONTACTS)
 
     const users = await prisma.user.findMany({
-      where: { phone: { in: limitedPhones } },
+      where: { phone: { in: limitedPhones }, deletedAt: null },
       select: {
         phone: true,
         name: true,

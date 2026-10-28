@@ -29,9 +29,9 @@ export async function GET(request: NextRequest) {
       totalSellers,
       openReports,
     ] = await Promise.all([
-      db.user.count({ where: { role: 'client' } }),
-      db.user.count({ where: { role: 'agent' } }),
-      db.user.count({ where: { suspended: true } }),
+      db.user.count({ where: { deletedAt: null, role: 'client' } }),
+      db.user.count({ where: { deletedAt: null, role: 'agent' } }),
+      db.user.count({ where: { deletedAt: null, suspended: true } }),
       db.transaction.count(),
       db.deposit.count({ where: { status: 'completed' } }),
       db.withdrawal.count({ where: { status: 'completed' } }),
@@ -46,16 +46,17 @@ export async function GET(request: NextRequest) {
       }),
       db.user.count({
         where: {
+          deletedAt: null,
           createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
         },
       }),
-      db.user.count({ where: { role: 'agent', validationStatus: 'pending' } }),
+      db.user.count({ where: { deletedAt: null, role: 'agent', validationStatus: 'pending' } }),
       db.developer.count({ where: { status: 'pending' } }),
       db.developer.count({ where: { status: 'approved' } }),
       db.apiCommission.aggregate({ _sum: { amount: true } }),
       db.internationalTransfer.count(),
-      db.user.count({ where: { role: 'seller', validationStatus: 'pending' } }),
-      db.user.count({ where: { role: 'seller' } }),
+      db.user.count({ where: { deletedAt: null, role: 'seller', validationStatus: 'pending' } }),
+      db.user.count({ where: { deletedAt: null, role: 'seller' } }),
       (db.userReport as any).count({ where: { status: { in: ['new', 'reviewing', 'info_requested', 'pending'] } } }),
     ]);
 

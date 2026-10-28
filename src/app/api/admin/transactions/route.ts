@@ -25,8 +25,8 @@ export async function GET(request: NextRequest) {
         skip: (page - 1) * limit,
         take: limit,
         include: {
-          sender: { select: { id: true, name: true, phone: true, role: true } },
-          receiver: { select: { id: true, name: true, phone: true, role: true } },
+          sender: { select: { id: true, name: true, phone: true, role: true, deletedAt: true } },
+          receiver: { select: { id: true, name: true, phone: true, role: true, deletedAt: true } },
           agent: { select: { id: true, name: true, agentCode: true } },
         },
       }),
@@ -35,7 +35,15 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      transactions,
+      transactions: transactions.map((transaction) => ({
+        ...transaction,
+        sender: transaction.sender.deletedAt
+          ? { id: transaction.sender.id, name: 'Compte supprimé', phone: null, role: 'deleted' }
+          : transaction.sender,
+        receiver: transaction.receiver.deletedAt
+          ? { id: transaction.receiver.id, name: 'Compte supprimé', phone: null, role: 'deleted' }
+          : transaction.receiver,
+      })),
       total,
       page,
       totalPages: Math.ceil(total / limit),
@@ -67,8 +75,8 @@ export async function POST(request: NextRequest) {
     const transaction = await db.transaction.findUnique({
       where: { id: transactionId },
       include: {
-        sender: { select: { name: true, phone: true } },
-        receiver: { select: { name: true, phone: true } },
+        sender: { select: { name: true, phone: true, deletedAt: true } },
+        receiver: { select: { name: true, phone: true, deletedAt: true } },
       },
     });
 
@@ -114,7 +122,7 @@ export async function POST(request: NextRequest) {
             adminId,
             action: 'block_transaction',
             target: transactionId,
-            details: `Transaction ${transactionId.substring(0, 8)}... bloquée. Motif: ${reason}. Montant: ${transaction.amount} ${transaction.currency}`,
+          details: `Transaction ${transactionId.substring(0, 8)}... bloquée. Motif: ${reason}. Montant: ${transaction.amount} ${transaction.currency}`,
           },
         }),
       ]);

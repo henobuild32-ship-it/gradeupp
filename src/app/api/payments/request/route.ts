@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     ) as string[]
 
     const targetUsers = await prisma.user.findMany({
-      where: { phone: { in: targetPhones } },
+      where: { phone: { in: targetPhones }, deletedAt: null },
       select: { id: true, name: true, phone: true },
     })
 
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Montant invalide' }, { status: 400 })
     }
 
-    const target = await prisma.user.findUnique({ where: { phone: targetPhone } })
+    const target = await prisma.user.findUnique({ where: { phone: targetPhone, deletedAt: null } })
     if (!target) {
       return NextResponse.json({ success: false, message: 'Destinataire non trouvé' }, { status: 404 })
     }

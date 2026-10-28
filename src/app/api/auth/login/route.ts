@@ -30,12 +30,12 @@ export async function POST(request: NextRequest) {
     if (!normalizedPhone) return NextResponse.json({ success: false, message: 'Numéro de téléphone international invalide.' }, { status: 400 })
 
     let user = await db.user.findUnique({
-      where: { phone: normalizedPhone },
+      where: { phone: normalizedPhone, deletedAt: null },
     })
 
     if (!user) {
       const digits = normalizedPhone.replace(/\D/g, '')
-      user = await db.user.findFirst({ where: { OR: [{ phone: digits }, { phone: `+${digits}` }] } })
+      user = await db.user.findFirst({ where: { deletedAt: null, OR: [{ phone: digits }, { phone: `+${digits}` }] } })
     }
 
     if (!user) {

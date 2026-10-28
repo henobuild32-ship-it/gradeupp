@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
 
     const users = await db.user.findMany({
       where: {
+        deletedAt: null,
         kycStatus: status,
         kycDocumentUrl: { not: null },
       },
@@ -64,8 +65,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const user = await db.user.findUnique({
-      where: { id: userId },
+    const user = await db.user.findFirst({
+      where: { id: userId, deletedAt: null },
       select: { id: true, name: true, phone: true, kycStatus: true },
     })
 

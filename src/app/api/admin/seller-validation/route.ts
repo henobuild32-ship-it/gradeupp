@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status') || '';
     const search = searchParams.get('search') || '';
 
-    const where: any = { role: 'seller' };
+    const where: any = { role: 'seller', deletedAt: null };
 
     if (status === 'pending') where.validationStatus = 'pending';
     else if (status === 'rejected') where.validationStatus = 'rejected';
@@ -87,8 +87,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const seller = await db.user.findUnique({
-      where: { id: userId },
+    const seller = await db.user.findFirst({
+      where: { id: userId, deletedAt: null },
       select: { id: true, role: true, validationStatus: true, businessName: true },
     });
     if (!seller || seller.role !== 'seller') {

@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     }
 
     const users = await prisma.user.findMany({
-      where: { id: { in: uniqueReceiverIds } },
+      where: { id: { in: uniqueReceiverIds }, deletedAt: null },
       select: { id: true, name: true, phone: true },
     })
 

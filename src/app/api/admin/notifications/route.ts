@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     });
 
     const users = await db.user.findMany({
-      where: { suspended: false },
+      where: { suspended: false, deletedAt: null },
       select: { id: true },
     });
 

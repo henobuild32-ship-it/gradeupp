@@ -62,3 +62,13 @@ Principaux parcours identifiés : accueil/authentification; portefeuille et tran
 - `scripts/e2e-smoke.ts` a perdu son nettoyage d'un modèle Prisma supprimé; le script lui-même n'a pas été exécuté, car son accès DB avec `.env` n'est pas isolé.
 - Contrôle statique: aucune fonctionnalité USSD active ne reste dans `src`, `public`, `prisma/seed.ts`, le SQL de déploiement, les tests ou scripts. Les seules références d'exécution conservées sont le nettoyage d'une ancienne clé/cache, la migration de routes persistées et le rendu de vieux libellés de transactions.
 - Le build a généré 142 routes contre 153 au départ, soit les 11 handlers API supprimés. La suppression des noms de tables du schéma Prisma n'a pas fait perdre leurs données archivées.
+
+## Phase 3 — comptes supprimés, sessions et exposition de numéros
+
+- Un compte supprimé est maintenant anonymisé dans sa ligne `User` (`deletedAt`, numéro de remplacement non téléphonique, profil, identifiants, KYC et soldes effacés) au lieu d'un `DELETE` qui risquait d'échouer sur les références financières. Les transactions historiques restent reliées pour la comptabilité.
+- La suppression et le révocation des informations de carte/KYC, abonnements push et authentifiants biométriques, liens de paiement, paiements récurrents, demandes en attente, contenus de messages et coordonnées associées se font dans une transaction DB. Les cartes sont révoquées et les produits du vendeur supprimé désactivés.
+- `requireUser` et `getAuthUser` vérifient désormais l'existence active du compte en base, pas seulement la signature du JWT. Le login, les recherches par téléphone, les contacts, l'aperçu public, les destinataires récurrents, les listes admin, l'export, l'historique et les reçus excluent ou masquent les comptes supprimés.
+- La route admin de recherche d'agent rejetait auparavant un appel sans session car elle ignorait la valeur de `getAuthUser`; elle renvoie désormais 401. Les requêtes de cette recherche excluent également les comptes supprimés.
+- Migration `20261028160000_anonymize_deleted_users`: champ/index `deletedAt`. Elle est créée mais n'a pas été appliquée à la base distante.
+- Test ajouté sur la normalisation téléphone et l'exclusion des comptes supprimés. `npm test`: 12 réussis, 0 échec. `npx tsc --noEmit`: réussi. `npm run lint -- --no-cache`: réussi. `npx prisma validate`: réussi. `npx next build`: réussi avec 142 routes.
+- La suppression n'a pas été déclenchée sur un compte réel : ce scénario requiert une base de test isolée afin de vérifier les écritures transactionnelles et les relations, indisponible dans cet environnement. Le comportement SQL de la migration n'a pas été exécuté.

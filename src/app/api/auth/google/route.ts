@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check phone uniqueness
-    const existingPhone = await db.user.findUnique({ where: { phone: canonicalPhone } });
+    const existingPhone = await db.user.findUnique({ where: { phone: canonicalPhone, deletedAt: null } });
     if (existingPhone) {
       return NextResponse.json(
         { success: false, message: 'Ce numéro de téléphone est déjà enregistré' },

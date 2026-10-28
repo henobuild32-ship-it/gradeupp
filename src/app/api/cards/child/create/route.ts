@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     while (!isUnique && attempts < 50) {
       const randomDigits = randomInt(10000000, 100000000).toString();
       childPhone = `+24388${randomDigits}`;
-      const existing = await db.user.findUnique({ where: { phone: childPhone } });
+      const existing = await db.user.findUnique({ where: { phone: childPhone, deletedAt: null } });
       if (!existing) {
         isUnique = true;
       }

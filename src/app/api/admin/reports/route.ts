@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
         skip: (page - 1) * limit,
         take: limit,
         include: {
-          reporter: { select: { id: true, name: true, pseudo: true, phone: true } },
+          reporter: { select: { id: true, name: true, pseudo: true, phone: true, deletedAt: true } },
           reviewer: { select: { id: true, name: true, username: true } },
         },
       }),
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
 
     const idsByType = (targetType: string) => reports.filter((report) => report.targetType === targetType).map((report) => report.targetId)
     const [users, products, orders, offers, messages] = await Promise.all([
-      db.user.findMany({ where: { id: { in: [...new Set([...idsByType('user'), ...idsByType('seller')])] } }, select: { id: true, name: true, pseudo: true, phone: true, role: true, suspended: true } }),
+      db.user.findMany({ where: { id: { in: [...new Set([...idsByType('user'), ...idsByType('seller')])] }, deletedAt: null }, select: { id: true, name: true, pseudo: true, phone: true, role: true, suspended: true } }),
       db.marketplaceProduct.findMany({ where: { id: { in: idsByType('product') } }, select: { id: true, name: true, category: true, active: true, sellerId: true } }),
       db.order.findMany({ where: { id: { in: idsByType('order') } }, select: { id: true, status: true, paymentStatus: true, amount: true, currency: true, sellerId: true, buyerId: true, product: { select: { name: true } } } }),
       db.barterOffer.findMany({ where: { id: { in: idsByType('offer') } }, select: { id: true, title: true, status: true, offeredBy: true } }),
@@ -61,7 +61,13 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      reports: reports.map((report) => ({ ...report, target: targets.get(report.targetId) ?? null })),
+      reports: reports.map((report) => ({
+        ...report,
+        reporter: report.reporter.deletedAt
+          ? { id: report.reporter.id, name: null, pseudo: null, phone: null }
+          : report.reporter,
+        target: targets.get(report.targetId) ?? null,
+      })),
       total,
       page,
       limit,
@@ -104,7 +110,7 @@ export async function PATCH(request: NextRequest) {
           reviewedAt: status === 'new' ? null : new Date(),
         },
         include: {
-          reporter: { select: { id: true, name: true, pseudo: true, phone: true } },
+          reporter: { select: { id: true, name: true, pseudo: true, phone: true, deletedAt: true } },
           reviewer: { select: { id: true, name: true, username: true } },
         },
       }),
@@ -118,7 +124,15 @@ export async function PATCH(request: NextRequest) {
       }),
     ])
 
-    return NextResponse.json({ success: true, report }, { headers: { 'Cache-Control': 'private, no-store' } })
+    return NextResponse.json({
+      success: true,
+      report: {
+        ...report,
+        reporter: report.reporter.deletedAt
+          ? { id: report.reporter.id, name: null, pseudo: null, phone: null }
+          : report.reporter,
+      },
+    }, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (error) {
     console.error('Admin reports update error:', error)
     return NextResponse.json({ success: false, message: 'Impossible de mettre à jour le signalement.' }, { status: 500 })

@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
 
-    const where: any = { role: 'agent' };
+    const where: any = { role: 'agent', deletedAt: null };
 
     if (search) {
       where.OR = [
@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const agent = await db.user.findUnique({ where: { id: agentId } });
+      const agent = await db.user.findFirst({ where: { id: agentId, deletedAt: null } });
       if (!agent) {
         return NextResponse.json(
           { success: false, message: 'Agent non trouvé' },
@@ -208,7 +208,7 @@ export async function POST(request: NextRequest) {
 
     if (action === 'unsuspend' || action === 'reactivate') {
       const { agentId } = body;
-      const agent = await db.user.findUnique({ where: { id: agentId } });
+      const agent = await db.user.findFirst({ where: { id: agentId, deletedAt: null } });
       if (!agent) {
         return NextResponse.json(
           { success: false, message: 'Agent non trouvé' },
@@ -235,7 +235,7 @@ export async function POST(request: NextRequest) {
 
     if (action === 'delete') {
       const { agentId } = body;
-      const agent = await db.user.findUnique({ where: { id: agentId } });
+      const agent = await db.user.findFirst({ where: { id: agentId, deletedAt: null } });
       if (!agent) {
         return NextResponse.json(
           { success: false, message: 'Agent non trouvé' },

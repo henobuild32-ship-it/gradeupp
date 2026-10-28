@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       where: { id: senderId },
     })
 
-    if (!sender) {
+    if (!sender || sender.deletedAt) {
       return NextResponse.json(
         { success: false, message: 'Expéditeur non trouvé' },
         { status: 404 }
@@ -207,6 +207,7 @@ export async function POST(request: NextRequest) {
             ...(canChargeFeeFromBonus ? { [senderBonusField]: { gte: fee } } : {}),
             suspended: false,
             tempBlocked: false,
+            deletedAt: null,
           },
           data: {
             [senderBalanceField]: { decrement: canChargeFeeFromBonus ? amount : amount + fee },
@@ -216,7 +217,7 @@ export async function POST(request: NextRequest) {
         if (debit.count !== 1) throw new Error('INSUFFICIENT_BALANCE')
 
         const credit = await tx.user.updateMany({
-          where: { id: receiver.id },
+          where: { id: receiver.id, deletedAt: null, suspended: false, tempBlocked: false },
           data: { [receiverBalanceField]: { increment: receivedAmount } },
         })
         if (credit.count !== 1) throw new Error('RECEIVER_UPDATE_FAILED')
