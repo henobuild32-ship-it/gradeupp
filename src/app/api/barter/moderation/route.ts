@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireUser } from '@/lib/auth'
+import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit'
 
 // GET: list users blocked by current user
 export async function GET(request: NextRequest) {
@@ -67,8 +68,36 @@ export async function POST(request: NextRequest) {
       if (!targetType || !targetId || !reason || !reason.trim()) {
         return NextResponse.json({ success: false, message: 'Motif du signalement requis' }, { status: 400 })
       }
-      if (!['user', 'offer', 'message'].includes(targetType)) {
+      if (!['user', 'seller', 'product', 'order', 'offer', 'message'].includes(targetType)) {
         return NextResponse.json({ success: false, message: 'Cible invalide' }, { status: 400 })
+      }
+      const limit = checkRateLimit({ windowMs: 60 * 60 * 1000, maxRequests: 5, key: `user-report:${auth.userId}` })
+      if (!limit.allowed) return rateLimitResponse(limit.resetIn)
+
+      let targetExists = false
+      if (targetType === 'user' || targetType === 'seller') {
+        const target = await db.user.findUnique({ where: { id: targetId }, select: { id: true, role: true } })
+        targetExists = !!target && target.id !== auth.userId && (targetType !== 'seller' || target.role === 'seller')
+      } else if (targetType === 'product') {
+        targetExists = !!await db.marketplaceProduct.findUnique({ where: { id: targetId }, select: { id: true } })
+      } else if (targetType === 'order') {
+        targetExists = !!await db.order.findFirst({
+          where: { id: targetId, OR: [{ buyerId: auth.userId }, { sellerId: auth.userId }] },
+          select: { id: true },
+        })
+      } else if (targetType === 'offer') {
+        targetExists = !!await db.barterOffer.findUnique({ where: { id: targetId }, select: { id: true } })
+      } else if (targetType === 'message') {
+        const message = await db.barterMessage.findUnique({
+          where: { id: targetId },
+          include: { chat: { include: { participants: { select: { userId: true } } } } },
+        })
+        targetExists = !!message && (
+          message.senderId === auth.userId || message.chat.participants.some((participant) => participant.userId === auth.userId)
+        )
+      }
+      if (!targetExists) {
+        return NextResponse.json({ success: false, message: 'Élément introuvable ou inaccessible.' }, { status: 404 })
       }
       await db.userReport.create({
         data: {

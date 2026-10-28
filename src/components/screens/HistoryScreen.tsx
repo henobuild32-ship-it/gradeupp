@@ -32,11 +32,11 @@ const filterTabs: { id: FilterTab; label: string }[] = [
   { id: 'withdrawal', label: 'Retraits' },
 ];
 
-type CurrencyFilter = 'all' | 'USD' | 'FC';
+type CurrencyFilter = 'all' | 'USD' | 'CDF';
 const currencyFilters: { id: CurrencyFilter; label: string }[] = [
   { id: 'all', label: 'Toutes' },
   { id: 'USD', label: 'USD' },
-  { id: 'FC', label: 'CDF' },
+  { id: 'CDF', label: 'CDF' },
 ];
 
 function getTypeIcon(type: string) {
@@ -100,19 +100,24 @@ export default function HistoryScreen() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [selectedTx, setSelectedTx] = useState<HistoryItem | null>(null);
   const observerRef = useRef<HTMLDivElement>(null);
+  const [historyOwnerId, setHistoryOwnerId] = useState<string | null>(null);
 
   const fetchHistory = useCallback(async (cursor?: string | null, reset = false) => {
     if (!user?.id) {
+      setHistory([]);
+      setHistoryOwnerId(null);
       setLoading(false);
       return;
     }
+    const requestedUserId = user.id;
     try {
-      const params = new URLSearchParams({ userId: user.id });
+      const params = new URLSearchParams({ userId: requestedUserId });
       if (cursor) params.set('cursor', cursor);
 
-      const res = await fetch(`/api/transfer/history?${params}`);
+      const res = await fetch(`/api/transfer/history?${params}`, { credentials: 'include' });
       const data = await res.json();
-      if (data.success) {
+      if (data.success && useAppStore.getState().user?.id === requestedUserId) {
+        setHistoryOwnerId(requestedUserId);
         if (reset) {
           setHistory(data.history ?? []);
         } else {
@@ -123,15 +128,23 @@ export default function HistoryScreen() {
       }
     } catch (err) {
       console.error('Failed to fetch history:', err);
-      if (!cursor) toast.error('Erreur lors du chargement de l\'historique');
+      if (!cursor && useAppStore.getState().user?.id === requestedUserId) toast.error('Erreur lors du chargement de l\'historique');
     } finally {
-      setLoading(false);
-      setRefreshing(false);
-      setLoadingMore(false);
+      if (useAppStore.getState().user?.id === requestedUserId) {
+        setLoading(false);
+        setRefreshing(false);
+        setLoadingMore(false);
+      }
     }
   }, [user?.id]);
 
   useEffect(() => {
+    setHistory([]);
+    setHistoryOwnerId(null);
+    setNextCursor(null);
+    setHasMore(true);
+    setSelectedTx(null);
+    setLoading(true);
     fetchHistory(null, true);
   }, [fetchHistory]);
 
@@ -161,7 +174,7 @@ export default function HistoryScreen() {
 
   const filteredHistory = history
     .filter((item) => activeTab === 'all' || item.type === activeTab)
-    .filter((item) => currencyFilter === 'all' || item.currency === currencyFilter);
+    .filter((item) => currencyFilter === 'all' || (currencyFilter === 'CDF' ? item.currency === 'CDF' || item.currency === 'FC' : item.currency === currencyFilter));
 
   return (
     <div className="min-h-screen bg-background">
@@ -230,7 +243,7 @@ export default function HistoryScreen() {
               </div>
             ))}
           </div>
-        ) : filteredHistory.length === 0 ? (
+        ) : historyOwnerId !== user?.id || filteredHistory.length === 0 ? (
           <Card className="border-border">
             <CardContent className="flex flex-col items-center justify-center py-16">
               <span className="text-5xl mb-4">📭</span>

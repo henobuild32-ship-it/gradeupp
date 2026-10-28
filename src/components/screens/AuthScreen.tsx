@@ -76,7 +76,7 @@ export default function AuthScreen() {
   }, [pageParams?.mode, pageParams?.role]);
 
   // Login fields
-  const [loginCountryCode, setLoginCountryCode] = useState('CD');
+  const [loginCountryCode, setLoginCountryCode] = useState('');
   const [loginPhone, setLoginPhone] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
@@ -86,7 +86,7 @@ export default function AuthScreen() {
   // Register fields
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
-  const [regCountryCode, setRegCountryCode] = useState('CD');
+  const [regCountryCode, setRegCountryCode] = useState('');
   const [regPhone, setRegPhone] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [showRegPassword, setShowRegPassword] = useState(false);

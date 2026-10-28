@@ -131,6 +131,8 @@ export default function USSDScreen() {
 
   const inputRef = useRef<HTMLInputElement>(null);
   const prevStepRef = useRef<UssdStep>('welcome');
+  const withdrawalRequestIdRef = useRef<string | null>(null);
+  const requestInFlightRef = useRef(false);
 
   useEffect(() => {
     const needsInput: UssdStep[] = [
@@ -169,11 +171,15 @@ export default function USSDScreen() {
   }, []);
 
   const goMenu = useCallback(() => {
+    withdrawalRequestIdRef.current = null;
     setTx({ ...emptyTx });
     setStep('main-menu');
   }, []);
 
   const updateTx = useCallback((updates: Partial<TxContext>) => {
+    if (Object.hasOwn(updates, 'amount') || Object.hasOwn(updates, 'agentCode')) {
+      withdrawalRequestIdRef.current = null;
+    }
     setTx(prev => ({ ...prev, ...updates }));
   }, []);
 
@@ -295,6 +301,8 @@ export default function USSDScreen() {
     nextStep: UssdStep,
     successMsg: string,
   ) => {
+    if (requestInFlightRef.current) return;
+    requestInFlightRef.current = true;
     setLoading(true);
     try {
       const pinRes = await fetch('/api/auth/verify-pin', {
@@ -312,7 +320,13 @@ export default function USSDScreen() {
       const res = await fetch(apiEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...body, pin: pinInput }),
+        body: JSON.stringify({
+          ...body,
+          ...(apiEndpoint === '/api/ussd/withdraw' && !body.clientRequestId
+            ? { clientRequestId: withdrawalRequestIdRef.current || (withdrawalRequestIdRef.current = crypto.randomUUID()) }
+            : {}),
+          pin: pinInput,
+        }),
       });
       const data = await res.json();
       if (data.success) {
@@ -325,7 +339,10 @@ export default function USSDScreen() {
     } catch {
       toast.error('Connexion indisponible. Aucune transaction n’a été envoyée; réessayez quand vous serez en ligne.');
     }
-    finally { setLoading(false); }
+    finally {
+      requestInFlightRef.current = false;
+      setLoading(false);
+    }
   }, [pinInput, user?.id]);
 
   const handleAgentLookup = useCallback(async (code: string) => {

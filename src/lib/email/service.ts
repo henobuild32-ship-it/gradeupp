@@ -70,7 +70,7 @@ export async function sendOTPEmail(email: string, otp: string): Promise<boolean>
           </div>
           <p style="color: #9ca3af; font-size: 12px; text-align: center; margin-top: 24px;">Ce code expire dans 5 minutes. Si vous n'avez pas demandé ce code, ignorez cet email.</p>
           <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
-          <p style="color: #9ca3af; font-size: 11px; text-align: center;">&copy; 2026 TRAIT - RDC</p>
+          <p style="color: #9ca3af; font-size: 11px; text-align: center;">&copy; 2026 Trait Fintech</p>
         </div>
       `,
     })
@@ -82,7 +82,7 @@ export async function sendOTPEmail(email: string, otp: string): Promise<boolean>
   }
 }
 
-export async function sendPasswordResetEmail(email: string, newPassword: string): Promise<boolean> {
+export async function sendPasswordResetNoticeEmail(email: string): Promise<boolean> {
   const normalizedEmail = normalizeEmail(email)
 
   if (!normalizedEmail || !isValidEmail(normalizedEmail)) {
@@ -102,13 +102,12 @@ export async function sendPasswordResetEmail(email: string, newPassword: string)
       from: `${fromName} <${fromAddress}>`,
       replyTo: process.env.SMTP_EMAIL,
       to: normalizedEmail,
-      subject: 'Votre nouveau mot de passe TRAIT',
+      subject: 'Information de sécurité Trait Fintech',
       text: [
-        'TRAIT',
+        'Trait Fintech',
         '',
-        'Réinitialisation de mot de passe',
-        `Nouveau mot de passe: ${newPassword}`,
-        'Veuillez le changer après votre connexion.',
+        'Le mot de passe de votre compte a été réinitialisé par un administrateur Trait Fintech.',
+        'Si vous n’êtes pas à l’origine de cette demande, contactez le support officiel ou utilisez la procédure de récupération de compte.',
       ].join('\n'),
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; background: #f9fafb; border-radius: 12px;">
@@ -116,15 +115,13 @@ export async function sendPasswordResetEmail(email: string, newPassword: string)
             <div style="width: 48px; height: 48px; background: #0D5C63; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 20px;">T</div>
             <h1 style="color: #0D5C63; font-size: 20px; margin-top: 8px;">TRAIT</h1>
           </div>
-          <h2 style="color: #1f2937; font-size: 18px; text-align: center;">R&eacute;initialisation de mot de passe</h2>
-          <p style="color: #6b7280; font-size: 14px; text-align: center;">Votre mot de passe a &eacute;t&eacute; r&eacute;initialis&eacute;.</p>
+          <h2 style="color: #1f2937; font-size: 18px; text-align: center;">Information de sécurité</h2>
+          <p style="color: #6b7280; font-size: 14px; text-align: center;">Le mot de passe de votre compte a été réinitialisé par un administrateur Trait Fintech. Si vous n’êtes pas à l’origine de cette demande, contactez le support officiel ou utilisez la procédure de récupération du compte.</p>
           <div style="background: white; border-radius: 12px; padding: 24px; border: 1px solid #e5e7eb;">
-            <p style="color: #374151; font-size: 13px; margin-bottom: 8px;">Votre nouveau mot de passe :</p>
-            <p style="font-size: 24px; text-align: center; font-family: monospace; color: #0D5C63; font-weight: bold; margin: 12px 0; letter-spacing: 2px;">${newPassword}</p>
-            <p style="color: #9ca3af; font-size: 12px; text-align: center;">Veuillez changer ce mot de passe apr&egrave;s votre prochaine connexion.</p>
+            <p style="color: #374151; font-size: 13px; text-align: center;">Trait Fintech ne transmet jamais un mot de passe par e-mail.</p>
           </div>
           <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
-          <p style="color: #9ca3af; font-size: 11px; text-align: center;">&copy; 2026 TRAIT - RDC</p>
+          <p style="color: #9ca3af; font-size: 11px; text-align: center;">&copy; 2026 Trait Fintech</p>
         </div>
       `,
     })
@@ -154,7 +151,7 @@ function agentCredentialsHtml(agentName: string, agentCode: string, phone: strin
         <p style="color: #9ca3af; font-size: 12px; text-align: center; margin-top: 16px;">Connectez-vous directement sur l'application TRAIT avec votre numéro et votre mot de passe d'inscription.</p>
       </div>
       <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
-      <p style="color: #9ca3af; font-size: 11px; text-align: center;">&copy; 2026 TRAIT - RDC</p>
+      <p style="color: #9ca3af; font-size: 11px; text-align: center;">&copy; 2026 Trait Fintech</p>
     </div>
   `
 }

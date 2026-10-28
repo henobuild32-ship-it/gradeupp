@@ -52,7 +52,7 @@ Ces Conditions constituent un contrat juridiquement contraignant entre vous et T
   },
   {
     title: '4. Services Financiers',
-    content: `4.1. Transferts d'Argent : L'Application permet d'effectuer des transferts d'argent entre Utilisateurs TRAIT, en temps réel ou différé, en USD et en Franc Congolais (FC).
+    content: `4.1. Transferts d'Argent : L'Application permet d'effectuer des transferts d'argent entre Utilisateurs TRAIT, en temps réel ou différé, en USD et en Franc congolais (CDF).
 
 4.2. Dépôts et Retraits : Les Agents agréés peuvent effectuer des opérations de dépôt et de retrait pour le compte de Clients. Ces opérations sont soumises à des limites de montant et à des procédures de vérification.
 
@@ -108,19 +108,19 @@ Ces Conditions constituent un contrat juridiquement contraignant entre vous et T
   {
     title: '7. Limites et Plafonds',
     content: `7.1. Compte Non Vérifié (KYC de base) :
-• Solde maximum : 1 000 000 FC ou équivalent
-• Transfert quotidien : 500 000 FC maximum
+• Solde maximum : 1 000 000 CDF ou équivalent
+• Transfert quotidien : 500 000 CDF maximum
 • Nombre de transactions par jour : 10 maximum
 
 7.2. Compte Vérifié (KYC complet) :
 • Solde maximum : selon le profil et l'analyse de risque
-• Transfert quotidien : jusqu'à 10 000 000 FC
+• Transfert quotidien : jusqu'à 10 000 000 CDF
 • Nombre de transactions par jour : 50 maximum
 
 7.3. Limites Agent :
-• Dépôt quotidien : 20 000 000 FC maximum
-• Retrait quotidien : 10 000 000 FC maximum
-• Solde Agent flottant : 5 000 000 FC maximum
+• Dépôt quotidien : 20 000 000 CDF maximum
+• Retrait quotidien : 10 000 000 CDF maximum
+• Solde Agent flottant : 5 000 000 CDF maximum
 
 7.4. TRAIT se réserve le droit d'ajuster ces limites à tout moment pour des raisons de sécurité, de conformité ou de gestion des risques.`
   },

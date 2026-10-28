@@ -34,6 +34,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         success: false,
         found: true,
+        code: 'RECIPIENT_SUSPENDED',
         message: 'Ce compte est suspendu',
       })
     }
@@ -45,7 +46,6 @@ export async function GET(request: NextRequest) {
         id: user.id,
         name: user.name || user.pseudo || 'Utilisateur TRAIT',
         phone: user.phone,
-        role: user.role,
         isTraitUser: true,
       },
     })

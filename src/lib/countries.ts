@@ -1,4 +1,4 @@
-import countryData from './countries.generated.json'
+import countryData from './countries.generated.json' with { type: 'json' }
 import { getCountryCallingCode, getCountries, parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js/max'
 
 export interface CountryRecord {
@@ -36,6 +36,17 @@ export function normalizeInternationalPhone(input: string, countryCode?: string)
       ? parsePhoneNumberFromString(value, countryCode.toUpperCase() as CountryCode)
       : undefined
   return parsed?.isValid() ? parsed.number : null
+}
+
+export function normalizePhoneForCountry(input: string, countryCode: string): string | null {
+  const code = countryCode.toUpperCase()
+  if (!getCountry(code) || !PHONE_COUNTRIES.has(code)) return null
+  const value = input.trim()
+  if (!value) return null
+  const parsed = value.startsWith('+')
+    ? parsePhoneNumberFromString(value)
+    : parsePhoneNumberFromString(value, code as CountryCode)
+  return parsed?.isValid() && parsed.country === code ? parsed.number : null
 }
 
 export function validateInternationalPhone(input: string, countryCode?: string): boolean {

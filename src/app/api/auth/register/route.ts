@@ -4,7 +4,7 @@ import { hashPassword } from '@/lib/auth'
 import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { RegisterSchema, validateRequest } from '@/lib/validations'
 import crypto from 'crypto'
-import { normalizeInternationalPhone } from '@/lib/countries'
+import { getCountry, normalizePhoneForCountry } from '@/lib/countries'
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,9 +34,12 @@ export async function POST(request: NextRequest) {
       photoId,
       referralCode,
     } = validation.data
-    const canonicalPhone = normalizeInternationalPhone(phone)
+    if (!getCountry(country)) {
+      return NextResponse.json({ success: false, message: 'Pays invalide. Sélectionnez un pays dans la liste.' }, { status: 400 })
+    }
+    const canonicalPhone = normalizePhoneForCountry(phone, country)
     if (!canonicalPhone) {
-      return NextResponse.json({ success: false, message: 'Le numéro doit être valide et inclure son indicatif international.' }, { status: 400 })
+      return NextResponse.json({ success: false, message: 'Le numéro doit être valide et correspondre au pays sélectionné.' }, { status: 400 })
     }
     if (!phone || !name || !pseudo || !role || !password) {
       return NextResponse.json(
@@ -98,7 +101,6 @@ export async function POST(request: NextRequest) {
     const isAgent = role === 'agent'
     const isSeller = role === 'seller'
     const validationStatus = isAgent || isSeller ? 'pending' : 'validated'
-    const realBalanceCredit = isAgent ? 100 : isSeller ? 0 : 30
 
     // Hash password
     const hashedPassword = await hashPassword(password)
@@ -115,7 +117,7 @@ export async function POST(request: NextRequest) {
         phone: canonicalPhone,
         name,
         pseudo,
-        country: country || 'CD',
+        country,
         role,
         pin: hashedPin,
         password: hashedPassword,
@@ -124,7 +126,7 @@ export async function POST(request: NextRequest) {
         city: city?.trim() || null,
         address: address?.trim() || null,
         photoId: photoId || null,
-        realBalance: realBalanceCredit,
+        realBalance: 0,
         realBalanceFC: 0,
         bonusBalance: 0,
         bonusBalanceFC: 0,

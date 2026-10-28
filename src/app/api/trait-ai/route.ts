@@ -370,8 +370,8 @@ function matchMessage(message: string): MatchResult | null {
   if (lower.match(/(argent|money|cash|euros|dollars|usd|fc|cdf|francs|dinero|efectivo|euro|dolar|fulus|نقود|فلوس|dinheiro|monnaie|currency)/)) {
     return {
       response: reply(lang,
-        `Sur TRAIT, gérez votre argent en ${pick(['💰', '💵', '💱'])}\n\n• **USD** — Dollar américain\n• **FC** — Franc congolais\n• ${pick(['Changez le taux de change', 'Taux de change'])} dans les paramètres\n• ${pick(['Transférez entre comptes', 'Transferts internes'])}\n\n${pick(['Que voulez-vous faire?', 'Quelle opération?'])}`,
-        `On TRAIT, manage your money in ${pick(['💰', '💵', '💱'])}\n\n• **USD** — US Dollar\n• **FC** — Congolese Franc\n• ${pick(['Change exchange rate', 'Exchange rate'])} in settings\n• ${pick(['Transfer between accounts', 'Internal transfers'])}\n\n${pick(['What would you like to do?', 'Which operation?'])}`,
+        `Sur TRAIT, gérez votre argent en ${pick(['💰', '💵', '💱'])}\n\n• **USD** — Dollar américain\n• **CDF** — Franc congolais\n• ${pick(['Consultez le taux USD/CDF', 'Taux de conversion USD/CDF'])} dans les paramètres\n• ${pick(['Transférez entre comptes TRAIT', 'Transferts internes TRAIT'])}\n\n${pick(['Que voulez-vous faire?', 'Quelle opération?'])}`,
+        `On TRAIT, manage your money in ${pick(['💰', '💵', '💱'])}\n\n• **USD** — US Dollar\n• **CDF** — Congolese Franc\n• ${pick(['View the USD/CDF rate', 'USD/CDF conversion rate'])} in settings\n• ${pick(['Transfer between TRAIT accounts', 'Internal TRAIT transfers'])}\n\n${pick(['What would you like to do?', 'Which operation?'])}`,
       ),
       actions: [{ label: '🏠 Voir mon solde', page: 'home' }],
     }
@@ -492,7 +492,7 @@ async function buildUserContext(request: NextRequest, userName: string, userRole
       if (user) {
         const fmt = (n: number) => Number(n || 0).toFixed(2)
         lines.push(`Nom : ${user.name || user.pseudo || 'Utilisateur'} ; Rôle : ${user.role} ; Pays : ${user.country || 'N/C'}`)
-        lines.push(`Solde réel : ${fmt(user.realBalance)} USD et ${fmt(user.realBalanceFC)} FC ; Solde bonus : ${fmt(user.bonusBalance)} USD et ${fmt(user.bonusBalanceFC)} FC`)
+        lines.push(`Solde réel : ${fmt(user.realBalance)} USD et ${fmt(user.realBalanceFC)} CDF ; Solde bonus : ${fmt(user.bonusBalance)} USD et ${fmt(user.bonusBalanceFC)} CDF`)
         if (user.role === 'agent' && user.validationStatus) {
           lines.push(`Statut agent : ${user.validationStatus}`)
         }
@@ -507,7 +507,7 @@ async function buildUserContext(request: NextRequest, userName: string, userRole
             lines.push(
               'Dernières transactions (de plus en plus anciennes) : ' +
                 txs
-                  .map((t) => `${t.createdAt.toLocaleDateString('fr-FR')} ${t.type} ${t.amount} ${t.currency} (${t.status})`)
+                  .map((t) => `${t.createdAt.toLocaleDateString('fr-FR')} ${t.type} ${t.amount} ${t.currency === 'FC' ? 'CDF' : t.currency} (${t.status})`)
                   .join(' ; ')
             )
           }
@@ -546,8 +546,8 @@ function buildSystemPrompt(context: string): string {
 # Connaissance complète de TRAIT
 - Dépôt d'espèces via agent TRAIT : GRATUIT.
 - Retrait d'espèces via agent : 0,7 % du montant.
-- Transfert vers un autre numéro TRAIT : 0,7 %, instantané, en USD ou FC.
-- Deux comptes de solde, USD et FC, plus un solde bonus ; conversion selon le taux de change (fourni dans le contexte).
+- Transfert vers un autre numéro TRAIT : 0,7 %, instantané, en USD ou CDF.
+- Deux comptes de solde, USD et CDF, plus un solde bonus ; conversion selon le taux de change (fourni dans le contexte).
 - Cartes : carte virtuelle sécurisée (numéro, CCV), carte enfant avec plafonds, demande de carte, paiement par carte.
 - Factures : électricité, eau, internet, recharge téléphonique.
 - USSD : services par code téléphone sans internet (solde, transfert, historique…).
@@ -578,7 +578,7 @@ Maximum 2 boutons, libellés courts (3 mots maximum). Si aucune action n'aide r�
 Exemples du ton attendu :
 - « Salut ! Je suis TRAIT IA. Envoi d'argent, factures, retrait cash, carte — dis-moi ce que tu veux faire et je t'accompagne. »
 - « Un retrait de 50 $ te coûtera 0,35 $ de frais, tu recevras donc 49,65 $. Tu veux que je t'ouvre l'écran Retirer ? »
-- « Bien sûr, je peux vérifier : regarde le solde affiché sur ton accueil, ou je t'explique comment le convertir en FC. »`
+- « Bien sûr, je peux vérifier : regarde le solde affiché sur ton accueil, ou je t'explique comment le convertir en CDF. »`
 }
 
 // glm-4.5-flash répond vite et bien en conversationnel ; glm-4.7-flash sert de

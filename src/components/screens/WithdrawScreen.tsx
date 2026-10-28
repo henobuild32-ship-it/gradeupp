@@ -26,6 +26,7 @@ import { useAppStore } from '@/lib/store';
 import { useTranslation } from '@/lib/i18n';
 import { toast } from 'sonner';
 import { formatAgentCodeInput } from '@/lib/agent-format';
+import { calculateTransferFee, roundCurrencyAmount } from '@/lib/currency';
 
 function fmtCur(amount: number, currency: string) {
   if (currency === 'FC' || currency === 'CDF') return `${amount.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} CDF`;
@@ -126,12 +127,15 @@ export default function WithdrawScreen() {
   }, [agentInput]);
 
   const isFC = currency === 'FC';
-  const numericAmount = parseFloat(amount) || 0;
-  const fee = Math.round(numericAmount * 0.007 * 100) / 100;
+  const numericAmount = roundCurrencyAmount(Number(amount) || 0);
+  const fee = calculateTransferFee(numericAmount);
   const total = numericAmount + fee;
   const realBalance = isFC
     ? (user?.realBalanceFC ?? 0)
     : (user?.realBalance ?? 0);
+  const bonusBalance = isFC
+    ? (user?.bonusBalanceFC ?? 0)
+    : (user?.bonusBalance ?? 0);
 
   function buildAgentCode(): string {
     return formatAgentCodeInput(agentInput, true) || agentInput.trim();
@@ -151,7 +155,7 @@ export default function WithdrawScreen() {
       toast.error(agentLookupError || 'Agent non trouvé ou non validé. Vérifiez le code agent (ex: AGT-123456).');
       return;
     }
-    if (total > realBalance) {
+    if (total > realBalance && !(numericAmount <= realBalance && fee <= bonusBalance)) {
       toast.error(t('withdraw.insufficient', { amount: fmtCur(realBalance, currency) }));
       return;
     }
@@ -160,6 +164,13 @@ export default function WithdrawScreen() {
 
   function requestPinAndWithdraw() {
     if (!user?.id) return;
+    const clientRequestId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : null;
+    if (!clientRequestId) {
+      toast.error('Cet appareil ne permet pas de sécuriser la référence du retrait. Mettez le navigateur à jour.');
+      return;
+    }
     setShowConfirm(false);
 
     const agentCode = buildAgentCode();
@@ -167,7 +178,7 @@ export default function WithdrawScreen() {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    setPendingPinAction(async () => {
+    setPendingPinAction(async (pin) => {
       setLoading(true);
       try {
         const res = await fetch('/api/transfer/withdraw', {
@@ -179,9 +190,17 @@ export default function WithdrawScreen() {
             currency,
             method,
             agentCode,
+            clientRequestId,
+            pin,
           }),
         });
         const data = await res.json();
+        if (!res.ok || !data.success) {
+          if (res.status >= 500) throw new Error('Résultat incertain. Consultez l’historique avant toute nouvelle demande; la même référence sera réutilisée.');
+          toast.error(data.message || t('withdraw.error'));
+          navigateTo('withdraw');
+          return;
+        }
         if (data.success) {
           if (data.updatedBalances) {
             setUser({
@@ -197,11 +216,11 @@ export default function WithdrawScreen() {
           setAgentInput('');
           setAgentNumber('');
           navigateTo('home');
-        } else {
-          toast.error(data.message || t('withdraw.error'));
         }
-      } catch {
-        toast.error(t('validation.connection_error'));
+      } catch (error) {
+        throw new Error(error instanceof Error && error.message.startsWith('Résultat incertain')
+          ? error.message
+          : 'La réponse du retrait n’est pas arrivée. Consultez l’historique avant de réessayer; la même référence sera réutilisée.');
       } finally {
         setLoading(false);
       }

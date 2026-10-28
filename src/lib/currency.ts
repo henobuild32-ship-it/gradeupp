@@ -42,6 +42,14 @@ export function calculateTransferFee(amount: number | string): number {
   return minorToAmount(divideAndRoundHalfUp(amountMinor * BigInt(7), BigInt(1000)))
 }
 
+export function calculatePercentageFee(amount: number | string, basisPoints: number): number {
+  if (!Number.isInteger(basisPoints) || basisPoints < 0 || basisPoints > 10_000) {
+    throw new Error('Pourcentage invalide')
+  }
+  const amountMinor = decimalToMinor(amount)
+  return minorToAmount(divideAndRoundHalfUp(amountMinor * BigInt(basisPoints), BigInt(10_000)))
+}
+
 export function convertCurrencyAmount(
   amount: number | string,
   from: Currency,

@@ -1,6 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createHash } from 'node:crypto'
 import { db } from '@/lib/db'
 import { requireUser } from '@/lib/auth'
+import { normalizeCurrency } from '@/lib/currency'
+
+function purchaseResponse(purchase: any, duplicate = false, transactionId: string | null = null) {
+  return NextResponse.json({
+    success: true,
+    ...(duplicate ? { duplicate: true } : {}),
+    transactionId,
+    purchase: {
+      id: purchase.id,
+      productId: purchase.productId,
+      buyerId: purchase.buyerId,
+      amount: purchase.amount,
+      quantity: purchase.quantity,
+      usedBonus: purchase.usedBonus,
+      usedReal: purchase.usedReal,
+      currency: purchase.product?.currency || 'USD',
+      status: purchase.status,
+      createdAt: purchase.createdAt,
+    },
+  })
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,35 +53,37 @@ export async function POST(request: NextRequest) {
     }
 
     const qty = Math.min(10, Math.max(1, Math.floor(Number(quantity) || 1)))
-    const requestId = typeof clientRequestId === 'string' && clientRequestId.length > 0 && clientRequestId.length <= 64
+    if (clientRequestId !== undefined && (typeof clientRequestId !== 'string' || !/^[A-Za-z0-9_-]{16,64}$/.test(clientRequestId))) {
+      return NextResponse.json({ success: false, message: 'Référence de demande invalide.' }, { status: 400 })
+    }
+    const requestId = typeof clientRequestId === 'string' && /^[A-Za-z0-9_-]{16,64}$/.test(clientRequestId)
       ? clientRequestId
       : undefined
+    const willUseBonus = useBonus === true
+    const willUseReal = useReal !== false // default true unless explicitly specified
+    const requestFingerprint = requestId
+      ? createHash('sha256').update(JSON.stringify({ productId, buyerId, quantity: qty, useBonus: willUseBonus, useReal: willUseReal })).digest('hex')
+      : null
 
     if (requestId) {
-      const existing = await db.purchase.findUnique({ where: { clientRequestId: requestId } })
+      const existing = await (db.purchase as any).findUnique({
+        where: { clientRequestId: requestId },
+        include: { product: { select: { currency: true } } },
+      })
       if (existing) {
-        return NextResponse.json({
-          success: true,
-          duplicate: true,
-          purchase: {
-            id: existing.id,
-            productId: existing.productId,
-            buyerId: existing.buyerId,
-            amount: existing.amount,
-            quantity: existing.quantity,
-            usedBonus: existing.usedBonus,
-            usedReal: existing.usedReal,
-            currency: 'USD',
-            status: existing.status,
-            createdAt: existing.createdAt,
-          },
-        })
+        if (existing.buyerId !== buyerId) {
+          return NextResponse.json({ success: false, message: 'Référence de demande déjà utilisée.' }, { status: 409 })
+        }
+        if (existing.requestFingerprint && existing.requestFingerprint !== requestFingerprint) {
+          return NextResponse.json({ success: false, message: 'Cette référence est déjà associée à une autre demande.' }, { status: 409 })
+        }
+        const transaction = await db.transaction.findUnique({
+          where: { senderId_clientRequestId: { senderId: buyerId, clientRequestId: `market:${requestId}` } },
+          select: { id: true },
+        }).catch(() => null)
+        return purchaseResponse(existing, true, transaction?.id ?? null)
       }
     }
-
-    // Defaults: if neither specified, use real balance only (backward compat)
-    const willUseBonus = useBonus === true
-    const willUseReal = useReal !== false // default true unless explicitly false
 
     // ─── Get product ─────────────────────────────────────────────────
     const product = await db.marketplaceProduct.findUnique({
@@ -102,8 +126,8 @@ export async function POST(request: NextRequest) {
     }
 
     // ─── Determine currency ──────────────────────────────────────────
-    const currency = product.currency || 'USD'
-    const isFC = currency === 'FC'
+    const currency = normalizeCurrency(product.currency)
+    const isFC = currency === 'CDF'
 
     // ─── Determine effective unit price ─────────────────────────────
     const effectiveUnitPrice = willUseBonus && product.bonusPrice !== null && product.bonusPrice !== undefined
@@ -212,6 +236,7 @@ export async function POST(request: NextRequest) {
 
     const realField = isFC ? 'realBalanceFC' : 'realBalance'
     const bonusField = isFC ? 'bonusBalanceFC' : 'bonusBalance'
+    let duplicateFromRace = false
     const purchase = await db.$transaction(async (tx) => {
       const debit = await tx.user.updateMany({
         where: { id: buyerId, [realField]: { gte: usedReal }, [bonusField]: { gte: usedBonus } },
@@ -229,7 +254,7 @@ export async function POST(request: NextRequest) {
       })
       if (stockDec.count !== 1) throw new Error('OUT_OF_STOCK')
 
-      const created = await tx.purchase.create({
+      const created = await (tx.purchase as any).create({
         data: {
           productId,
           buyerId,
@@ -239,6 +264,7 @@ export async function POST(request: NextRequest) {
           usedReal,
           status: 'completed',
           clientRequestId: requestId,
+          requestFingerprint,
         },
         include: {
           product: true,
@@ -247,6 +273,7 @@ export async function POST(request: NextRequest) {
       })
 
       // Create order for buyer/seller visibility (only when product has a seller)
+      let transactionId: string | null = null
       if (product.sellerId) {
         await tx.order.create({
           data: {
@@ -267,61 +294,95 @@ export async function POST(request: NextRequest) {
             [isFC ? 'realBalanceFC' : 'realBalance']: { increment: effectivePrice },
           },
         })
+        const transaction = await tx.transaction.create({
+          data: {
+            type: 'purchase',
+            amount: effectivePrice,
+            fee: 0,
+            currency,
+            receivingCurrency: currency,
+            amountReceived: effectivePrice,
+            status: 'completed',
+            senderId: buyerId,
+            receiverId: product.sellerId,
+            description: `Achat Marketplace : ${qty} × ${product.name}`.slice(0, 200),
+            ...(requestId ? {
+              clientRequestId: `market:${requestId}`,
+              requestFingerprint,
+            } : {}),
+          },
+          select: { id: true },
+        })
+        transactionId = transaction.id
       }
-      return created
-    }).catch((error) => {
+
+      if (usedBonus > 0) {
+        await tx.bonusHistory.create({
+          data: {
+            userId: buyerId,
+            type: 'purchase',
+            amount: -usedBonus,
+            currency,
+            description: `Purchased "${product.name}" using bonus balance`,
+            metadata: JSON.stringify({
+              productId: product.id,
+              productName: product.name,
+              purchaseId: created.id,
+              bonusUsed: usedBonus,
+              realUsed: usedReal,
+              totalPrice: effectivePrice,
+            }),
+          },
+        })
+      }
+
+      const purchaseNotifications = [
+        ...(product.sellerId ? [{
+          userId: product.sellerId,
+          title: 'New Purchase',
+          message: `${buyer.name || buyer.pseudo || 'Someone'} purchased ${qty}x "${product.name}" for ${effectivePrice.toFixed(2)} ${currency}${usedBonus > 0 ? ' (bonus payment)' : ''}`,
+          type: 'purchase',
+        }] : []),
+        {
+          userId: buyer.id,
+          title: 'Achat confirmé',
+          message: `Votre achat de ${qty}x "${product.name}" pour ${effectivePrice.toFixed(2)} ${currency} a été confirmé. ${usedBonus > 0 ? `Bonus utilisé: ${usedBonus.toFixed(2)} ${currency}.` : ''}`,
+          type: 'purchase',
+        },
+      ]
+      await tx.notification.createMany({ data: purchaseNotifications })
+
+      return { ...created, transactionId }
+    }).catch(async (error) => {
       if (error instanceof Error && error.message === 'INSUFFICIENT_BALANCE') return null
       if (error instanceof Error && error.message === 'OUT_OF_STOCK') return 'OOS'
+      if (requestId && typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002') {
+        const existing = await (db.purchase as any).findUnique({
+          where: { clientRequestId: requestId },
+          include: { product: true, buyer: { select: { id: true, name: true, pseudo: true } } },
+        })
+        if (existing) {
+          if (existing.buyerId !== buyerId || (existing.requestFingerprint && existing.requestFingerprint !== requestFingerprint)) return 'CONFLICT'
+          duplicateFromRace = true
+          return existing
+        }
+      }
       throw error
     })
 
     if (purchase === 'OOS') {
       return NextResponse.json({ success: false, message: 'Produit en rupture de stock' }, { status: 409 })
     }
+    if (purchase === 'CONFLICT') {
+      return NextResponse.json({ success: false, message: 'Référence de demande déjà utilisée.' }, { status: 409 })
+    }
     if (!purchase) return NextResponse.json({ success: false, message: 'Solde insuffisant' }, { status: 400 })
-
-    // ─── Record bonus history if bonus was used ──────────────────────
-    if (usedBonus > 0) {
-      await db.bonusHistory.create({
-        data: {
-          userId: buyerId,
-          type: 'purchase',
-          amount: -usedBonus,
-          currency,
-          description: `Purchased "${product.name}" using bonus balance`,
-          metadata: JSON.stringify({
-            productId: product.id,
-            productName: product.name,
-            purchaseId: purchase.id,
-            bonusUsed: usedBonus,
-            realUsed: usedReal,
-            totalPrice: effectivePrice,
-          }),
-        },
-      })
+    if (duplicateFromRace) {
+      const transaction = requestId
+        ? await db.transaction.findUnique({ where: { senderId_clientRequestId: { senderId: buyerId, clientRequestId: `market:${requestId}` } }, select: { id: true } }).catch(() => null)
+        : null
+      return purchaseResponse(purchase, true, transaction?.id ?? null)
     }
-
-    // ─── Notify seller ───────────────────────────────────────────────
-    if (product.sellerId) {
-      await db.notification.create({
-        data: {
-          userId: product.sellerId,
-          title: 'New Purchase',
-          message: `${buyer.name || buyer.pseudo || 'Someone'} purchased ${qty}x "${product.name}" for ${effectivePrice.toFixed(2)} ${currency}${usedBonus > 0 ? ' (bonus payment)' : ''}`,
-          type: 'purchase',
-        },
-      })
-    }
-
-    // ─── Notify buyer ───────────────────────────────────────────────
-    await db.notification.create({
-      data: {
-        userId: buyer.id,
-        title: 'Achat confirmé',
-        message: `Votre achat de ${qty}x "${product.name}" pour ${effectivePrice.toFixed(2)} ${currency} a été confirmé. ${usedBonus > 0 ? `Bonus utilisé: ${usedBonus.toFixed(2)} USD.` : ''}`,
-        type: 'purchase',
-      },
-    })
 
     // Push notifications to both buyer and seller
     const { sendPushToUser } = await import('@/lib/push').catch(() => ({ sendPushToUser: null }))
@@ -340,21 +401,7 @@ export async function POST(request: NextRequest) {
       }).catch(() => {})
     }
 
-    return NextResponse.json({
-      success: true,
-      purchase: {
-        id: purchase.id,
-        productId: purchase.productId,
-        buyerId: purchase.buyerId,
-        amount: purchase.amount,
-        quantity: purchase.quantity,
-        usedBonus: purchase.usedBonus,
-        usedReal: purchase.usedReal,
-        currency,
-        status: purchase.status,
-        createdAt: purchase.createdAt,
-      },
-    })
+    return purchaseResponse(purchase, false, purchase.transactionId ?? null)
   } catch (error) {
     console.error('Purchase error:', error)
     return NextResponse.json(

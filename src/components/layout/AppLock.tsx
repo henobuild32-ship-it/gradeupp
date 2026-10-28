@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Fingerprint, ScanFace, Lock, ShieldAlert, LogOut, Loader2 } from 'lucide-react';
-import { useAppStore } from '@/lib/store';
+import { useAppStore, type User } from '@/lib/store';
 import { toast } from 'sonner';
 import { authenticateBiometric, checkBiometricSupport, describeBiometricError, isNativePlatform, storedCredentialId } from '@/lib/biometric';
 import { markFreshAuth } from '@/lib/session-flag';
@@ -18,7 +18,7 @@ import { markFreshAuth } from '@/lib/session-flag';
 
 const BIOMETRIC_COOLDOWN_MS = 1500;
 
-export default function AppLock({ onUnlock }: { onUnlock: () => void }) {
+export default function AppLock({ onUnlock }: { onUnlock: (verifiedUser?: User) => void }) {
   const user = useAppStore((s) => s.user);
   const setUser = useAppStore((s) => s.setUser);
   const setToken = useAppStore((s) => s.setToken);
@@ -33,6 +33,7 @@ export default function AppLock({ onUnlock }: { onUnlock: () => void }) {
   const [pinError, setPinError] = useState('');
   const [verifyingPin, setVerifyingPin] = useState(false);
   const [sessionAlive, setSessionAlive] = useState<boolean | null>(null);
+  const [sessionCheckError, setSessionCheckError] = useState(false);
   const [showPinPad, setShowPinPad] = useState(false);
   const pinRef = useRef('');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -46,9 +47,15 @@ export default function AppLock({ onUnlock }: { onUnlock: () => void }) {
     (async () => {
       try {
         const res = await fetch('/api/auth/profile', { credentials: 'include' });
-        if (!cancelled) setSessionAlive(res.ok);
+        if (!cancelled) {
+          setSessionAlive(res.ok ? true : [401, 403, 404].includes(res.status) ? false : null);
+          setSessionCheckError(!res.ok && ![401, 403, 404].includes(res.status));
+        }
       } catch {
-        if (!cancelled) setSessionAlive(true); // hors ligne : garder le PIN local
+        if (!cancelled) {
+          setSessionAlive(null);
+          setSessionCheckError(true);
+        }
       }
     })();
     return () => {
@@ -87,13 +94,13 @@ export default function AppLock({ onUnlock }: { onUnlock: () => void }) {
       const unlockedUser = await authenticateBiometric();
       if (unlockedUser) {
         markFreshAuth();
-        setUser({ ...useAppStore.getState().user, ...unlockedUser } as any);
+        setUser(unlockedUser);
         if (unlockedUser.pinSet === false) {
           // Procédure normale : PIN obligatoire avant d'accéder au compte
           toast.info('Configurez votre code PIN pour continuer');
           navigateTo('pin-setup');
         }
-        onUnlock();
+        onUnlock(unlockedUser);
       }
     } catch (err: any) {
       const msg = describeBiometricError(err);
@@ -122,10 +129,15 @@ export default function AppLock({ onUnlock }: { onUnlock: () => void }) {
       });
       const data = await res.json();
       if (data.success) {
+        const profileRes = await fetch('/api/auth/profile', { credentials: 'include' });
+        const profile = await profileRes.json().catch(() => ({}));
+        if (!profileRes.ok || !profile.success || !profile.user) {
+          throw new Error(profile.message || 'Impossible de restaurer votre session. Réessayez.');
+        }
         markFreshAuth();
         setPin('');
         pinRef.current = '';
-        onUnlock();
+        onUnlock(profile.user as User);
       } else {
         throw new Error(data.message || 'Code PIN incorrect');
       }
@@ -326,6 +338,12 @@ export default function AppLock({ onUnlock }: { onUnlock: () => void }) {
             <LogOut className="h-4 w-4" />
             Se reconnecter
           </button>
+        </div>
+      )}
+
+      {sessionCheckError && sessionAlive === null && (
+        <div role="status" className="mx-5 mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm text-amber-900 dark:border-amber-800/40 dark:bg-amber-950/20 dark:text-amber-200">
+          Vérification du serveur indisponible. L’accès au compte restera verrouillé jusqu’à la validation de votre session.
         </div>
       )}
 

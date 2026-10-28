@@ -79,6 +79,7 @@ export type PageName =
   | 'my-qr-code'
   | 'integration-guide'
   | 'admin-support'
+  | 'admin-reports'
   | 'payment-links'
   | 'payment-requests'
   | 'recurring-payments'
@@ -181,8 +182,8 @@ interface AuthFormState {
 }
 
 interface PinState {
-  pendingPinAction: ((pin?: string) => void) | null;
-  setPendingPinAction: (action: ((pin?: string) => void) | null) => void;
+  pendingPinAction: ((pin?: string) => void | Promise<void>) | null;
+  setPendingPinAction: (action: ((pin?: string) => void | Promise<void>) | null) => void;
   clearPendingPinAction: () => void;
 }
 
@@ -214,24 +215,59 @@ interface CurrencyState {
 interface VersionState {
   lastSeenVersion: string | null;
   lastSeenDeployId: string | null;
+  lastAuthenticatedPage: PageName | null;
+  lastAuthenticatedPageParams: Record<string, string | number | boolean>;
+  lastAuthenticatedAccountId: string | null;
   setLastSeenVersion: (version: string) => void;
   setLastSeenDeployId: (deployId: string) => void;
 }
 
 export interface AppStore extends NavigationState, AuthState, AuthFormState, PinState, NotificationState, ThemeState, LanguageState, CurrencyState, VersionState {}
 
+const nonRestorablePages = new Set<PageName>([
+  'welcome', 'auth-role', 'auth-phone', 'auth-otp', 'auth-profile', 'pin-setup', 'pin-verify',
+  'admin-login', 'onboarding', 'forgot-password', 'reset-password', 'auth',
+]);
+
+const safeRouteParamKeys = new Set([
+  'transactionId', 'productId', 'orderId', 'chatId', 'conversationId', 'barterId',
+  'requestId', 'payRecipientId', 'reference', 'type',
+]);
+
+function safeRouteParams(params?: Record<string, any>): Record<string, string | number | boolean> {
+  if (!params) return {};
+  return Object.fromEntries(Object.entries(params).filter(([key, value]) => (
+    safeRouteParamKeys.has(key) &&
+    (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') &&
+    String(value).length <= 200
+  ))) as Record<string, string | number | boolean>;
+}
+
 // Store version for migration
-const STORE_VERSION = 4;
+const STORE_VERSION = 6;
+type PersistedAppState = Pick<
+  AppStore,
+  'isDarkMode' | 'themeVariant' | 'selectedRole' | 'language' | 'preferredCurrency' | 'lastSeenVersion' | 'lastSeenDeployId' |
+  'lastAuthenticatedPage' | 'lastAuthenticatedPageParams' | 'lastAuthenticatedAccountId'
+> & {
+  user: (Pick<User, 'id' | 'name' | 'pseudo' | 'phone'> & Pick<User, 'biometricEnabled' | 'pinSet'>) | null;
+  admin: Pick<AdminUser, 'id' | 'username' | 'name' | 'role'> | null;
+};
 
 export const useAppStore = create<AppStore>()(
-  persist(
+  persist<AppStore, [], [], PersistedAppState>(
     (set, get) => ({
       currentPage: 'welcome',
       pageParams: {},
       navigationStack: [],
+      lastAuthenticatedPage: null,
+      lastAuthenticatedPageParams: {},
+      lastAuthenticatedAccountId: null,
 
       navigateTo: (page, params) => {
-        const { currentPage, pageParams, navigationStack } = get();
+        const { currentPage, pageParams, navigationStack, user, admin } = get();
+        const activeAccountId = admin?.id || user?.id || null;
+        const shouldRestore = !!activeAccountId && !nonRestorablePages.has(page) && page !== 'admin-login';
         if (currentPage !== page) {
           set({
             navigationStack: [
@@ -240,20 +276,35 @@ export const useAppStore = create<AppStore>()(
             ],
           });
         }
-        set({ currentPage: page, pageParams: params ?? {} });
+        set({
+          currentPage: page,
+          pageParams: params ?? {},
+          ...(shouldRestore ? {
+            lastAuthenticatedPage: page,
+            lastAuthenticatedPageParams: safeRouteParams(params),
+            lastAuthenticatedAccountId: activeAccountId,
+          } : {}),
+        });
       },
 
       goBack: () => {
-        const { navigationStack } = get();
+        const { navigationStack, user, admin } = get();
         if (navigationStack.length === 0) {
           set({ currentPage: 'welcome', pageParams: {} });
           return;
         }
         const previous = navigationStack[navigationStack.length - 1];
+        const activeAccountId = admin?.id || user?.id || null;
+        const shouldRestore = !!activeAccountId && !nonRestorablePages.has(previous.page) && previous.page !== 'admin-login';
         set({
           currentPage: previous.page,
           pageParams: previous.params ?? {},
           navigationStack: navigationStack.slice(0, -1),
+          ...(shouldRestore ? {
+            lastAuthenticatedPage: previous.page,
+            lastAuthenticatedPageParams: safeRouteParams(previous.params),
+            lastAuthenticatedAccountId: activeAccountId,
+          } : {}),
         });
       },
 
@@ -263,11 +314,57 @@ export const useAppStore = create<AppStore>()(
       token: null,
       preferredCurrency: 'USD' as const,
 
-      setUser: (user) => set({ user }),
+      setUser: (user) => {
+        const state = get();
+        const accountChanged = state.user?.id !== user?.id;
+        if (user && state.admin) {
+          // The client and admin sessions use separate cookies. A role switch
+          // must close the previous credential as well as replace UI state.
+          void fetch('/api/admin/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
+        }
+        set({
+          user,
+          ...(user ? { admin: null } : {}),
+          ...(accountChanged ? {
+            notifications: [],
+            unreadCount: 0,
+            pendingPinAction: null,
+            navigationStack: [],
+            lastAuthenticatedPage: null,
+            lastAuthenticatedPageParams: {},
+            lastAuthenticatedAccountId: null,
+          } : {}),
+        });
+      },
       setAdmin: (admin) => {
-        if (!admin) return set({ admin: null });
+        const current = get();
+        if (!admin) {
+          return set({
+            admin: null,
+            ...(current.admin ? {
+              notifications: [], unreadCount: 0, navigationStack: [],
+              lastAuthenticatedPage: null, lastAuthenticatedPageParams: {}, lastAuthenticatedAccountId: null,
+            } : {}),
+          });
+        }
         const { token: _token, ...safeAdmin } = admin;
-        set({ admin: safeAdmin });
+        const accountChanged = current.admin?.id !== admin.id;
+        if (current.user) {
+          void fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
+        }
+        set({
+          admin: safeAdmin,
+          user: null,
+          ...(accountChanged || current.user ? {
+            notifications: [],
+            unreadCount: 0,
+            pendingPinAction: null,
+            navigationStack: [],
+            lastAuthenticatedPage: null,
+            lastAuthenticatedPageParams: {},
+            lastAuthenticatedAccountId: null,
+          } : {}),
+        });
       },
       setSelectedRole: (role) => set({ selectedRole: role }),
       setToken: () => set({ token: null }),
@@ -276,30 +373,45 @@ export const useAppStore = create<AppStore>()(
       logout: () => {
         if (typeof document !== 'undefined') {
           void fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
+          void fetch('/api/admin/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
           document.cookie = 'trait_token=; Path=/; Max-Age=0; SameSite=Lax';
         }
         set({
           user: null,
+          admin: null,
           selectedRole: 'client',
           token: null,
           currentPage: 'welcome',
           pageParams: {},
           navigationStack: [],
           pendingPinAction: null,
+          notifications: [],
+          unreadCount: 0,
+          lastAuthenticatedPage: null,
+          lastAuthenticatedPageParams: {},
+          lastAuthenticatedAccountId: null,
         });
       },
 
       adminLogout: () => {
         if (typeof document !== 'undefined') {
           void fetch('/api/admin/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
+          void fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
           document.cookie = 'trait_admin_token=; Path=/; Max-Age=0; SameSite=Lax';
         }
         set({
           admin: null,
+          user: null,
           token: null,
           currentPage: 'admin-login',
           pageParams: {},
           navigationStack: [],
+          pendingPinAction: null,
+          notifications: [],
+          unreadCount: 0,
+          lastAuthenticatedPage: null,
+          lastAuthenticatedPageParams: {},
+          lastAuthenticatedAccountId: null,
         });
       },
 
@@ -384,11 +496,50 @@ export const useAppStore = create<AppStore>()(
 
         if (version < 4) state.themeVariant = state.themeVariant ?? 'original';
 
-        return state as AppStore;
+        if (version < 5) {
+          // Local storage is only a lock-screen hint, never the account source
+          // of truth. Remove balances, permissions and profile/KYC details.
+          if (state.user) {
+            const { id, name, pseudo, phone, biometricEnabled, pinSet } = state.user;
+            state.user = { id, name, pseudo, phone, biometricEnabled, pinSet };
+          }
+          if (state.admin) {
+            const { id, username, name, role } = state.admin;
+            state.admin = { id, username, name, role };
+          }
+          if (state.user && state.admin) {
+            state.user = null;
+            state.admin = null;
+            state.notifications = [];
+            state.unreadCount = 0;
+          }
+        }
+
+        if (version < 6) {
+          state.lastAuthenticatedPage = null;
+          state.lastAuthenticatedPageParams = {};
+          state.lastAuthenticatedAccountId = null;
+        }
+
+        return state as PersistedAppState;
       },
       partialize: (state) => ({
-        user: state.user,
-        admin: state.admin,
+        // Keep only enough information to identify the locked session. The
+        // server profile must be fetched before any private workspace is shown.
+        user: state.user ? {
+          id: state.user.id,
+          name: state.user.name,
+          pseudo: state.user.pseudo,
+          phone: state.user.phone,
+          biometricEnabled: state.user.biometricEnabled,
+          pinSet: state.user.pinSet,
+        } : null,
+        admin: state.admin ? {
+          id: state.admin.id,
+          username: state.admin.username,
+          name: state.admin.name,
+          role: state.admin.role,
+        } : null,
         isDarkMode: state.isDarkMode,
         themeVariant: state.themeVariant,
         selectedRole: state.selectedRole,
@@ -396,6 +547,9 @@ export const useAppStore = create<AppStore>()(
         preferredCurrency: state.preferredCurrency,
         lastSeenVersion: state.lastSeenVersion,
         lastSeenDeployId: state.lastSeenDeployId,
+        lastAuthenticatedPage: state.lastAuthenticatedPage,
+        lastAuthenticatedPageParams: safeRouteParams(state.lastAuthenticatedPageParams),
+        lastAuthenticatedAccountId: state.lastAuthenticatedAccountId,
       }),
     },
   ),

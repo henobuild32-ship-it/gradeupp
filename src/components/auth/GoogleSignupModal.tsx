@@ -34,7 +34,7 @@ export default function GoogleSignupModal({
   selectedRole,
 }: GoogleSignupModalProps) {
   const { setUser, setToken, navigateTo } = useAppStore();
-  const [phoneCountryCode, setPhoneCountryCode] = useState('CD');
+  const [phoneCountryCode, setPhoneCountryCode] = useState('');
   const [phone, setPhone] = useState('');
   const [country, setCountry] = useState('');
   const [referralCode, setReferralCode] = useState('');

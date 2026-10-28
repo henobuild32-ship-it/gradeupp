@@ -760,7 +760,7 @@ export default function AdminUsersScreen() {
 
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="new-password">Nouveau mot de passe</Label>
+                  <Label htmlFor="new-password">Mot de passe temporaire à communiquer de manière sécurisée</Label>
               <div className="relative">
                 <Input
                   id="new-password"

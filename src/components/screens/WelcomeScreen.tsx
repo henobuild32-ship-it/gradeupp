@@ -188,7 +188,7 @@ export default function WelcomeScreen() {
         installCopy: 'Install the app from your browser to find it easily.',
         install: 'Install Trait Fintech',
         installHint: 'Open your browser menu and choose “Install app” or “Add to home screen”.',
-        footerLine: 'Digital financial services • Democratic Republic of the Congo',
+        footerLine: 'Digital financial services by Trait Fintech',
         terms: 'Terms of use',
         footerSupport: 'Support',
         languageLabel: 'Language',

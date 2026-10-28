@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { hashPassword, requireAdmin } from '@/lib/auth';
-import { sendPasswordResetEmail } from '@/lib/email/service';
+import { sendPasswordResetNoticeEmail } from '@/lib/email/service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,35 +44,36 @@ export async function POST(request: NextRequest) {
 
     const hashedPassword = await hashPassword(newPassword);
 
-    await db.user.update({
-      where: { id: userId },
-      data: { password: hashedPassword },
+    await db.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: { password: hashedPassword },
+      });
+      await tx.adminActivityLog.create({
+        data: {
+          adminId: adminPayload.userId,
+          action: 'reset_user_password',
+          target: userId,
+          details: `Password reset for user ${user.name || user.id}`,
+        },
+      });
     });
 
-    // Send new password to user's email
+    // Notify the user without ever transmitting the password itself.
+    let noticeSent = false;
     if (user.email) {
       try {
-        await sendPasswordResetEmail(user.email, newPassword);
+        noticeSent = await sendPasswordResetNoticeEmail(user.email);
       } catch (emailErr) {
-        console.error('Failed to send password reset email:', emailErr);
+        console.error('Failed to send password reset notice:', emailErr);
       }
     }
 
-    // Log the action
-    await db.adminActivityLog.create({
-      data: {
-        adminId: adminPayload.userId,
-        action: 'reset_user_password',
-        target: userId,
-        details: `Password reset for user ${user.name || user.id}`,
-      },
-    });
-
     return NextResponse.json({
       success: true,
-      message: user.email
-        ? 'Mot de passe réinitialisé et envoyé par email'
-        : 'Mot de passe réinitialisé (aucun email configuré)',
+      message: noticeSent
+        ? 'Mot de passe réinitialisé. Un avis de sécurité sans mot de passe a été envoyé par email.'
+        : 'Mot de passe réinitialisé. L’avis par email n’a pas pu être envoyé.',
     });
   } catch (error) {
     console.error('Admin reset password error:', error);

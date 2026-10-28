@@ -41,6 +41,7 @@ export async function GET(request: NextRequest) {
         hasCompletedOnboarding: true,
         pin: true,
         biometricEnabled: true,
+        twoFactorEnabled: true,
         kycStatus: true,
         parentId: true,
         createdAt: true,
@@ -59,61 +60,6 @@ export async function GET(request: NextRequest) {
     const pinSet = !!user.pin
     const { pin: _pinHash, ...safeUser } = user
     const userOut = { ...safeUser, pinSet }
-
-    // Auto-credit $30 USD for existing clients who never received it
-    if (
-      user.role === 'client' &&
-      user.realBalance === 0 &&
-      user.bonusBalance === 0 &&
-      user.realBalanceFC === 0 &&
-      user.bonusBalanceFC === 0
-    ) {
-      try {
-        await db.user.update({
-          where: { id: user.id },
-          data: { realBalance: 30 },
-        })
-        user.realBalance = 30
-      } catch {}
-    }
-
-    // Ensure agent code is always AGT-XXXXXX (unique, never phone-based)
-    if (user.role === 'agent') {
-      const isValidFormat = /^AGT-\d{6}$/.test(user.agentCode || '')
-      const isSynced = user.agentCode && user.agentCode === user.agentNumber
-
-      if (!isValidFormat || !isSynced) {
-        try {
-          let agentCode = isValidFormat ? user.agentCode! : ''
-          if (!agentCode) {
-            for (let i = 0; i < 20; i++) {
-              const candidate = `AGT-${Math.floor(100000 + Math.random() * 900000)}`
-              const existing = await db.user.findFirst({
-                where: { agentCode: candidate, id: { not: user.id } },
-              })
-              if (!existing) {
-                agentCode = candidate
-                break
-              }
-            }
-          }
-
-          if (agentCode && (user.agentCode !== agentCode || user.agentNumber !== agentCode)) {
-            const clash = await db.user.findFirst({
-              where: { agentCode, id: { not: user.id } },
-            })
-            if (!clash) {
-              await db.user.update({
-                where: { id: user.id },
-                data: { agentCode, agentNumber: agentCode },
-              })
-              user.agentCode = agentCode
-              user.agentNumber = agentCode
-            }
-          }
-        } catch {}
-      }
-    }
 
     return NextResponse.json({ success: true, user: userOut })
   } catch (error) {

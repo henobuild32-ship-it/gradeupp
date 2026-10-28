@@ -27,6 +27,7 @@ import {
   FileCheck,
   Headphones,
   RefreshCw,
+  Flag,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -74,6 +75,7 @@ const statsConfig: (StatCard & { page?: PageName })[] = [
   { label: 'Offres Troc', key: 'totalBarterOffers', icon: Handshake, color: 'text-teal-600 dark:text-teal-400', bgColor: 'bg-teal-100 dark:bg-teal-900/40' },
   { label: 'Comptes Suspendus', key: 'suspendedUsers', icon: Ban, color: 'text-red-600 dark:text-red-400', bgColor: 'bg-red-100 dark:bg-red-900/40' },
   { label: 'Utilisateurs Aujourd\'hui', key: 'todayUsers', icon: UserCheck, color: 'text-green-600 dark:text-green-400', bgColor: 'bg-green-100 dark:bg-green-900/40' },
+  { label: 'Signalements à traiter', key: 'openReports', icon: Flag, color: 'text-red-600 dark:text-red-400', bgColor: 'bg-red-100 dark:bg-red-900/40', page: 'admin-reports' },
   { label: 'Agents en attente', key: 'pendingAgents', icon: Clock, color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-100 dark:bg-amber-900/40', page: 'admin-agents' },
   { label: 'Développeurs', key: 'approvedDevelopers', icon: Code, color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-100 dark:bg-violet-900/40' },
   { label: 'Revenus API', key: 'totalApiCommission', icon: DollarSign, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-900/40' },
@@ -106,6 +108,7 @@ const quickActions: QuickAction[] = [
   { label: 'Gestion Parrainage', page: 'admin-children', icon: Users, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-900/40' },
   { label: 'Validation KYC', page: 'admin-kyc', icon: FileCheck, color: 'text-teal-600 dark:text-teal-400', bgColor: 'bg-teal-100 dark:bg-teal-900/40' },
   { label: 'Support Client', page: 'admin-support', icon: Headphones, color: 'text-sky-600 dark:text-sky-400', bgColor: 'bg-sky-100 dark:bg-sky-900/40' },
+  { label: 'Signalements', page: 'admin-reports', icon: Flag, color: 'text-red-600 dark:text-red-400', bgColor: 'bg-red-100 dark:bg-red-900/40' },
 ];
 
 function formatStatValue(key: keyof DashboardStats, value: number): string {

@@ -94,6 +94,7 @@ interface Product {
 
 interface PurchaseResult {
   id: string;
+  transactionId?: string | null;
   amount: number;
   quantity: number;
   usedBonus: number;
@@ -221,7 +222,7 @@ export default function MarketplaceDetailScreen() {
       const data = await res.json();
 
       if (res.ok && data.success) {
-        setPurchaseResult(data.purchase);
+        setPurchaseResult({ ...data.purchase, transactionId: data.transactionId ?? null });
         setShowSuccess(true);
 
         // Fetch fresh user data from server (real-time balance update)
@@ -288,8 +289,8 @@ export default function MarketplaceDetailScreen() {
       ? crypto.randomUUID()
       : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     setShowConfirm(false);
-    setPendingPinAction(() => {
-      void executePurchase(clientRequestId);
+    setPendingPinAction(async () => {
+      await executePurchase(clientRequestId);
     });
     navigateTo('pin-verify');
   };
@@ -769,6 +770,18 @@ export default function MarketplaceDetailScreen() {
           </div>
 
           <DialogFooter className="flex-col gap-2 sm:flex-col">
+            {purchaseResult?.transactionId && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setShowSuccess(false);
+                  navigateTo('receipt', { transactionId: purchaseResult.transactionId });
+                }}
+              >
+                Voir le reçu
+              </Button>
+            )}
             <Button
               className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
               onClick={confirmWithPin}

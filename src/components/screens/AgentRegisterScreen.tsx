@@ -55,7 +55,7 @@ export default function AgentRegisterScreen() {
   // Form state
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [phoneCountry, setPhoneCountry] = useState('CD');
+  const [phoneCountry, setPhoneCountry] = useState('');
   const [email, setEmail] = useState('');
   const [gender, setGender] = useState('');
   const [country, setCountry] = useState('');

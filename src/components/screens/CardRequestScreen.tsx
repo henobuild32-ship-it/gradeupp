@@ -34,7 +34,7 @@ const cardOptions: CardOption[] = [
   {
     type: 'FC',
     name: 'Carte Trait CDF',
-    currency: 'Franc Congolais',
+    currency: 'CDF',
     description: 'Carte d’identité TRAIT avec portefeuille en francs congolais intégré à l’application.',
     gradient: 'linear-gradient(135deg, #1A0A0A 0%, #5F1E1E 40%, #470D0D 100%)',
     accent: '#EF4444',

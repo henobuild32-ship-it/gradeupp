@@ -8,38 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAppStore } from '@/lib/store';
 import { toast } from 'sonner';
+import { CountrySelect } from '@/components/shared/CountrySelect';
+import { normalizePhoneForCountry } from '@/lib/countries';
 
 // ─── Constants ────────────────────────────────────────────────────────
-
-const countries = [
-  { value: 'Togo', label: '🇹🇬 Togo' },
-  { value: 'Bénin', label: '🇧🇯 Bénin' },
-  { value: "Côte d'Ivoire", label: "🇨🇮 Côte d'Ivoire" },
-  { value: 'Sénégal', label: '🇸🇳 Sénégal' },
-  { value: 'Mali', label: '🇲🇱 Mali' },
-  { value: 'Burkina Faso', label: '🇧🇫 Burkina Faso' },
-  { value: 'Niger', label: '🇳🇪 Niger' },
-  { value: 'Guinée', label: '🇬🇳 Guinée' },
-  { value: 'Cameroun', label: '🇨🇲 Cameroun' },
-  { value: 'RDC', label: '🇨🇩 RDC' },
-  { value: 'Congo', label: '🇨🇬 Congo' },
-  { value: 'Gabon', label: '🇬🇦 Gabon' },
-  { value: 'Nigeria', label: '🇳🇬 Nigeria' },
-  { value: 'Ghana', label: '🇬🇭 Ghana' },
-  { value: 'France', label: '🇫🇷 France' },
-  { value: 'US', label: '🇺🇸 États-Unis' },
-  { value: 'Canada', label: '🇨🇦 Canada' },
-  { value: 'UK', label: '🇬🇧 Royaume-Uni' },
-];
 
 const projectTypes = [
   { value: 'Android', label: 'Android' },
@@ -53,10 +28,10 @@ const projectTypes = [
 ];
 
 const userEstimates = [
-  { value: '<100', label: '< 100' },
-  { value: '100-1000', label: '100 - 1 000' },
-  { value: '1000-10000', label: '1 000 - 10 000' },
-  { value: '10000+', label: '10 000+' },
+  { value: '50', label: '< 100' },
+  { value: '500', label: '100 - 1 000' },
+  { value: '5000', label: '1 000 - 10 000' },
+  { value: '10000', label: '10 000+' },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────
@@ -75,6 +50,7 @@ export default function DeveloperRegisterScreen() {
   const [appUrl, setAppUrl] = useState('');
   const [userEstimate, setUserEstimate] = useState('');
   const [loading, setLoading] = useState(false);
+  const normalizedPhone = normalizePhoneForCountry(phone, country);
 
   const canSubmit =
     fullName.trim() &&
@@ -98,6 +74,10 @@ export default function DeveloperRegisterScreen() {
     }
     if (!phone.trim()) {
       toast.error('Veuillez entrer votre numéro de téléphone');
+      return;
+    }
+    if (!normalizedPhone) {
+      toast.error('Le numéro ne correspond pas au pays sélectionné');
       return;
     }
     if (!country) {
@@ -125,15 +105,15 @@ export default function DeveloperRegisterScreen() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fullName: fullName.trim(),
-          companyName: companyName.trim() || undefined,
+          company: companyName.trim() || undefined,
           email: email.trim(),
-          phone: phone.trim(),
+          phone: normalizedPhone,
           country,
           appName: appName.trim(),
           projectType,
           description: description.trim() || undefined,
-          appUrl: appUrl.trim() || undefined,
-          userEstimate,
+          siteUrl: appUrl.trim() || undefined,
+          estimatedUsers: userEstimate,
         }),
       });
 
@@ -310,11 +290,13 @@ export default function DeveloperRegisterScreen() {
             <Input
               id="devPhone"
               type="tel"
-              placeholder="+228 90 12 34 56"
+              inputMode="tel"
+              placeholder="Numéro national"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               className="h-11 focus-visible:border-emerald-500 focus-visible:ring-emerald-500/20 text-sm"
-              autoComplete="tel"
+              autoComplete="tel-national"
+              aria-invalid={phone.length > 0 && !normalizedPhone}
               disabled={loading}
             />
           </div>
@@ -324,18 +306,8 @@ export default function DeveloperRegisterScreen() {
             <Label className="text-foreground font-medium text-sm">
               Pays <span className="text-red-500">*</span>
             </Label>
-            <Select value={country} onValueChange={setCountry} disabled={loading}>
-              <SelectTrigger className="h-11 focus:ring-emerald-500/20 text-sm">
-                <SelectValue placeholder="Sélectionnez votre pays" />
-              </SelectTrigger>
-              <SelectContent>
-                {countries.map((c) => (
-                  <SelectItem key={c.value} value={c.value}>
-                    {c.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <CountrySelect value={country} onValueChange={setCountry} placeholder="Sélectionnez votre pays" disabled={loading} />
+            {phone.length > 0 && !normalizedPhone && <p className="text-xs text-destructive">Vérifiez l’indicatif et le format du numéro.</p>}
           </div>
 
           {/* App Name */}

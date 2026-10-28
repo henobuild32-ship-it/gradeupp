@@ -3,7 +3,7 @@ import { db } from '@/lib/db';
 import { signToken, setTokenCookie } from '@/lib/auth';
 import { verifyFirebaseIdToken } from '@/lib/firebase-admin';
 import crypto from 'crypto';
-import { normalizeInternationalPhone } from '@/lib/countries';
+import { getCountry, normalizeInternationalPhone } from '@/lib/countries';
 
 // POST /api/auth/google
 // Body: { idToken: string, mode: 'login' | 'register', phone?: string, country?: string, role?: string, referralCode?: string }
@@ -116,6 +116,9 @@ export async function POST(request: NextRequest) {
     }
     const canonicalPhone = normalizeInternationalPhone(phone)
     if (!canonicalPhone) return NextResponse.json({ success: false, message: 'Numéro de téléphone international invalide.' }, { status: 400 })
+    if (typeof country !== 'string' || !getCountry(country)) {
+      return NextResponse.json({ success: false, message: 'Sélectionnez un pays de résidence valide.' }, { status: 400 })
+    }
 
     if (!role || !['client', 'agent', 'seller'].includes(role)) {
       return NextResponse.json(
@@ -174,14 +177,14 @@ export async function POST(request: NextRequest) {
         name: userDisplayName,
         pseudo,
         email: email?.toLowerCase() || null,
-        country: country || 'CD',
+        country,
         role,
         firebaseUid: uid,
         authProvider: 'google',
         photoUrl: photoURL || null,
         password: null, // No local password for Google-only accounts
         isVerified: emailVerified || false,
-        realBalance: isAgent || role === 'seller' ? 0 : 30,
+        realBalance: 0,
         realBalanceFC: 0,
         bonusBalance: 0,
         bonusBalanceFC: 0,

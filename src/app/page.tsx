@@ -2,7 +2,7 @@
 
 import '@/lib/api';
 import { useEffect, Suspense, lazy, Component, useState } from 'react';
-import { useAppStore, PageName } from '@/lib/store';
+import { useAppStore, PageName, User } from '@/lib/store';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OfflineBanner } from '@/components/layout/OfflineBanner';
 import { PushPermissionBanner } from '@/components/layout/PushPermissionBanner';
@@ -99,6 +99,7 @@ const IntegrationGuideScreen = lazy(() => import('@/components/screens/Integrati
 const AuthScreen = lazy(() => import('@/components/screens/AuthScreen'));
 const ForgotPasswordScreen = lazy(() => import('@/components/screens/ForgotPasswordScreen'));
 const AdminSupportScreen = lazy(() => import('@/components/admin/AdminSupportScreen'));
+const AdminReportsScreen = lazy(() => import('@/components/admin/AdminReportsScreen'));
 
 // TRAIT IA
 const TraitAIScreen = lazy(() => import('@/components/trait-ai/TraitAIScreen'));
@@ -246,6 +247,7 @@ const screenMap: Record<PageName, React.LazyExoticComponent<React.ComponentType>
   'my-qr-code': MyQrCodeScreen,
   'integration-guide': IntegrationGuideScreen,
   'admin-support': AdminSupportScreen,
+  'admin-reports': AdminReportsScreen,
   'seller-register': SellerRegisterScreen,
   'seller-pending': SellerPendingScreen,
   'seller-dashboard': SellerDashboard,
@@ -273,7 +275,7 @@ const screenMap: Record<PageName, React.LazyExoticComponent<React.ComponentType>
 
 const pagesWithNav: PageName[] = ['home', 'send', 'withdraw', 'deposit', 'history', 'ussd', 'marketplace', 'marketplace-detail', 'marketplace-sell', 'orders', 'barter', 'barter-detail', 'barter-create', 'barter-chats', 'notifications', 'settings', 'profile', 'agent-dashboard', 'agent-deposit', 'agent-withdraw-validate', 'agent-activity', 'agent-messages', 'card-request', 'card-payment', 'card', 'virtual-card', 'kyc-verification', 'seller-dashboard', 'seller-products', 'child-sponsorship'];
 
-const adminPages: PageName[] = ['admin-login', 'admin-dashboard', 'admin-users', 'admin-agents', 'admin-transactions', 'admin-market', 'admin-barter', 'admin-notifications', 'admin-activity-log', 'admin-bonus', 'admin-bonus-adjust', 'admin-bonus-history', 'admin-bonus-campaigns', 'admin-agent-validation', 'admin-messages', 'admin-developers', 'admin-card-requests', 'admin-cards', 'admin-client-messages', 'admin-seller-validation', 'admin-sellers', 'admin-children', 'admin-kyc', 'admin-support', 'agent-register', 'agent-pending'];
+const adminPages: PageName[] = ['admin-login', 'admin-dashboard', 'admin-users', 'admin-agents', 'admin-transactions', 'admin-market', 'admin-barter', 'admin-notifications', 'admin-activity-log', 'admin-bonus', 'admin-bonus-adjust', 'admin-bonus-history', 'admin-bonus-campaigns', 'admin-agent-validation', 'admin-messages', 'admin-developers', 'admin-card-requests', 'admin-cards', 'admin-client-messages', 'admin-seller-validation', 'admin-sellers', 'admin-children', 'admin-kyc', 'admin-support', 'admin-reports'];
 
 const sellerPendingPages: PageName[] = [
   'seller-pending', 'settings', 'support', 'notifications', 'profile',
@@ -301,11 +303,51 @@ const agentPages: PageName[] = [
   'trait-ai', 'trait-ai-welcome',
 ];
 
+function routeAuthenticatedUser(
+  navigateTo: (page: PageName, params?: Record<string, any>) => void,
+  authenticatedUser: User,
+  restoreLastPage: boolean,
+) {
+  if (!authenticatedUser.isVerified && authenticatedUser.role !== 'agent') {
+    navigateTo('auth-otp', authenticatedUser.email ? { email: authenticatedUser.email, mode: 'verify' } : undefined);
+    return;
+  }
+  if (authenticatedUser.pinSet === false || (!authenticatedUser.hasCompletedOnboarding && authenticatedUser.role !== 'seller')) {
+    routeAfterAuth(navigateTo, authenticatedUser);
+    return;
+  }
+
+  const saved = useAppStore.getState();
+  const page = saved.lastAuthenticatedPage;
+  const sellerOnlyPages: PageName[] = ['seller-dashboard', 'seller-products', 'seller-qr-scanner', 'seller-pending', 'seller-register'];
+  const agentOnlyPages: PageName[] = ['agent-dashboard', 'agent-deposit', 'agent-withdraw-validate', 'agent-activity', 'agent-messages', 'agent-pending', 'agent-register'];
+  const roleAllowsPage = authenticatedUser.role === 'seller'
+    ? !!page && !adminPages.includes(page) && (!sellerOnlyPages.includes(page) || sellerPendingPages.includes(page) || authenticatedUser.validationStatus === 'validated') && !agentOnlyPages.includes(page)
+    : authenticatedUser.role === 'agent'
+      ? !!page && !adminPages.includes(page) && (!sellerOnlyPages.includes(page))
+      : authenticatedUser.role === 'client'
+        ? !!page && !adminPages.includes(page) && !sellerOnlyPages.includes(page) && !agentOnlyPages.includes(page)
+        : false;
+
+  if (restoreLastPage && saved.lastAuthenticatedAccountId === authenticatedUser.id && page && roleAllowsPage) {
+    navigateTo(page, saved.lastAuthenticatedPageParams);
+    return;
+  }
+  routeAfterAuth(navigateTo, authenticatedUser);
+}
+
 export default function TraitApp() {
   const { currentPage, user, admin, navigateTo } = useAppStore();
   const Screen = screenMap[currentPage];
   const [appLocked, setAppLocked] = useState(false);
   const needsRestoreUnlock = !!user && !isFreshAuth();
+  const handleAppUnlock = (verifiedUser?: User) => {
+    if (verifiedUser) {
+      useAppStore.getState().setUser(verifiedUser);
+      if (currentPage === 'welcome') routeAuthenticatedUser(navigateTo, verifiedUser, true);
+    }
+    setAppLocked(false);
+  };
 
   // Enable real-time WebSocket for notifications and balance updates
   useRealtime();
@@ -333,29 +375,27 @@ export default function TraitApp() {
   useEffect(() => {
     if (!user || currentPage !== 'welcome') return;
     let cancelled = false;
-    const route = (u: any) => {
-      if (cancelled) return;
-      if (!u.isVerified && u.role !== 'agent') {
-        navigateTo('auth-otp', u.email ? { email: u.email, mode: 'verify' } : undefined);
-        return;
-      }
-      routeAfterAuth(navigateTo, u);
-    };
     (async () => {
       try {
         const res = await fetch('/api/auth/profile', { credentials: 'include' });
         if (res.ok) {
           const data = await res.json();
           if (!cancelled && data.success && data.user) {
-            const merged = { ...user, ...data.user };
-            useAppStore.getState().setUser(merged);
-            route(merged);
+            useAppStore.getState().setUser(data.user);
+            routeAuthenticatedUser(navigateTo, data.user, true);
             return;
           }
+          if (!cancelled && (res.status === 401 || res.status === 403 || res.status === 404)) {
+            useAppStore.getState().logout();
+            return;
+          }
+          if (!cancelled) toast.error('Session non vérifiée. Votre espace reste verrouillé; réessayez quand le réseau sera disponible.');
+          return;
         }
-      } catch {}
-      // Hors ligne ou cookie expiré : vérité locale persistée
-      route(user);
+        if (!cancelled) toast.error('Impossible de vérifier la session. Votre espace reste verrouillé.');
+      } catch {
+        if (!cancelled) toast.error('Connexion indisponible. Réessayez pour restaurer votre session.');
+      }
     })();
     return () => {
       cancelled = true;
@@ -363,10 +403,42 @@ export default function TraitApp() {
      
   }, [user?.id, currentPage]);
 
-  // Restauration admin (mot de passe demandé à chaque session, voir store)
+  // Un profil administrateur local n'est jamais une preuve de session.
   useEffect(() => {
-    if (admin && currentPage === 'admin-login') {
-      navigateTo('admin-dashboard');
+    if (!admin) return;
+    if (currentPage === 'welcome') {
+      navigateTo('admin-login');
+      return;
+    }
+    if (currentPage !== 'admin-login') return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/profile', { credentials: 'include' });
+        const data = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        if (res.ok && data.success && data.admin) {
+          useAppStore.getState().setAdmin(data.admin);
+          const saved = useAppStore.getState();
+          const savedAdminPage = saved.lastAuthenticatedAccountId === data.admin.id &&
+            saved.lastAuthenticatedPage && adminPages.includes(saved.lastAuthenticatedPage) && saved.lastAuthenticatedPage !== 'admin-login'
+            ? saved.lastAuthenticatedPage
+            : 'admin-dashboard';
+          navigateTo(savedAdminPage, saved.lastAuthenticatedPageParams);
+        } else if (res.status === 401 || res.status === 403 || res.status === 404) {
+          useAppStore.getState().setAdmin(null);
+        }
+      } catch {
+        // Keep the user on the public admin-login screen until the server can
+        // validate the cookie; never render an admin workspace from local data.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [admin, currentPage, navigateTo]);
+
+  useEffect(() => {
+    if (!admin && adminPages.includes(currentPage) && currentPage !== 'admin-login') {
+      navigateTo('admin-login');
     }
   }, [admin, currentPage, navigateTo]);
 
@@ -414,12 +486,8 @@ export default function TraitApp() {
         if (!res.ok) return;
         const data = await res.json();
         if (!cancelled && data.success && data.user) {
-          // Never downgrade a locally verified session if profile is stale
-          const merged = { ...user, ...data.user };
-          if (user.isVerified && !data.user.isVerified) {
-            merged.isVerified = true;
-          }
-          useAppStore.getState().setUser(merged);
+          // The API is authoritative for role, KYC, balances and account state.
+          useAppStore.getState().setUser(data.user);
           // Procédure normale : un compte sans PIN configuré ne peut pas
           // rester sur un écran de transaction — retour forcé à la config.
           if (data.user.pinSet === false) {
@@ -568,7 +636,7 @@ export default function TraitApp() {
       )}
       <OfflineBanner />
       {user && (appLocked || needsRestoreUnlock) && (
-        <AppLock onUnlock={() => setAppLocked(false)} />
+        <AppLock onUnlock={handleAppUnlock} />
       )}
     </div>
   );

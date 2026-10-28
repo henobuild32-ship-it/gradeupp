@@ -11,15 +11,7 @@ import { useAppStore } from '@/lib/store'
 import { toast } from 'sonner'
 import Image from 'next/image'
 import { CountrySelect } from '@/components/shared/CountrySelect'
-import { normalizeInternationalPhone } from '@/lib/countries'
-
-const cities = [
-  'Kinshasa', 'Lubumbashi', 'Mbuji-Mayi', 'Kisangani', 'Bukavu',
-  'Goma', 'Kolwezi', 'Likasi', 'Boma', 'Tshikapa',
-  'Lomé', 'Cotonou', 'Abidjan', 'Douala', 'Yaoundé',
-  'Dakar', 'Bamako', 'Ouagadougou', 'Conakry', 'Abuja',
-  'Accra', 'Lagos', 'Paris', 'New York',
-]
+import { normalizePhoneForCountry } from '@/lib/countries'
 
 const businessTypes = [
   { value: 'vetements', label: 'Vêtements & Mode' },
@@ -46,7 +38,7 @@ export default function SellerRegisterScreen() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    countryCode: 'CD',
+    countryCode: '',
     phone: '',
     city: '',
     address: '',
@@ -63,7 +55,7 @@ export default function SellerRegisterScreen() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const fullPhone = normalizeInternationalPhone(formData.phone, formData.countryCode)
+    const fullPhone = normalizePhoneForCountry(formData.phone, formData.countryCode)
 
     if (!formData.name.trim()) {
       toast.error('Veuillez entrer votre nom complet')
@@ -77,6 +69,10 @@ export default function SellerRegisterScreen() {
       toast.error('Veuillez entrer un numéro de téléphone valide')
       return
     }
+    if (!formData.countryCode) {
+      toast.error('Veuillez sélectionner votre pays')
+      return
+    }
     if (!formData.businessName.trim()) {
       toast.error('Veuillez entrer le nom de votre commerce')
       return
@@ -86,7 +82,7 @@ export default function SellerRegisterScreen() {
       return
     }
     if (!formData.city.trim()) {
-      toast.error('Veuillez sélectionner votre ville')
+      toast.error('Veuillez entrer votre ville')
       return
     }
     if (!formData.location.trim()) {
@@ -250,16 +246,7 @@ export default function SellerRegisterScreen() {
             <div className="space-y-4">
               <div className="flex flex-col gap-2">
                 <Label htmlFor="city" className="text-foreground font-medium">Ville <span className="text-red-500">*</span></Label>
-                <Select value={formData.city} onValueChange={(v) => setFormData(prev => ({...prev, city: v}))}>
-                  <SelectTrigger className="h-12">
-                    <SelectValue placeholder="Sélectionnez votre ville" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {cities.map((city) => (
-                      <SelectItem key={city} value={city}>{city}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Input id="city" name="city" required value={formData.city} onChange={handleChange} placeholder="Votre ville" className="h-12 text-base" disabled={loading} autoComplete="address-level2" />
               </div>
 
               <div className="flex flex-col gap-2">

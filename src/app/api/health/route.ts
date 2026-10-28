@@ -10,11 +10,13 @@ export async function GET() {
       timestamp: new Date().toISOString(),
     })
   } catch (error) {
-    console.error('Health check failed:', error)
+    const code = error && typeof error === 'object' && 'code' in error
+      ? String((error as { code?: unknown }).code || 'UNKNOWN')
+      : 'UNKNOWN'
+    console.error('Health check failed:', code)
     return NextResponse.json({
       success: false,
-      message: 'Database connection failed',
-      error: error instanceof Error ? error.message : 'Unknown error',
-    }, { status: 500 })
+      message: 'Service temporairement indisponible',
+    }, { status: 503 })
   }
 }

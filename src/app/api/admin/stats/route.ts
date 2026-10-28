@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
       internationalTransfers,
       pendingSellers,
       totalSellers,
+      openReports,
     ] = await Promise.all([
       db.user.count({ where: { role: 'client' } }),
       db.user.count({ where: { role: 'agent' } }),
@@ -55,6 +56,7 @@ export async function GET(request: NextRequest) {
       db.internationalTransfer.count(),
       db.user.count({ where: { role: 'seller', validationStatus: 'pending' } }),
       db.user.count({ where: { role: 'seller' } }),
+      (db.userReport as any).count({ where: { status: { in: ['new', 'reviewing', 'info_requested', 'pending'] } } }),
     ]);
 
     const completedTxs = await db.transaction.findMany({
@@ -112,6 +114,7 @@ export async function GET(request: NextRequest) {
         internationalTransfers,
         pendingSellers,
         totalSellers,
+        openReports,
         totalVolume,
         sendVolume,
         monthlyTransactions,

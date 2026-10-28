@@ -104,7 +104,7 @@ export default function NotificationsScreen() {
       );
       const data = await res.json();
 
-      if (data.success) {
+      if (data.success && useAppStore.getState().user?.id === user.id) {
         const mapped: Notification[] = (data.notifications ?? []).map(
           (n: {
             id: string;
@@ -135,7 +135,7 @@ export default function NotificationsScreen() {
     try {
       const res = await fetch(`/api/client-messages?userId=${user.id}`);
       const data = await res.json();
-      if (data.success) {
+      if (data.success && useAppStore.getState().user?.id === user.id) {
         setAdminMessages(data.messages || []);
       }
     } catch {

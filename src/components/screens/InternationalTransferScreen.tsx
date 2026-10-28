@@ -19,10 +19,10 @@ type TransferMethod = 'wallet' | 'trait-card'
 
 export default function InternationalTransferScreen() {
   const { user, navigateTo, setUser, setPendingPinAction } = useAppStore()
-  const [country, setCountry] = useState('CD')
+  const [country, setCountry] = useState('')
   const [phone, setPhone] = useState('')
   const [recipient, setRecipient] = useState<Recipient | null>(null)
-  const [lookupState, setLookupState] = useState<'idle' | 'loading' | 'found' | 'missing' | 'invalid'>('idle')
+  const [lookupState, setLookupState] = useState<'idle' | 'loading' | 'found' | 'missing' | 'suspended' | 'unavailable' | 'invalid'>('idle')
   const [amount, setAmount] = useState('')
   const [sendingCurrency, setSendingCurrency] = useState<Currency>('USD')
   const [receivingCurrency, setReceivingCurrency] = useState<Currency>('USD')
@@ -69,14 +69,18 @@ export default function InternationalTransferScreen() {
         if (token) headers.Authorization = `Bearer ${token}`
         const response = await fetch(`/api/users/phone-lookup?phone=${encodeURIComponent(normalizedPhone)}`, { headers, signal: controller.signal })
         const data = await response.json()
-        if (data.success && data.found && data.user && data.user.id !== user?.id) {
+        if (!response.ok) {
+          setLookupState('unavailable')
+        } else if (data.code === 'RECIPIENT_SUSPENDED') {
+          setLookupState('suspended')
+        } else if (data.success && data.found && data.user) {
           setRecipient({ id: data.user.id, name: data.user.name, phone: data.user.phone })
           setLookupState('found')
         } else {
           setLookupState('missing')
         }
       } catch (error) {
-        if (!controller.signal.aborted) setLookupState('missing')
+        if (!controller.signal.aborted) setLookupState('unavailable')
       }
     }, 450)
     return () => { clearTimeout(timer); controller.abort() }
@@ -120,6 +124,13 @@ export default function InternationalTransferScreen() {
 
   function requestPin() {
     if (!validate() || !recipient || !user) return
+    const clientRequestId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : null
+    if (!clientRequestId) {
+      toast.error('Cet appareil ne permet pas de sécuriser la référence du transfert. Mettez le navigateur à jour.')
+      return
+    }
     setConfirmOpen(false)
     setPendingPinAction(async (pin) => {
       if (!pin) return
@@ -134,21 +145,28 @@ export default function InternationalTransferScreen() {
             currency: sendingCurrency,
             receivingCurrency,
             traitCardTransfer: method === 'trait-card',
+            clientRequestId,
             pin,
             description: note.trim() || `Transfert Trait vers ${recipient.name}`,
           }),
         })
         const data = await response.json()
         if (!response.ok || !data.success) {
-          toast.error(data.message || 'Le transfert n’a pas pu être effectué.')
+          if (response.status >= 500) {
+            throw new Error('Résultat incertain. Vérifiez l’historique avant toute nouvelle demande; une nouvelle tentative gardera la même référence sécurisée.')
+          }
+          toast.error(data.message || 'Le transfert a été refusé et aucun débit n’a été confirmé.')
+          navigateTo('international-transfer')
           return
         }
         if (data.updatedBalances) setUser({ ...user, ...data.updatedBalances } as any)
         toast.success('Transfert Trait effectué', { description: `${formatCurrencyAmount(Number(data.transaction?.amountReceived ?? receivedAmount), receivingCurrency)} crédités à ${recipient.name}. Le reçu est disponible dans l’historique.` })
         if (data.transaction?.id) navigateTo('receipt', { transactionId: data.transaction.id })
         else navigateTo('history')
-      } catch {
-        toast.error('La connexion a échoué. Aucun transfert n’a été confirmé.')
+      } catch (error) {
+        throw new Error(error instanceof Error && error.message.startsWith('Résultat incertain')
+          ? error.message
+          : 'La réponse du transfert n’est pas arrivée. Vérifiez l’historique avant de réessayer; la même référence sera réutilisée.')
       } finally {
         setSubmitting(false)
       }
@@ -187,8 +205,10 @@ export default function InternationalTransferScreen() {
               </div>
               <div aria-live="polite" className="min-h-5 text-sm">
                 {lookupState === 'loading' && <span className="inline-flex items-center gap-2 text-muted-foreground"><Loader2 className="size-3.5 animate-spin" /> Recherche du compte Trait…</span>}
-                {lookupState === 'found' && recipient && <span className="inline-flex items-center gap-2 text-emerald-700"><CheckCircle2 className="size-4" /> {recipient.name} — compte Trait confirmé</span>}
+                {lookupState === 'found' && recipient && <span className="inline-flex items-center gap-2 text-emerald-700"><CheckCircle2 className="size-4" /> {recipient.name} — compte Trait trouvé (nom du profil, identité non vérifiée)</span>}
                 {lookupState === 'missing' && <span className="text-amber-700">Aucun compte Trait actif trouvé pour ce numéro.</span>}
+                {lookupState === 'suspended' && <span className="text-destructive">Ce compte ne peut pas recevoir de transfert actuellement.</span>}
+                {lookupState === 'unavailable' && <span className="text-destructive">La vérification du compte Trait est temporairement indisponible. Réessayez avant de continuer.</span>}
                 {lookupState === 'invalid' && <span className="text-destructive">Le numéro ne respecte pas le format de ce pays.</span>}
               </div>
             </div>

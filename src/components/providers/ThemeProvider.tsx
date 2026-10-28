@@ -12,10 +12,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     root.classList.toggle('theme-white', themeVariant === 'white');
     if (themeVariant === 'white') {
       root.classList.remove('dark');
+      root.style.colorScheme = 'light';
     } else if (isDarkMode) {
       root.classList.add('dark');
+      root.style.colorScheme = 'dark';
     } else {
       root.classList.remove('dark');
+      root.style.colorScheme = 'light';
     }
   }, [isDarkMode, themeVariant]);
 

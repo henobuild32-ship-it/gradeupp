@@ -38,7 +38,7 @@ export default function SendScreen() {
   const { user, navigateTo, setUser, setPendingPinAction, pageParams, preferredCurrency, setPreferredCurrency } = useAppStore();
   const { t } = useTranslation();
   const [receiverPhone, setReceiverPhone] = useState('');
-  const [receiverCountry, setReceiverCountry] = useState('CD');
+  const [receiverCountry, setReceiverCountry] = useState('');
   const [receiverName, setReceiverName] = useState('');
   const [lookingUp, setLookingUp] = useState(false);
   const [lookupDone, setLookupDone] = useState(false);
@@ -160,6 +160,13 @@ export default function SendScreen() {
 
   function requestPinAndSend() {
     if (!user?.id) return;
+    const clientRequestId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : null
+    if (!clientRequestId) {
+      toast.error('Cet appareil ne permet pas de sécuriser la référence du transfert. Mettez le navigateur à jour.')
+      return
+    }
     setShowConfirm(false);
 
     setPendingPinAction(async (pin) => {
@@ -175,10 +182,17 @@ export default function SendScreen() {
             currency,
             receivingCurrency,
             description: note.trim() || undefined,
+            clientRequestId,
             pin,
           }),
         });
         const data = await res.json();
+        if (!res.ok || !data.success) {
+          if (res.status >= 500) throw new Error('Résultat incertain. Vérifiez l’historique avant toute nouvelle demande; la même référence sera réutilisée.')
+          toast.error(data.message || t('send.error'))
+          navigateTo('send')
+          return
+        }
         if (data.success) {
           // Update local user state with new balances from server
           if (data.updatedBalances) {
@@ -196,11 +210,11 @@ export default function SendScreen() {
           setNote('');
           if (data.transaction?.id) navigateTo('receipt', { transactionId: data.transaction.id });
           else navigateTo('history');
-        } else {
-          toast.error(data.message || t('send.error'));
         }
-      } catch {
-        toast.error(t('validation.connection_error'));
+      } catch (error) {
+        throw new Error(error instanceof Error && error.message.startsWith('Résultat incertain')
+          ? error.message
+          : 'La réponse du transfert n’est pas arrivée. Vérifiez l’historique avant de réessayer; la même référence sera réutilisée.')
       } finally {
         setLoading(false);
       }

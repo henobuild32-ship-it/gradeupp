@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createHash } from 'node:crypto'
 import { db } from '@/lib/db'
 import { checkChildBalanceLimit, checkDailyLimit, checkKYC, detectSuspiciousActivity, logSecurityEvent } from '@/lib/security'
 import { requireUser, verifyPinWithAttempts } from '@/lib/auth'
@@ -6,7 +7,7 @@ import { SendMoneySchema, validateRequest } from '@/lib/validations'
 import { updateBalanceAndNotify } from '@/lib/notifications'
 import { findUserByPhone } from '@/lib/phone'
 import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit'
-import { calculateTransferFee, convertCurrencyAmount, DEFAULT_USD_CDF_RATE, normalizeCurrency } from '@/lib/currency'
+import { calculateTransferFee, convertCurrencyAmount, DEFAULT_USD_CDF_RATE, normalizeCurrency, roundCurrencyAmount } from '@/lib/currency'
 import { getUsdCdfExchangeRate } from '@/lib/currency-server'
 import { normalizeInternationalPhone } from '@/lib/countries'
 
@@ -15,16 +16,26 @@ export async function POST(request: NextRequest) {
     const auth = await requireUser(request)
     if (auth instanceof NextResponse) return auth
 
-    const rateLimit = checkRateLimit({ windowMs: 60 * 60 * 1000, maxRequests: 10, key: `wallet-send:${auth.userId}` })
-    if (!rateLimit.allowed) return rateLimitResponse(rateLimit.resetIn)
-
     const body = await request.json()
     const validation = validateRequest(SendMoneySchema, body)
     if (!validation.success) {
       return NextResponse.json({ success: false, message: validation.error }, { status: 400 })
     }
 
-    const { receiverPhone, amount, currency, receivingCurrency, traitCardTransfer, pin, description } = validation.data
+    const {
+      receiverPhone,
+      amount: submittedAmount,
+      currency,
+      receivingCurrency,
+      traitCardTransfer,
+      clientRequestId,
+      pin,
+      description,
+    } = validation.data
+    const amount = roundCurrencyAmount(submittedAmount)
+    if (amount <= 0) {
+      return NextResponse.json({ success: false, message: 'Le montant doit être d’au moins 0,01.' }, { status: 400 })
+    }
     const senderId = auth.userId
     const normalizedPhone = normalizeInternationalPhone(receiverPhone)
     if (!normalizedPhone) {
@@ -53,6 +64,62 @@ export async function POST(request: NextRequest) {
     const cur = normalizeCurrency(currency)
     const receiveCur = normalizeCurrency(receivingCurrency || currency)
     const isFC = cur === 'CDF'
+    const effectiveDescription = (description?.trim() || `Transfert Trait de ${amount.toFixed(2)} ${cur} vers ${normalizedPhone}`).slice(0, 200)
+    const requestFingerprint = clientRequestId
+      ? createHash('sha256').update(JSON.stringify({
+          receiverPhone: normalizedPhone,
+          amount: amount.toFixed(2),
+          currency: cur,
+          receivingCurrency: receiveCur,
+          traitCardTransfer: traitCardTransfer === true,
+          description: effectiveDescription,
+        })).digest('hex')
+      : null
+
+    const findIdempotentTransfer = () => clientRequestId
+      ? db.transaction.findUnique({ where: { senderId_clientRequestId: { senderId, clientRequestId } } })
+      : Promise.resolve(null)
+
+    const existingTransferResponse = async (existing: any) => {
+      if (existing.requestFingerprint !== requestFingerprint) {
+        return NextResponse.json({
+          success: false,
+          code: 'IDEMPOTENCY_KEY_REUSED',
+          message: 'Cette référence de demande est déjà associée à un autre transfert.',
+        }, { status: 409 })
+      }
+      const currentBalances = await db.user.findUnique({
+        where: { id: senderId },
+        select: { realBalance: true, realBalanceFC: true, bonusBalance: true, bonusBalanceFC: true },
+      })
+      return NextResponse.json({
+        success: true,
+        duplicate: true,
+        transaction: {
+          id: existing.id,
+          type: existing.type,
+          amount: existing.amount,
+          fee: existing.fee,
+          currency: existing.currency,
+          receivingCurrency: existing.receivingCurrency,
+          amountReceived: existing.amountReceived,
+          exchangeRate: existing.exchangeRate,
+          status: existing.status,
+          senderId: existing.senderId,
+          receiverId: existing.receiverId,
+          description: existing.description,
+          createdAt: existing.createdAt,
+        },
+        updatedBalances: currentBalances,
+      })
+    }
+
+    // Return the first result on retries; never debit the same request twice.
+    const existingTransfer = await findIdempotentTransfer()
+    if (existingTransfer) return existingTransferResponse(existingTransfer)
+
+    const rateLimit = checkRateLimit({ windowMs: 60 * 60 * 1000, maxRequests: 10, key: `wallet-send:${auth.userId}` })
+    if (!rateLimit.allowed) return rateLimitResponse(rateLimit.resetIn)
 
     if (normalizedPhone === normalizeInternationalPhone(sender.phone)) {
       return NextResponse.json({ success: false, message: 'Un transfert vers soi-même est interdit' }, { status: 400 })
@@ -166,7 +233,8 @@ export async function POST(request: NextRequest) {
             status: 'completed',
             senderId,
             receiverId: receiver.id,
-            description: (description?.trim() || `Transfert Trait de ${amount.toFixed(2)} ${cur} vers ${receiver.phone}`).slice(0, 200),
+            description: effectiveDescription,
+            ...(clientRequestId ? { clientRequestId, requestFingerprint } : {}),
           },
         })
 
@@ -193,6 +261,10 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       if (error instanceof Error && error.message === 'INSUFFICIENT_BALANCE') {
         return NextResponse.json({ success: false, message: `Solde ${cur} insuffisant` }, { status: 400 })
+      }
+      if (clientRequestId && typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002') {
+        const existingAfterRace = await findIdempotentTransfer()
+        if (existingAfterRace) return existingTransferResponse(existingAfterRace)
       }
       throw error
     }

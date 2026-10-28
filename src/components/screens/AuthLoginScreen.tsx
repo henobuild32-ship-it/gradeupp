@@ -30,7 +30,7 @@ export default function AuthLoginScreen() {
   const { t } = useTranslation();
 
   const [selectedRole, setSelectedRole] = useState<'client' | 'agent' | 'seller'>('client');
-  const [countryCode, setCountryCode] = useState('CD');
+  const [countryCode, setCountryCode] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);

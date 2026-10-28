@@ -49,6 +49,24 @@ export default function RootLayout({
   return (
     <html lang="fr" suppressHydrationWarning>
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function () {
+                try {
+                  var saved = JSON.parse(localStorage.getItem('trait-app-storage') || 'null');
+                  var state = saved && (saved.state || saved);
+                  var root = document.documentElement;
+                  var white = state && state.themeVariant === 'white';
+                  var dark = !white && !!(state && state.isDarkMode);
+                  root.classList.toggle('theme-white', !!white);
+                  root.classList.toggle('dark', !!dark);
+                  root.style.colorScheme = white ? 'light' : dark ? 'dark' : 'light';
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="Trait Fintech" />

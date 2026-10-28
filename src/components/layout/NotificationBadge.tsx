@@ -17,7 +17,7 @@ export function NotificationBadge({ onClick }: { onClick?: () => void }) {
       try {
         const res = await fetch(`/api/notifications?userId=${user.id}`)
         const data = await res.json()
-        if (data.success) {
+        if (data.success && useAppStore.getState().user?.id === user.id) {
           setNotifications(data.notifications || [])
         }
       } catch {}

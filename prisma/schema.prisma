@@ -121,6 +121,7 @@ model Admin {
   bonusCampaigns      BonusCampaign[]
   cardValidations     CardRequest[]
   globalNotifications GlobalNotification[]
+  reportsReviewed    UserReport[]         @relation("ReportReviewer")
 }
 
 model AdminActivityLog {
@@ -156,6 +157,7 @@ model Transaction {
   type              String
   amount            Float
   fee               Float    @default(0)
+  feeFromBonus      Boolean?
   currency          String   @default("USD")
   receivingCurrency String?
   amountReceived    Float?
@@ -164,6 +166,8 @@ model Transaction {
   senderId          String
   receiverId        String
   description       String?
+  clientRequestId   String?
+  requestFingerprint String?
   agentId           String?
   blockReason       String?
   createdAt         DateTime @default(now())
@@ -175,6 +179,7 @@ model Transaction {
   @@index([receiverId])
   @@index([agentId])
   @@index([status])
+  @@unique([senderId, clientRequestId])
 }
 
 model Deposit {
@@ -191,17 +196,21 @@ model Deposit {
 }
 
 model Withdrawal {
-  id        String   @id @default(cuid())
-  userId    String
-  amount    Float
-  fee       Float    @default(0)
-  currency  String   @default("USD")
-  method    String   @default("mobile_money")
-  status    String   @default("pending")
-  agentId   String?
-  createdAt DateTime @default(now())
-  agent     User?    @relation("AgentWithdrawals", fields: [agentId], references: [id])
-  user      User     @relation(fields: [userId], references: [id])
+  id                String   @id @default(cuid())
+  userId            String
+  amount            Float
+  fee               Float    @default(0)
+  currency          String   @default("USD")
+  method            String   @default("mobile_money")
+  status            String   @default("pending")
+  agentId           String?
+  clientRequestId   String?
+  requestFingerprint String?
+  createdAt         DateTime @default(now())
+  agent             User?    @relation("AgentWithdrawals", fields: [agentId], references: [id])
+  user              User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, clientRequestId])
 }
 
 model MarketplaceProduct {
@@ -243,6 +252,7 @@ model Purchase {
   usedReal        Float              @default(0)
   status          String             @default("completed")
   clientRequestId String?            @unique
+  requestFingerprint String?
   createdAt       DateTime           @default(now())
   buyer           User               @relation(fields: [buyerId], references: [id])
   product         MarketplaceProduct @relation(fields: [productId], references: [id])
@@ -329,13 +339,23 @@ model UserBlock {
 }
 
 model UserReport {
-  id         String   @id @default(cuid())
-  reporterId String
-  targetType String
-  targetId   String
-  reason     String
-  createdAt  DateTime @default(now())
-  reporter   User     @relation(fields: [reporterId], references: [id])
+  id            String   @id @default(cuid())
+  reporterId    String
+  targetType    String
+  targetId      String
+  reason        String
+  status        String   @default("new")
+  adminNote     String?
+  reviewedById  String?
+  reviewedAt    DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  reporter      User     @relation(fields: [reporterId], references: [id])
+  reviewer      Admin?   @relation("ReportReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([targetType, targetId])
+  @@index([createdAt])
 }
 
 model Notification {

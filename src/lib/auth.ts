@@ -192,7 +192,16 @@ export async function requireUser(request: NextRequest) {
     if (!payload) {
       return NextResponse.json({ success: false, message: 'Session invalide' }, { status: 401 })
     }
-    return payload
+    // A signed cookie proves who logged in, but the database remains the
+    // authority for account existence and the user's current role.
+    const currentUser = await db.user.findUnique({
+      where: { id: payload.userId },
+      select: { id: true, role: true },
+    })
+    if (!currentUser) {
+      return NextResponse.json({ success: false, message: 'Session invalide' }, { status: 401 })
+    }
+    return { userId: currentUser.id, role: currentUser.role }
   } catch (error) {
     return NextResponse.json({ success: false, message: 'Erreur d\'authentification' }, { status: 500 })
   }

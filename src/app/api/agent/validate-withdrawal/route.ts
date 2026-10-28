@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { logSecurityEvent } from '@/lib/security'
 import { requireUser } from '@/lib/auth'
 import { formatAmount } from '@/lib/tx-labels'
+import { normalizeCurrency } from '@/lib/currency'
 
 export async function POST(request: NextRequest) {
   try {
@@ -85,46 +86,71 @@ export async function POST(request: NextRequest) {
 
     const amountLabel = formatAmount(withdrawal.amount, withdrawal.currency)
     const clientLabel = withdrawal.user?.name || withdrawal.user?.pseudo || withdrawal.user?.phone || 'le client'
+    const currency = normalizeCurrency(withdrawal.currency)
+    const withdrawalRequestId = (withdrawal as typeof withdrawal & { clientRequestId?: string | null }).clientRequestId
 
     if (action === 'validate') {
-      const isFC = withdrawal.currency === 'FC'
-      const updated = await db.$transaction(async (tx) => {
-        // Vraie logique cash : l'agent remet le liquide au client → son compte est débité
-        const debit = await tx.user.updateMany({
-          where: {
-            id: withdrawal.agentId!,
-            ...(isFC
-              ? { realBalanceFC: { gte: withdrawal.amount } }
-              : { realBalance: { gte: withdrawal.amount } }),
-          },
-          data: isFC
-            ? { realBalanceFC: { decrement: withdrawal.amount } }
-            : { realBalance: { decrement: withdrawal.amount } },
-        })
-        if (debit.count !== 1) throw new Error('AGENT_INSUFFICIENT_BALANCE')
+      let updated
+      try {
+        updated = await db.$transaction(async (tx) => {
+          const claim = await tx.withdrawal.updateMany({
+            where: { id: withdrawalId, agentId: auth.userId, status: 'pending' },
+            data: { status: 'completed' },
+          })
+          if (claim.count !== 1) throw new Error('WITHDRAWAL_ALREADY_PROCESSED')
 
-        const done = await tx.withdrawal.update({
-          where: { id: withdrawalId },
-          data: { status: 'completed' },
-        })
+          const linkedTransactions = await tx.transaction.findMany({
+            where: {
+              senderId: withdrawal.userId,
+              receiverId: withdrawal.agentId!,
+              type: 'withdrawal',
+              status: 'pending',
+              ...(withdrawalRequestId
+                ? { clientRequestId: withdrawalRequestId }
+                : { amount: withdrawal.amount, fee: withdrawal.fee, currency: withdrawal.currency }),
+            },
+            select: { id: true },
+            take: 2,
+          })
+          if (linkedTransactions.length !== 1) throw new Error('WITHDRAWAL_TRANSACTION_AMBIGUOUS')
 
-        await tx.transaction.updateMany({
-          where: {
-            senderId: withdrawal.userId,
-            receiverId: withdrawal.agentId!,
-            type: 'withdrawal',
-            status: 'pending',
-          },
-          data: { status: 'completed' },
-        })
+          // Atomic claim of this withdrawal prevents concurrent double cash-outs.
+          const balanceField = currency === 'CDF' ? 'realBalanceFC' : 'realBalance'
+          const debit = await tx.user.updateMany({
+            where: { id: withdrawal.agentId!, [balanceField]: { gte: withdrawal.amount } },
+            data: { [balanceField]: { decrement: withdrawal.amount } },
+          })
+          if (debit.count !== 1) throw new Error('AGENT_INSUFFICIENT_BALANCE')
 
-        return done
-      }).catch((err: unknown) => {
-        if (err instanceof Error && err.message === 'AGENT_INSUFFICIENT_BALANCE') {
-          return null
+          const txUpdate = await tx.transaction.updateMany({
+            where: { id: linkedTransactions[0].id, status: 'pending' },
+            data: { status: 'completed' },
+          })
+          if (txUpdate.count !== 1) throw new Error('WITHDRAWAL_TRANSACTION_ALREADY_PROCESSED')
+
+          await tx.notification.create({
+            data: {
+              userId: withdrawal.userId,
+              title: 'Retrait validé',
+              message: `Votre retrait de ${amountLabel} a été validé. Montant remis par l’agent : ${formatAmount(withdrawal.amount, currency)}.`,
+              type: 'withdrawal_validated',
+            },
+          })
+
+          return { id: withdrawal.id, status: 'completed' }
+        })
+      } catch (error) {
+        if (error instanceof Error && error.message === 'AGENT_INSUFFICIENT_BALANCE') {
+          return NextResponse.json({ success: false, message: 'Solde agent insuffisant pour valider ce retrait. Rechargez votre compte agent.' }, { status: 400 })
         }
-        throw err
-      })
+        if (error instanceof Error && (error.message === 'WITHDRAWAL_ALREADY_PROCESSED' || error.message === 'WITHDRAWAL_TRANSACTION_ALREADY_PROCESSED')) {
+          return NextResponse.json({ success: false, message: 'Ce retrait a déjà été traité.' }, { status: 409 })
+        }
+        if (error instanceof Error && error.message === 'WITHDRAWAL_TRANSACTION_AMBIGUOUS') {
+          return NextResponse.json({ success: false, message: 'La transaction liée est ambiguë. Le retrait doit être vérifié par un administrateur.' }, { status: 409 })
+        }
+        throw error
+      }
 
       if (!updated) {
         return NextResponse.json(
@@ -136,23 +162,12 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      if (withdrawal.agent) {
-        await logSecurityEvent({
-          userId: withdrawal.agent.id,
-          action: 'agent_validate_withdrawal',
-          details: `L'agent ${withdrawal.agent.name || withdrawal.agent.pseudo || 'N/A'} (${withdrawal.agent.agentCode || withdrawal.agent.agentNumber || 'N/A'}) a validé le retrait de ${amountLabel} pour ${clientLabel}`,
-          riskLevel: 'low',
-        })
-      }
-
-      await db.notification.create({
-        data: {
-          userId: withdrawal.userId,
-          title: 'Retrait validé',
-          message: `Votre retrait de ${amountLabel} a été validé. Montant net: ${formatAmount(withdrawal.amount - withdrawal.fee, withdrawal.currency)}.`,
-          type: 'withdrawal_validated',
-        },
-      })
+      await logSecurityEvent({
+        userId: auth.userId,
+        action: 'agent_validate_withdrawal',
+        details: `L'agent ${withdrawal.agent?.name || withdrawal.agent?.pseudo || 'N/A'} (${withdrawal.agent?.agentCode || withdrawal.agent?.agentNumber || 'N/A'}) a validé le retrait de ${amountLabel} pour ${clientLabel}`,
+        riskLevel: 'low',
+      }).catch((error) => console.error('Audit log failed after withdrawal validation:', error))
 
       try {
         const { sendPushToUser } = await import('@/lib/push');
@@ -176,46 +191,76 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'refuse') {
-      await db.withdrawal.update({
-        where: { id: withdrawalId },
-        data: { status: 'failed' },
-      })
+      if (withdrawal.fee > 0 && (withdrawal as typeof withdrawal & { feeFromBonus?: boolean | null }).feeFromBonus == null) {
+        return NextResponse.json({
+          success: false,
+          message: 'La source des frais de cet ancien retrait est inconnue. Un administrateur doit contrôler le remboursement.',
+          code: 'WITHDRAWAL_REFUND_REVIEW_REQUIRED',
+        }, { status: 409 })
+      }
+      try {
+        await db.$transaction(async (tx) => {
+          const claim = await tx.withdrawal.updateMany({
+            where: { id: withdrawalId, agentId: auth.userId, status: 'pending' },
+            data: { status: 'failed' },
+          })
+          if (claim.count !== 1) throw new Error('WITHDRAWAL_ALREADY_PROCESSED')
 
-      await db.transaction.updateMany({
-        where: {
-          senderId: withdrawal.userId,
-          receiverId: withdrawal.agentId!,
-          type: 'withdrawal',
-          status: 'pending',
-        },
-        data: { status: 'failed' },
-      })
+          const linkedTransactions = await tx.transaction.findMany({
+            where: {
+              senderId: withdrawal.userId,
+              receiverId: withdrawal.agentId!,
+              type: 'withdrawal',
+              status: 'pending',
+              ...(withdrawalRequestId
+                ? { clientRequestId: withdrawalRequestId }
+                : { amount: withdrawal.amount, fee: withdrawal.fee, currency: withdrawal.currency }),
+            },
+            select: { id: true },
+            take: 2,
+          })
+          if (linkedTransactions.length !== 1) throw new Error('WITHDRAWAL_TRANSACTION_AMBIGUOUS')
+          const txUpdate = await tx.transaction.updateMany({
+            where: { id: linkedTransactions[0].id, status: 'pending' },
+            data: { status: 'failed' },
+          })
+          if (txUpdate.count !== 1) throw new Error('WITHDRAWAL_TRANSACTION_ALREADY_PROCESSED')
 
-      const isFC = withdrawal.currency === 'FC'
-      await db.user.update({
-        where: { id: withdrawal.userId },
-        data: isFC
-          ? { realBalanceFC: { increment: withdrawal.amount + withdrawal.fee } }
-          : { realBalance: { increment: withdrawal.amount + withdrawal.fee } },
-      })
-
-      if (withdrawal.agent) {
-        await logSecurityEvent({
-          userId: withdrawal.agent.id,
-          action: 'agent_refuse_withdrawal',
-          details: `L'agent ${withdrawal.agent.name || withdrawal.agent.pseudo || 'N/A'} a refusé le retrait de ${amountLabel} pour ${clientLabel}`,
-          riskLevel: 'low',
+          const cashField = currency === 'CDF' ? 'realBalanceFC' : 'realBalance'
+          const bonusField = currency === 'CDF' ? 'bonusBalanceFC' : 'bonusBalance'
+          const feeFromBonus = (withdrawal as typeof withdrawal & { feeFromBonus?: boolean }).feeFromBonus === true
+          await tx.user.update({
+            where: { id: withdrawal.userId },
+            data: {
+              [cashField]: { increment: withdrawal.amount + (feeFromBonus ? 0 : withdrawal.fee) },
+              ...(feeFromBonus ? { [bonusField]: { increment: withdrawal.fee } } : {}),
+            },
+          })
+          await tx.notification.create({
+            data: {
+              userId: withdrawal.userId,
+              title: 'Retrait refusé',
+              message: `Votre retrait de ${amountLabel} a été refusé. Le montant et les frais ont été remboursés sur leur solde d’origine.`,
+              type: 'general',
+            },
+          })
         })
+      } catch (error) {
+        if (error instanceof Error && (error.message === 'WITHDRAWAL_ALREADY_PROCESSED' || error.message === 'WITHDRAWAL_TRANSACTION_ALREADY_PROCESSED')) {
+          return NextResponse.json({ success: false, message: 'Ce retrait a déjà été traité.' }, { status: 409 })
+        }
+        if (error instanceof Error && error.message === 'WITHDRAWAL_TRANSACTION_AMBIGUOUS') {
+          return NextResponse.json({ success: false, message: 'La transaction liée est ambiguë. Le retrait doit être vérifié par un administrateur.' }, { status: 409 })
+        }
+        throw error
       }
 
-      await db.notification.create({
-        data: {
-          userId: withdrawal.userId,
-          title: 'Retrait refusé',
-          message: `Votre retrait de ${amountLabel} a été refusé. Le montant a été remboursé sur votre solde.`,
-          type: 'general',
-        },
-      })
+      await logSecurityEvent({
+        userId: auth.userId,
+        action: 'agent_refuse_withdrawal',
+        details: `L'agent ${withdrawal.agent?.name || withdrawal.agent?.pseudo || 'N/A'} a refusé le retrait de ${amountLabel} pour ${clientLabel}`,
+        riskLevel: 'low',
+      }).catch((error) => console.error('Audit log failed after withdrawal refusal:', error))
 
       try {
         const { sendPushToUser } = await import('@/lib/push');

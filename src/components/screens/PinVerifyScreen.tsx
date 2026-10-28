@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ShieldAlert } from 'lucide-react';
+import { X, ShieldAlert, Loader2 } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
 import { toast } from 'sonner';
 
@@ -10,6 +10,7 @@ export default function PinVerifyScreen() {
   const { goBack, navigateTo, user, clearPendingPinAction, pendingPinAction } = useAppStore();
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
+  const [pinVerified, setPinVerified] = useState(false);
   const [shaking, setShaking] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const submitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -18,6 +19,7 @@ export default function PinVerifyScreen() {
   const submitPin = useCallback(async (value: string) => {
     if (submitting || !value || value.length < 4) return;
     setSubmitting(true);
+    setPinVerified(false);
     try {
       const res = await fetch('/api/auth/verify-pin', {
         method: 'POST',
@@ -26,9 +28,14 @@ export default function PinVerifyScreen() {
       });
       const data = await res.json();
       if (data.success) {
+        setPinVerified(true);
         const action = pendingPinAction;
-        clearPendingPinAction?.();
-        action?.(value);
+        if (action) {
+          await action(value);
+          // Keep the action available after an uncertain network/server error;
+          // an idempotent transfer can then be retried with the same request ID.
+          if (useAppStore.getState().pendingPinAction === action) clearPendingPinAction?.();
+        }
         setPin('');
         pinRef.current = '';
       } else {
@@ -43,6 +50,7 @@ export default function PinVerifyScreen() {
         return;
       }
       setError(msg);
+      setPinVerified(false);
       setShaking(true);
       setTimeout(() => {
         setPin('');
@@ -111,7 +119,8 @@ export default function PinVerifyScreen() {
       >
         <div className="flex flex-col items-center gap-2 mb-8">
           <h2 className="text-xl font-bold text-foreground">Vérification de sécurité</h2>
-          <p className="text-sm text-muted-foreground">Entrez votre code PIN pour valider</p>
+          <p className="text-sm text-muted-foreground">{submitting ? (pinVerified ? 'PIN validé — opération en cours…' : 'Vérification du PIN…') : 'Entrez votre code PIN pour valider'}</p>
+          {submitting && <Loader2 className="mt-2 size-5 animate-spin text-primary" aria-label="Vérification en cours" />}
         </div>
 
         {/* PIN dots */}
@@ -160,8 +169,9 @@ export default function PinVerifyScreen() {
               return (
                 <button
                   key="del"
+                      disabled={submitting}
                   onClick={handleDelete}
-                  className="h-14 rounded-xl bg-muted hover:bg-accent flex items-center justify-center text-muted-foreground text-sm font-medium transition-colors cursor-pointer"
+                      className="h-14 rounded-xl bg-muted hover:bg-accent flex items-center justify-center text-muted-foreground text-sm font-medium transition-colors cursor-pointer disabled:opacity-50"
                 >
                   ←
                 </button>
@@ -170,8 +180,9 @@ export default function PinVerifyScreen() {
             return (
               <button
                 key={key}
+                    disabled={submitting}
                 onClick={() => handleDigit(key)}
-                className="h-14 rounded-xl bg-background border border-border hover:bg-[#0D5C63]/5 hover:border-[#0D5C63]/20 flex items-center justify-center text-xl font-semibold transition-colors active:scale-95 cursor-pointer"
+                    className="h-14 rounded-xl bg-background border border-border hover:bg-[#0D5C63]/5 hover:border-[#0D5C63]/20 flex items-center justify-center text-xl font-semibold transition-colors active:scale-95 cursor-pointer disabled:opacity-50"
               >
                 {key}
               </button>
