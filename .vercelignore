@@ -1,0 +1,8 @@
+.env*
+scripts/check-*.js
+scripts/compare-db.js
+scripts/mini-test-ai.js
+scripts/probe-glm.js
+scripts/prod-ai-test.js
+scripts/set-agent-provision.js
+scripts/test-*.js
