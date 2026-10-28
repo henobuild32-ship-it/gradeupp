@@ -8,7 +8,7 @@ import { useTranslation } from '@/lib/i18n'
 import { toast } from 'sonner'
 
 export function PushPermissionBanner() {
-  const { permission, subscribe, isSubscribed } = usePushSubscription()
+  const { permission, configurationAvailable, subscribe, isSubscribed } = usePushSubscription()
   const { t } = useTranslation()
   const [dismissed, setDismissed] = useState(false)
 
@@ -20,7 +20,7 @@ export function PushPermissionBanner() {
   }, [isSubscribed, permission])
 
   // Also hide when permission granted AND subscribed (double check)
-  if (dismissed || (permission === 'granted' && isSubscribed)) return null
+  if (dismissed || configurationAvailable === false || (permission === 'granted' && isSubscribed)) return null
   // If denied, don't show (can't re-prompt)
   if (permission === 'denied') return null
 
@@ -39,14 +39,18 @@ export function PushPermissionBanner() {
             size="sm"
             className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg"
             onClick={async () => {
-              const success = await subscribe()
-              if (success) {
+              const result = await subscribe()
+              if (result === 'success') {
                 setDismissed(true)
                 toast.success(t('settings.notif_success'))
-              } else if (Notification.permission === 'denied') {
+              } else if (result === 'denied') {
                 toast.error(t('settings.notif_denied'))
-              } else {
+              } else if (result === 'configuration') {
+                toast.error(t('settings.notif_unavailable'))
+              } else if (result === 'prompt') {
                 toast.info(t('settings.notif_ask'))
+              } else {
+                toast.error(result === 'unsupported' ? t('settings.notif_unsupported') : t('settings.notif_failed'))
               }
             }}
           >

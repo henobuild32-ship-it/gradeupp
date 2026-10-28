@@ -203,7 +203,7 @@ export default function SettingsScreen() {
   const { goBack, user, setUser, logout, navigateTo, isDarkMode, toggleTheme, themeVariant, setThemeVariant } =
     useAppStore();
   const { canInstall, isIOS, isInstalled, isStandalone, installApp } = usePWAInstall();
-  const { isSubscribed, permission, subscribe } = usePushSubscription();
+  const { isSubscribed, permission, configurationAvailable, subscribe, unsubscribe } = usePushSubscription();
   const { t, language, setLanguage } = useTranslation();
   const [showIOSGuide, setShowIOSGuide] = useState(false);
   const [showAndroidGuide, setShowAndroidGuide] = useState(false);
@@ -236,20 +236,39 @@ export default function SettingsScreen() {
   };
 
   const handlePushPermission = async () => {
+    if (isSubscribed) {
+      setPushLoading(true);
+      try {
+        if (await unsubscribe()) toast.success(t('settings.notif_disabled'));
+        else toast.error(t('settings.notif_disable_failed'));
+      } finally {
+        setPushLoading(false);
+      }
+      return;
+    }
+
     if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
       toast.error(t('settings.notif_unsupported'));
+      return;
+    }
+    if (configurationAvailable === false) {
+      toast.error(t('settings.notif_unavailable'));
       return;
     }
 
     setPushLoading(true);
     try {
-      const success = await subscribe();
-      if (success) {
+      const result = await subscribe();
+      if (result === 'success') {
         toast.success(t('settings.notif_success'));
-      } else if (Notification.permission === 'denied') {
+      } else if (result === 'denied') {
         toast.error(t('settings.notif_denied'));
-      } else {
+      } else if (result === 'configuration') {
+        toast.error(t('settings.notif_unavailable'));
+      } else if (result === 'prompt') {
         toast.info(t('settings.notif_ask'));
+      } else {
+        toast.error(result === 'unsupported' ? t('settings.notif_unsupported') : t('settings.notif_failed'));
       }
     } finally {
       setPushLoading(false);
@@ -370,10 +389,10 @@ export default function SettingsScreen() {
         },
         {
           icon: Bell,
-          label: isSubscribed ? t('settings.notif_enabled') : t('settings.notif_enable'),
-          value: pushLoading ? t('settings.notif_requesting') : isSubscribed ? t('settings.notif_on') : permission === 'denied' ? t('settings.notif_blocked') : t('settings.notif_off'),
+          label: isSubscribed ? t('settings.notif_disable') : configurationAvailable === false ? t('settings.notif_unavailable') : t('settings.notif_enable'),
+          value: pushLoading ? t('settings.notif_requesting') : configurationAvailable === false ? t('settings.notif_unavailable_short') : isSubscribed ? t('settings.notif_on') : permission === 'denied' ? t('settings.notif_blocked') : t('settings.notif_off'),
           action: handlePushPermission,
-          badge: !isSubscribed,
+          badge: !isSubscribed && configurationAvailable !== false,
         },
         {
           icon: Download,

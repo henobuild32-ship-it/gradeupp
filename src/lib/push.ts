@@ -53,7 +53,7 @@ export async function sendPushToUser(userId: string, payload: PushPayload): Prom
         if (err?.statusCode === 410 || err?.statusCode === 404) {
           // Subscription expired or invalid — delete it
           await db.pushSubscription.deleteMany({
-            where: { endpoint: subscriptions[i].endpoint },
+            where: { endpoint: subscriptions[i].endpoint, userId },
           })
         }
       }
@@ -104,7 +104,7 @@ export async function sendPushToAll(payload: PushPayload & { tag?: string }) {
         const err = result.reason as any
         if (err?.statusCode === 410 || err?.statusCode === 404) {
           await db.pushSubscription.deleteMany({
-            where: { endpoint: subscriptions[i].endpoint },
+            where: { endpoint: subscriptions[i].endpoint, userId: subscriptions[i].userId },
           })
         }
       }
