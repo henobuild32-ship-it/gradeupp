@@ -13,6 +13,7 @@ import {
   Phone,
   MapPin,
   User,
+  Mail,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +28,7 @@ export default function ProfileScreen() {
   const { goBack, user, setUser } = useAppStore();
   const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
+  const [dailyLimits, setDailyLimits] = useState<any>(null);
   const [form, setForm] = useState({
     name: '',
     pseudo: '',
@@ -45,6 +47,14 @@ export default function ProfileScreen() {
       });
     }
   }, [user]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    fetch('/api/transfer/limits', { credentials: 'include' })
+      .then((response) => response.json())
+      .then((data) => { if (data.success) setDailyLimits(data.limits); })
+      .catch(() => setDailyLimits(null));
+  }, [user?.id]);
 
   const handleChange = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -195,6 +205,23 @@ export default function ProfileScreen() {
             </p>
           </div>
 
+          {/* Signup email is visible only in the authenticated owner's profile. */}
+          <div className="space-y-2">
+            <Label htmlFor="profile-email">Adresse e-mail</Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <Input
+                id="profile-email"
+                type="email"
+                value={user.email || 'Aucune adresse enregistrée'}
+                readOnly
+                aria-readonly="true"
+                className="pl-9 bg-muted"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">L’adresse utilisée lors de l’inscription. Contactez le support pour la modifier.</p>
+          </div>
+
           {/* Country */}
           <div className="space-y-2">
             <Label htmlFor="country">{t('auth.country')}</Label>
@@ -279,6 +306,26 @@ export default function ProfileScreen() {
             </CardContent>
           </Card>
         </motion.div>
+
+        {dailyLimits && <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Limites du jour · Africa/Kinshasa</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <div className="flex items-center justify-between gap-3">
+              <span>Opérations restantes</span>
+              <span className="font-semibold">{dailyLimits.transactions.remaining} / {dailyLimits.transactions.limit}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span>Retrait restant</span>
+              <span className="font-semibold text-right">{Number(dailyLimits.withdrawal.remainingUsd).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} USD</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span>Équivalent</span>
+              <span className="font-semibold text-right">{Number(dailyLimits.withdrawal.remainingCdf).toLocaleString('fr-FR')} CDF</span>
+            </div>
+          </CardContent>
+        </Card>}
       </div>
     </div>
   );

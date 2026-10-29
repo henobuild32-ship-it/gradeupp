@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createHash } from 'node:crypto'
 import { db } from '@/lib/db'
-import { checkChildBalanceLimit, checkDailyLimit, checkKYC, detectSuspiciousActivity, logSecurityEvent } from '@/lib/security'
+import { checkChildBalanceLimit, checkKYC, detectSuspiciousActivity, logSecurityEvent } from '@/lib/security'
 import { requireUser, verifyPinWithAttempts } from '@/lib/auth'
 import { SendMoneySchema, validateRequest } from '@/lib/validations'
 import { updateBalanceAndNotify } from '@/lib/notifications'
 import { findUserByPhone } from '@/lib/phone'
 import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit'
-import { calculateTransferFee, convertCurrencyAmount, DEFAULT_USD_CDF_RATE, normalizeCurrency, roundCurrencyAmount } from '@/lib/currency'
+import { calculateCurrencyFee, convertCurrencyAmount, DEFAULT_USD_CDF_RATE, normalizeCurrency, roundCurrencyAmount } from '@/lib/currency'
 import { getUsdCdfExchangeRate } from '@/lib/currency-server'
 import { normalizeInternationalPhone } from '@/lib/countries'
+import { checkDailyTransactionLimit, getDayWindow, getFinancialPolicy, getUserDailyLimits, lockDailyFinancialOperations } from '@/lib/financial-policy'
 
 export async function POST(request: NextRequest) {
   try {
@@ -88,10 +89,10 @@ export async function POST(request: NextRequest) {
           message: 'Cette référence de demande est déjà associée à un autre transfert.',
         }, { status: 409 })
       }
-      const currentBalances = await db.user.findUnique({
-        where: { id: senderId },
-        select: { realBalance: true, realBalanceFC: true, bonusBalance: true, bonusBalanceFC: true },
-      })
+      const [currentBalances, dailyLimits] = await Promise.all([
+        db.user.findUnique({ where: { id: senderId }, select: { realBalance: true, realBalanceFC: true, bonusBalance: true, bonusBalanceFC: true } }),
+        getUserDailyLimits(senderId).catch(() => null),
+      ])
       return NextResponse.json({
         success: true,
         duplicate: true,
@@ -111,6 +112,7 @@ export async function POST(request: NextRequest) {
           createdAt: existing.createdAt,
         },
         updatedBalances: currentBalances,
+        dailyLimits,
       })
     }
 
@@ -133,8 +135,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: pinResult.blocked ? 'Trop de tentatives. Compte bloqué temporairement.' : 'PIN incorrect' }, { status: pinResult.blocked ? 429 : 401 })
     }
 
-    const fee = calculateTransferFee(amount)
-
     // Find receiver — aucun compte n'est créé automatiquement
     const receiver = await findUserByPhone(normalizedPhone)
 
@@ -152,6 +152,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Le compte du bénéficiaire ne peut pas recevoir de transfert actuellement.' }, { status: 403 })
     }
 
+    const policy = await getFinancialPolicy()
+    const feeBps = sender.country && receiver.country && sender.country.toUpperCase() !== receiver.country.toUpperCase()
+      ? policy.internationalSendFeeBasisPoints : 0
+    const fee = calculateCurrencyFee(amount, feeBps, cur)
+
     if (traitCardTransfer) {
       const [senderCard, receiverCard] = await Promise.all([
         db.traitCard.findFirst({ where: { userId: senderId, status: 'active' }, select: { id: true } }),
@@ -159,12 +164,6 @@ export async function POST(request: NextRequest) {
       ])
       if (!senderCard) return NextResponse.json({ success: false, message: 'Une carte Trait active est nécessaire pour utiliser ce mode de paiement.' }, { status: 403 })
       if (!receiverCard) return NextResponse.json({ success: false, message: 'Aucune carte Trait active n’est liée à ce numéro.' }, { status: 404 })
-    }
-
-    const dailyCheck = await checkDailyLimit(senderId)
-    if (!dailyCheck.allowed) {
-      await logSecurityEvent({ userId: senderId, action: 'daily_limit_reached', details: JSON.stringify({ count: dailyCheck.count, limit: dailyCheck.limit }), riskLevel: 'high' })
-      return NextResponse.json({ success: false, message: `Limite journalière atteinte (${dailyCheck.limit} opérations).` }, { status: 429 })
     }
 
     const exchangeRate = cur === receiveCur ? null : await getUsdCdfExchangeRate()
@@ -199,6 +198,14 @@ export async function POST(request: NextRequest) {
     let transaction
     try {
       const result = await db.$transaction(async (tx) => {
+        await lockDailyFinancialOperations(tx, senderId)
+        const duplicate = clientRequestId
+          ? await tx.transaction.findUnique({ where: { senderId_clientRequestId: { senderId, clientRequestId } } })
+          : null
+        if (duplicate) throw new Error('IDEMPOTENT_ALREADY_COMMITTED')
+        const dailyCheck = await checkDailyTransactionLimit(tx, senderId, policy, getDayWindow(new Date(), policy.timezone))
+        if (!dailyCheck.allowed) throw new Error('DAILY_TRANSACTION_LIMIT')
+
         const canChargeFeeFromBonus = fee > 0 && sender[senderBalanceField] < amount + fee && sender[senderBalanceField] >= amount && sender[senderBonusField] >= fee
         const debit = await tx.user.updateMany({
           where: {
@@ -260,6 +267,14 @@ export async function POST(request: NextRequest) {
       })
       transaction = result
     } catch (error) {
+      if (error instanceof Error && error.message === 'DAILY_TRANSACTION_LIMIT') {
+        await logSecurityEvent({ userId: senderId, action: 'daily_limit_reached', details: JSON.stringify({ limit: policy.dailyTransactionLimit }), riskLevel: 'high' })
+        return NextResponse.json({ success: false, code: 'DAILY_TRANSACTION_LIMIT', message: `Limite journalière atteinte (${policy.dailyTransactionLimit} opérations).` }, { status: 429 })
+      }
+      if (error instanceof Error && error.message === 'IDEMPOTENT_ALREADY_COMMITTED') {
+        const existingAfterRace = await findIdempotentTransfer()
+        if (existingAfterRace) return existingTransferResponse(existingAfterRace)
+      }
       if (error instanceof Error && error.message === 'INSUFFICIENT_BALANCE') {
         return NextResponse.json({ success: false, message: `Solde ${cur} insuffisant` }, { status: 400 })
       }
@@ -308,6 +323,7 @@ export async function POST(request: NextRequest) {
     })
     updateBalanceAndNotify(receiver.id, updatedReceiver?.realBalance, updatedReceiver?.realBalanceFC).catch(() => {})
 
+    const dailyLimits = await getUserDailyLimits(senderId).catch(() => null)
     return NextResponse.json({
       success: true,
       transaction: {
@@ -326,6 +342,7 @@ export async function POST(request: NextRequest) {
         createdAt: transaction.createdAt,
       },
       updatedBalances: updatedSender,
+      dailyLimits,
     })
   } catch (error) {
     console.error('Send transfer error:', error)

@@ -25,6 +25,7 @@ import {
   RefreshCw,
   X,
   Fingerprint,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,7 +36,7 @@ import { usePWAInstall } from '@/hooks/usePWAInstall';
 import { useTranslation, languageNames, languages, type Language } from '@/lib/i18n';
 import { useState } from 'react';
 import { usePushSubscription } from '@/hooks/usePushSubscription';
-import { enrollBiometric, disableBiometric, checkBiometricSupport, describeBiometricError } from '@/lib/biometric';
+import { enrollBiometric, checkBiometricSupport, describeBiometricError } from '@/lib/biometric';
 
 function LanguageModal({ onClose }: { onClose: () => void }) {
   const { language, setLanguage } = useTranslation();
@@ -275,26 +276,35 @@ export default function SettingsScreen() {
     }
   };
 
-  // Activation/désactivation réelle du déverrouillage biométrique
-  // (WebAuthn côté web, Keystore/Keychain côté APK — empreinte, visage, code appareil)
-  const handleBiometricToggle = async () => {
+  const handleUnlockMethodChange = async (method: 'none' | 'pin' | 'biometric') => {
     if (bioLoading || !user) return;
     setBioLoading(true);
     try {
-      if (user.biometricEnabled) {
-        await disableBiometric();
-        setUser({ ...user, biometricEnabled: false });
-        toast.success('Déverrouillage biométrique désactivé');
-      } else {
+      let biometricEnabled = !!user.biometricEnabled;
+      if (method === 'pin' && !user.pinSet) {
+        toast.info('Configurez d’abord votre code PIN TRAIT.');
+        navigateTo('pin-setup');
+        return;
+      }
+      if (method === 'biometric' && !biometricEnabled) {
         const support = await checkBiometricSupport();
         if (!support.supported) {
           toast.error('Biométrie indisponible sur cet appareil');
           return;
         }
         await enrollBiometric();
-        setUser({ ...user, biometricEnabled: true });
-        toast.success(`Déverrouillage par ${support.label.toLowerCase()} activé`);
+        biometricEnabled = true;
       }
+      const response = await fetch('/api/auth/unlock-method', {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ method }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message || 'Impossible d’enregistrer ce choix.');
+      setUser({ ...user, biometricEnabled, unlockMethod: method });
+      toast.success(method === 'none' ? 'Verrouillage local désactivé' : method === 'pin' ? 'Déverrouillage par code PIN TRAIT activé' : 'Déverrouillage biométrique activé');
     } catch (err: any) {
       const msg = describeBiometricError(err);
       if (!/cancel|annul/i.test(msg)) {
@@ -357,12 +367,6 @@ export default function SettingsScreen() {
           label: t('settings.enable_2fa'),
           value: user?.twoFactorEnabled ? 'active' : null,
           action: () => navigateTo('two-factor-setup'),
-        },
-        {
-          icon: Fingerprint,
-          label: t('settings.biometric'),
-          value: bioLoading ? '…' : user?.biometricEnabled ? t('settings.on') : t('settings.off'),
-          action: handleBiometricToggle,
         },
       ],
     },
@@ -508,6 +512,36 @@ export default function SettingsScreen() {
             </CardContent>
           </Card>
         </motion.div>
+
+        <Card>
+          <CardHeader className="pb-2 px-4 pt-4">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2"><Fingerprint className="size-4" />Déverrouillage de l’application</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <p className="mb-3 text-xs text-muted-foreground">Choisissez un seul moyen. La biométrie utilise l’authentificateur sécurisé de l’appareil; son échec demande le mot de passe du compte.</p>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" role="group" aria-label="Mode de déverrouillage">
+              {([
+                ['none', 'Aucun'],
+                ['pin', 'Code PIN TRAIT'],
+                ['biometric', 'Biométrie'],
+              ] as const).map(([method, label]) => {
+                const activeMethod = user?.unlockMethod ?? (user?.biometricEnabled ? 'biometric' : user?.pinSet ? 'pin' : 'none');
+                return <Button
+                  key={method}
+                  type="button"
+                  variant={activeMethod === method ? 'default' : 'outline'}
+                  className="min-h-11"
+                  disabled={bioLoading}
+                  aria-pressed={activeMethod === method}
+                  onClick={() => void handleUnlockMethodChange(method)}
+                >
+                  {bioLoading ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+                  {label}{activeMethod === method ? ' · Actif' : ''}
+                </Button>;
+              })}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Settings sections */}
         {settingsItems.map((section, sIndex) => (

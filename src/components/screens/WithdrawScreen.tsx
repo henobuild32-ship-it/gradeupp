@@ -26,7 +26,7 @@ import { useAppStore } from '@/lib/store';
 import { useTranslation } from '@/lib/i18n';
 import { toast } from 'sonner';
 import { formatAgentCodeInput } from '@/lib/agent-format';
-import { calculateTransferFee, roundCurrencyAmount } from '@/lib/currency';
+import { calculateCurrencyFee, normalizeCurrency, roundCurrencyAmount } from '@/lib/currency';
 
 function fmtCur(amount: number, currency: string) {
   if (currency === 'FC' || currency === 'CDF') return `${amount.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} CDF`;
@@ -44,6 +44,15 @@ export default function WithdrawScreen() {
   const [success, setSuccess] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
+  const [dailyLimits, setDailyLimits] = useState<any>(null);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    fetch('/api/transfer/limits', { credentials: 'include' })
+      .then((response) => response.json())
+      .then((data) => { if (data.success) setDailyLimits(data.limits); })
+      .catch(() => {});
+  }, [user?.id]);
 
   // -- Agent resolution: accepts AGT-code digits OR agent phone --
   const [agentName, setAgentName] = useState<string | null>(null);
@@ -128,7 +137,8 @@ export default function WithdrawScreen() {
 
   const isFC = currency === 'FC';
   const numericAmount = roundCurrencyAmount(Number(amount) || 0);
-  const fee = calculateTransferFee(numericAmount);
+  const withdrawalFeeBasisPoints = dailyLimits?.fees?.withdrawalBasisPoints ?? 100;
+  const fee = calculateCurrencyFee(numericAmount, withdrawalFeeBasisPoints, normalizeCurrency(currency));
   const total = numericAmount + fee;
   const realBalance = isFC
     ? (user?.realBalanceFC ?? 0)
@@ -211,7 +221,7 @@ export default function WithdrawScreen() {
               bonusBalanceFC: data.updatedBalances.bonusBalanceFC,
             } as any);
           }
-          toast.success(t('withdraw.success'));
+          toast.success(data.dailyLimits?.transactions ? `${t('withdraw.success')} ${data.dailyLimits.transactions.remaining} opérations restantes aujourd’hui.` : t('withdraw.success'));
           setAmount('');
           setAgentInput('');
           setAgentNumber('');
@@ -270,6 +280,12 @@ export default function WithdrawScreen() {
             <p className={`text-3xl font-bold ${isFC ? 'text-blue-700' : 'text-emerald-700'}`}>
               {fmtCur(realBalance, currency)}
             </p>
+            {dailyLimits?.transactions && <p className="mt-2 text-xs text-muted-foreground">
+              {dailyLimits.transactions.remaining} opérations restantes sur {dailyLimits.transactions.limit} aujourd’hui.
+            </p>}
+            {dailyLimits?.withdrawal && <p className="mt-1 text-xs text-muted-foreground">
+              Plafond restant aujourd’hui : {fmtCur(isFC ? dailyLimits.withdrawal.remainingCdf : dailyLimits.withdrawal.remainingUsd, currency)}
+            </p>}
           </CardContent>
         </Card>
       </motion.div>
@@ -344,7 +360,7 @@ export default function WithdrawScreen() {
             {numericAmount > 0 && (
               <div className="rounded-xl bg-muted/50 p-4 space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Frais ({0.7}%)</span>
+                  <span className="text-muted-foreground">Frais ({(withdrawalFeeBasisPoints / 100).toLocaleString('fr-FR')} %)</span>
                   <span className="font-medium">{fmtCur(fee, currency)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -396,6 +412,8 @@ export default function WithdrawScreen() {
               <span className="font-medium">Total débité</span>
               <span className="font-bold text-red-500">-{fmtCur(total, currency)}</span>
             </div>
+            {dailyLimits?.transactions && <div className="flex justify-between text-xs text-muted-foreground"><span>Opérations après ce retrait</span><span>{Math.max(0, dailyLimits.transactions.remaining - 1)} restantes sur {dailyLimits.transactions.limit}</span></div>}
+            {dailyLimits?.withdrawal && <p className="text-xs text-muted-foreground">Plafond actuel restant : {fmtCur(isFC ? dailyLimits.withdrawal.remainingCdf : dailyLimits.withdrawal.remainingUsd, currency)}. Devise convertie au taux de change central.</p>}
           </div>
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             <Lock className="size-3" />Votre code PIN sera demandé pour confirmer

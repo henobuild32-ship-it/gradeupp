@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
         id: user.id,
         name: user.name || user.pseudo || 'Utilisateur TRAIT',
         phone: user.phone,
+        country: user.country,
         isTraitUser: true,
       },
     })

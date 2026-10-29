@@ -126,6 +126,7 @@ export interface User {
   hasCompletedOnboarding: boolean;
   pinSet?: boolean;
   biometricEnabled?: boolean;
+  unlockMethod?: 'none' | 'pin' | 'biometric';
   twoFactorEnabled?: boolean;
   referralCode?: string | null;
   createdAt?: string;
@@ -244,7 +245,7 @@ function safeRouteParams(params?: Record<string, any>): Record<string, string | 
 }
 
 // Store version for migration
-const STORE_VERSION = 7;
+const STORE_VERSION = 8;
 type PersistedAppState = Pick<
   AppStore,
   'isDarkMode' | 'themeVariant' | 'selectedRole' | 'language' | 'preferredCurrency' | 'lastSeenVersion' | 'lastSeenDeployId' |
@@ -562,6 +563,10 @@ export const useAppStore = create<AppStore>()(
           }
         }
 
+        if (version < 8 && state.user) {
+          state.user.unlockMethod = state.user.biometricEnabled ? 'biometric' : state.user.pinSet ? 'pin' : 'none';
+        }
+
         return state as PersistedAppState;
       },
       partialize: (state) => ({
@@ -573,6 +578,7 @@ export const useAppStore = create<AppStore>()(
           pseudo: state.user.pseudo,
           phone: state.user.phone,
           biometricEnabled: state.user.biometricEnabled,
+          unlockMethod: state.user.unlockMethod,
           pinSet: state.user.pinSet,
         } : null,
         admin: state.admin ? {

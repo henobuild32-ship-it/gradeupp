@@ -27,9 +27,9 @@ describe('Trait USD/CDF money arithmetic', () => {
     assert.equal(convertCurrencyAmount('23000000000', 'CDF', 'USD'), 10000000)
   })
 
-  it('calculates transfer fees in cents without binary floating-point drift', () => {
-    assert.equal(calculateTransferFee('100.00'), 0.7)
-    assert.equal(calculateTransferFee('10.01'), 0.07)
+  it('calculates the outgoing transfer fee at 1.5% without binary floating-point drift', () => {
+    assert.equal(calculateTransferFee('100.00'), 1.5)
+    assert.equal(calculateTransferFee('10.01'), 0.15)
     assert.equal(calculateTransferFee('0.01'), 0)
   })
 

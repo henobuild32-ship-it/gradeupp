@@ -28,7 +28,7 @@ import { toast } from 'sonner';
 import { CountrySelect } from '@/components/shared/CountrySelect';
 import { getCountry, normalizeInternationalPhone } from '@/lib/countries';
 import { parsePhoneNumberFromString } from 'libphonenumber-js/max';
-import { calculateTransferFee, convertCurrencyAmount, DEFAULT_USD_CDF_RATE, formatCurrencyAmount, formatExchangeRate, normalizeCurrency, type Currency } from '@/lib/currency';
+import { calculateCurrencyFee, convertCurrencyAmount, DEFAULT_USD_CDF_RATE, formatCurrencyAmount, formatExchangeRate, normalizeCurrency, type Currency } from '@/lib/currency';
 
 function fmtCur(amount: number, currency: string) {
   return formatCurrencyAmount(amount, currency);
@@ -40,12 +40,14 @@ export default function SendScreen() {
   const [receiverPhone, setReceiverPhone] = useState('');
   const [receiverCountry, setReceiverCountry] = useState('');
   const [receiverName, setReceiverName] = useState('');
+  const [receiverAccountCountry, setReceiverAccountCountry] = useState('');
   const [lookingUp, setLookingUp] = useState(false);
   const [lookupDone, setLookupDone] = useState(false);
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState<Currency>(normalizeCurrency(preferredCurrency));
   const [receivingCurrency, setReceivingCurrency] = useState<Currency>(normalizeCurrency(preferredCurrency));
   const [exchangeRate, setExchangeRate] = useState(DEFAULT_USD_CDF_RATE);
+  const [dailyLimits, setDailyLimits] = useState<any>(null);
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -56,12 +58,14 @@ export default function SendScreen() {
     const profileCountry = getCountry(user?.country)?.code;
     if (profileCountry) setReceiverCountry(profileCountry);
     fetch('/api/config/exchange-rate').then(r => r.json()).then(d => { if (d.success && Number(d.rate) > 0) setExchangeRate(Number(d.rate)) }).catch(() => setExchangeRate(DEFAULT_USD_CDF_RATE));
-  }, [user?.country]);
+    if (user?.id) fetch('/api/transfer/limits', { credentials: 'include' }).then(r => r.json()).then(d => { if (d.success) setDailyLimits(d.limits) }).catch(() => {});
+  }, [user?.country, user?.id]);
 
   // Debounced phone lookup
   useEffect(() => {
     if (!normalizedReceiverPhone) {
       setReceiverName('');
+      setReceiverAccountCountry('');
       setLookupDone(false);
       return;
     }
@@ -73,8 +77,10 @@ export default function SendScreen() {
         .then(data => {
           if (data.success && data.found && data.user) {
             setReceiverName(data.user.name);
+            setReceiverAccountCountry(data.user.country || '');
           } else {
             setReceiverName('');
+            setReceiverAccountCountry('');
           }
           setLookupDone(true);
         })
@@ -127,7 +133,11 @@ export default function SendScreen() {
 
   const isFC = currency === 'CDF';
   const numericAmount = parseFloat(amount) || 0;
-  const fee = calculateTransferFee(numericAmount);
+  const senderCountry = (getCountry(user?.country)?.code || user?.country || '').toUpperCase();
+  const resolvedReceiverCountry = (receiverAccountCountry || receiverCountry).toUpperCase();
+  const internationalSend = !!senderCountry && !!resolvedReceiverCountry && senderCountry !== resolvedReceiverCountry;
+  const sendFeeBasisPoints = internationalSend ? (dailyLimits?.fees?.internationalSendBasisPoints ?? 150) : 0;
+  const fee = calculateCurrencyFee(numericAmount, sendFeeBasisPoints, currency);
   const total = numericAmount + fee;
   const receivedAmount = convertCurrencyAmount(numericAmount, currency, receivingCurrency, exchangeRate);
 
@@ -204,11 +214,11 @@ export default function SendScreen() {
               bonusBalanceFC: data.updatedBalances.bonusBalanceFC,
             } as any);
           }
-          toast.success(t('send.success'));
+          toast.success(data.dailyLimits?.transactions ? `${t('send.success')} ${data.dailyLimits.transactions.remaining} opérations restantes aujourd’hui.` : t('send.success'));
           setReceiverPhone('');
           setAmount('');
           setNote('');
-          if (data.transaction?.id) navigateTo('receipt', { transactionId: data.transaction.id });
+          if (data.transaction?.id) navigateTo('receipt', { transactionId: data.transaction.id, dailyLimits: data.dailyLimits });
           else navigateTo('history');
         }
       } catch (error) {
@@ -251,6 +261,10 @@ export default function SendScreen() {
           </CardContent>
         </Card>
       </div>
+
+      {dailyLimits?.transactions && <div className="px-4 mb-4 text-xs text-muted-foreground" role="status">
+        {dailyLimits.transactions.remaining} opérations restantes sur {dailyLimits.transactions.limit} aujourd’hui (Africa/Kinshasa).
+      </div>}
 
       {/* PIN info */}
       <div className="px-4 mb-4">
@@ -299,7 +313,7 @@ export default function SendScreen() {
               <Label htmlFor="receiver" className="text-sm font-medium">
                 {t('send.recipient_phone')}
               </Label>
-              <CountrySelect value={receiverCountry} onValueChange={(next) => { setReceiverCountry(next); setReceiverPhone('') }} />
+              <CountrySelect value={receiverCountry} onValueChange={(next) => { setReceiverCountry(next); setReceiverAccountCountry(''); setReceiverPhone('') }} />
               <div className="relative">
                 <Input
                   id="receiver"
@@ -377,7 +391,7 @@ export default function SendScreen() {
             {numericAmount > 0 && (
               <div className="rounded-xl bg-muted/50 p-4 space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">{t('send.fees')} ({0.7}%)</span>
+                  <span className="text-muted-foreground">{t('send.fees')} ({(sendFeeBasisPoints / 100).toLocaleString('fr-FR')} %)</span>
                   <span className="font-medium">{fmtCur(fee, currency)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -437,6 +451,7 @@ export default function SendScreen() {
               <span className="font-medium">{t('send.total')}</span>
               <span className="font-bold text-emerald-600">{fmtCur(total, currency)}</span>
             </div>
+            {dailyLimits?.transactions && <div className="flex justify-between text-xs text-muted-foreground"><span>Après cette opération</span><span>{Math.max(0, dailyLimits.transactions.remaining - 1)} restantes sur {dailyLimits.transactions.limit}</span></div>}
           </div>
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             <Lock className="size-3" />

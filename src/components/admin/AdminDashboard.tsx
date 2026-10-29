@@ -36,6 +36,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { useAppStore, type PageName } from '@/lib/store';
 import { DEFAULT_USD_CDF_RATE } from '@/lib/currency';
+import { FINANCIAL_POLICY, type FinancialPolicy } from '@/lib/financial-policy-core';
 import { toast } from 'sonner';
 
 interface DashboardStats {
@@ -143,6 +144,9 @@ export default function AdminDashboard() {
   const [exchangeRate, setExchangeRate] = useState(String(DEFAULT_USD_CDF_RATE));
   const [rateLoading, setRateLoading] = useState(true);
   const [rateSaving, setRateSaving] = useState(false);
+  const [financialPolicy, setFinancialPolicy] = useState<FinancialPolicy>({ ...FINANCIAL_POLICY });
+  const [policyLoading, setPolicyLoading] = useState(true);
+  const [policySaving, setPolicySaving] = useState(false);
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -183,6 +187,14 @@ export default function AdminDashboard() {
       .finally(() => setRateLoading(false));
   }, []);
 
+  useEffect(() => {
+    fetch('/api/admin/financial-policy', { credentials: 'include' })
+      .then((response) => response.json())
+      .then((data) => { if (data.success && data.policy) setFinancialPolicy(data.policy); })
+      .catch(() => toast.error('Impossible de charger les limites financières'))
+      .finally(() => setPolicyLoading(false));
+  }, []);
+
   async function saveExchangeRate() {
     const rate = Number(exchangeRate.replace(',', '.'));
     if (!Number.isFinite(rate) || rate <= 0 || rate > 1_000_000) {
@@ -205,6 +217,26 @@ export default function AdminDashboard() {
       toast.error(error instanceof Error ? error.message : 'Échec de mise à jour du taux');
     } finally {
       setRateSaving(false);
+    }
+  }
+
+  async function saveFinancialPolicy() {
+    setPolicySaving(true);
+    try {
+      const response = await fetch('/api/admin/financial-policy', {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ policy: financialPolicy }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.message || 'Configuration invalide');
+      setFinancialPolicy(data.policy);
+      toast.success('Limites et frais enregistrés.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Échec de l’enregistrement');
+    } finally {
+      setPolicySaving(false);
     }
   }
 
@@ -330,6 +362,35 @@ export default function AdminDashboard() {
                 {rateLoading ? 'Chargement…' : rateSaving ? 'Enregistrement…' : 'Enregistrer le taux'}
               </Button>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border">
+          <CardContent className="p-4 sm:p-5">
+            <div>
+              <h2 className="text-base font-semibold text-foreground">Limites et frais financiers</h2>
+              <p className="mt-1 text-xs text-muted-foreground">Ces valeurs sont contrôlées côté serveur et partagées par les parcours pris en charge.</p>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <label className="space-y-1 text-sm">Opérations par jour
+                <Input type="number" min="1" max="1000" step="1" value={financialPolicy.dailyTransactionLimit} disabled={policyLoading || policySaving} onChange={(event) => setFinancialPolicy((value) => ({ ...value, dailyTransactionLimit: Number(event.target.value) }))} />
+              </label>
+              <label className="space-y-1 text-sm">Plafond de retrait USD / jour
+                <Input type="number" min="1" step="0.01" value={financialPolicy.dailyWithdrawalLimitUsd} disabled={policyLoading || policySaving} onChange={(event) => setFinancialPolicy((value) => ({ ...value, dailyWithdrawalLimitUsd: Number(event.target.value), dailyWithdrawalLimitCdf: Number((Number(event.target.value) * Number(exchangeRate)).toFixed(2)) }))} />
+              </label>
+              <label className="space-y-1 text-sm">Frais de retrait (%)
+                <Input type="number" min="0" max="100" step="0.01" value={financialPolicy.withdrawalFeeBasisPoints / 100} disabled={policyLoading || policySaving} onChange={(event) => setFinancialPolicy((value) => ({ ...value, withdrawalFeeBasisPoints: Math.round(Number(event.target.value) * 100) }))} />
+              </label>
+              <label className="space-y-1 text-sm">Frais d’envoi international (%)
+                <Input type="number" min="0" max="100" step="0.01" value={financialPolicy.internationalSendFeeBasisPoints / 100} disabled={policyLoading || policySaving} onChange={(event) => setFinancialPolicy((value) => ({ ...value, internationalSendFeeBasisPoints: Math.round(Number(event.target.value) * 100) }))} />
+              </label>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Plafond correspondant : {Number(financialPolicy.dailyWithdrawalLimitCdf).toLocaleString('fr-FR')} CDF au taux affiché ci-dessus. Fuseau de calcul : Africa/Kinshasa.
+            </p>
+            <Button className="mt-3 min-h-11" onClick={saveFinancialPolicy} disabled={policyLoading || policySaving}>
+              {policyLoading ? 'Chargement…' : policySaving ? 'Enregistrement…' : 'Enregistrer les règles financières'}
+            </Button>
           </CardContent>
         </Card>
 

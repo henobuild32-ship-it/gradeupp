@@ -100,6 +100,7 @@ export async function POST(request: NextRequest) {
           hasCompletedOnboarding: user.hasCompletedOnboarding,
           pinSet: !!user.pin,
           biometricEnabled: user.biometricEnabled,
+          unlockMethod: user.unlockMethod,
           referralCode: user.referralCode,
         },
       });
@@ -229,6 +230,7 @@ export async function POST(request: NextRequest) {
         hasCompletedOnboarding: updatedUser.hasCompletedOnboarding,
         pinSet: !!updatedUser.pin,
         biometricEnabled: updatedUser.biometricEnabled,
+        unlockMethod: updatedUser.unlockMethod,
         referralCode: updatedUser.referralCode,
       },
     });

@@ -268,6 +268,10 @@ export default function ReceiptScreen() {
       </div>
 
       <div className="px-4 py-4 max-w-md mx-auto print:max-w-none print:p-0">
+        {pageParams?.dailyLimits?.transactions && <div className="print:hidden mb-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-100">
+          <p className="font-semibold">{pageParams.dailyLimits.transactions.remaining} opérations restantes sur {pageParams.dailyLimits.transactions.limit} aujourd’hui.</p>
+          <p className="mt-1 text-xs">Limites calculées selon le fuseau Africa/Kinshasa.</p>
+        </div>}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="receipt-print-area bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-border overflow-hidden print:rounded-none print:shadow-none">
           <div className="receipt-print-header bg-[#0D5C63] p-6 text-white text-center">
             <Image src="/trait-logo.png" width={56} height={56} alt="Logo Trait Fintech" className="receipt-brand-logo mx-auto mb-2 rounded-lg bg-white object-contain" />

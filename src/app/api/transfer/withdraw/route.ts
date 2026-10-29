@@ -6,7 +6,8 @@ import { requireUser, verifyPinWithAttempts } from '@/lib/auth';
 import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { formatAmount } from '@/lib/tx-labels';
 import { getUsdCdfExchangeRate } from '@/lib/currency-server';
-import { calculateTransferFee, normalizeCurrency, roundCurrencyAmount } from '@/lib/currency';
+import { calculateCurrencyFee, normalizeCurrency, roundCurrencyAmount } from '@/lib/currency';
+import { checkDailyTransactionLimit, checkDailyWithdrawalLimit, getDayWindow, getFinancialPolicy, getUserDailyLimits, lockDailyFinancialOperations } from '@/lib/financial-policy';
 
 function conflictResponse() {
   return NextResponse.json({ success: false, message: 'Cette référence de demande est déjà associée à une autre opération.' }, { status: 409 });
@@ -85,9 +86,10 @@ export async function POST(request: NextRequest) {
 
     const responseForExisting = async (existing: NonNullable<typeof existingWithdrawal>) => {
       if (existing.requestFingerprint !== requestFingerprint) return conflictResponse();
-      const [transaction, balances] = await Promise.all([
+      const [transaction, balances, dailyLimits] = await Promise.all([
         requestId ? db.transaction.findUnique({ where: { senderId_clientRequestId: { senderId: userId, clientRequestId: requestId } } }) : null,
         db.user.findUnique({ where: { id: userId }, select: { realBalance: true, realBalanceFC: true, bonusBalance: true, bonusBalanceFC: true } }),
+        getUserDailyLimits(userId).catch(() => null),
       ]);
       return NextResponse.json({
         success: true,
@@ -105,6 +107,7 @@ export async function POST(request: NextRequest) {
         },
         transaction: transaction ? { id: transaction.id, status: transaction.status, createdAt: transaction.createdAt } : null,
         updatedBalances: balances,
+        dailyLimits,
       });
     };
 
@@ -134,9 +137,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Vous ne pouvez pas valider votre propre retrait comme agent.' }, { status: 400 });
     }
 
+    const policy = await getFinancialPolicy();
+    const exchangeRate = await getUsdCdfExchangeRate();
+
     // Referred accounts share a USD-equivalent lifetime withdrawal cap.
     if (user.referredBy) {
-      const exchangeRate = await getUsdCdfExchangeRate();
       const userWithdrawals = await db.withdrawal.findMany({
         where: { userId, status: { in: ['completed', 'pending'] } },
         select: { amount: true, currency: true },
@@ -153,7 +158,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const fee = calculateTransferFee(amount);
+    const fee = calculateCurrencyFee(amount, policy.withdrawalFeeBasisPoints, cur);
     const cashField = cur === 'CDF' ? 'realBalanceFC' : 'realBalance';
     const bonusField = cur === 'CDF' ? 'bonusBalanceFC' : 'bonusBalance';
     const agentName = agent.agentCode || agent.agentNumber || agent.name || 'TRAIT';
@@ -164,6 +169,13 @@ export async function POST(request: NextRequest) {
     let result;
     try {
       result = await db.$transaction(async (tx) => {
+        await lockDailyFinancialOperations(tx, userId);
+        const window = getDayWindow(new Date(), policy.timezone);
+        const dailyTransaction = await checkDailyTransactionLimit(tx, userId, policy, window);
+        if (!dailyTransaction.allowed) throw new Error('DAILY_TRANSACTION_LIMIT');
+        const dailyWithdrawal = await checkDailyWithdrawalLimit(tx, userId, amount, cur, exchangeRate, policy, window);
+        if (!dailyWithdrawal.allowed) throw new Error('DAILY_WITHDRAWAL_LIMIT');
+
         const debitFromCash = await tx.user.updateMany({
           where: { id: userId, [cashField]: { gte: amount + fee }, suspended: false, tempBlocked: false },
           data: { [cashField]: { decrement: amount + fee } },
@@ -227,6 +239,12 @@ export async function POST(request: NextRequest) {
         return { withdrawal, transaction };
       });
     } catch (error) {
+      if (error instanceof Error && error.message === 'DAILY_TRANSACTION_LIMIT') {
+        return NextResponse.json({ success: false, code: 'DAILY_TRANSACTION_LIMIT', message: `Limite journalière atteinte (${policy.dailyTransactionLimit} opérations).` }, { status: 429 });
+      }
+      if (error instanceof Error && error.message === 'DAILY_WITHDRAWAL_LIMIT') {
+        return NextResponse.json({ success: false, code: 'DAILY_WITHDRAWAL_LIMIT', message: 'Le plafond de retrait quotidien est atteint dans l’équivalent USD/CDF.' }, { status: 429 });
+      }
       if (error instanceof Error && error.message === 'INSUFFICIENT_BALANCE') {
         return NextResponse.json({ success: false, message: `Solde ${cur} insuffisant pour couvrir le retrait et les frais.` }, { status: 400 });
       }
@@ -258,6 +276,7 @@ export async function POST(request: NextRequest) {
       select: { realBalance: true, realBalanceFC: true, bonusBalance: true, bonusBalanceFC: true },
     });
 
+    const dailyLimits = await getUserDailyLimits(userId).catch(() => null);
     return NextResponse.json({
       success: true,
       withdrawal: {
@@ -273,6 +292,7 @@ export async function POST(request: NextRequest) {
       },
       transaction: { id: transaction.id, status: transaction.status, createdAt: transaction.createdAt },
       updatedBalances: updatedUser,
+      dailyLimits,
     });
   } catch (error) {
     console.error('Withdrawal error:', error);

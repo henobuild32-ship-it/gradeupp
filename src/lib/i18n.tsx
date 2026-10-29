@@ -37,7 +37,7 @@ const translations: Record<string, TranslationDict> = {
     // ── Welcome Screen ──
     'welcome.tagline': 'Transférez. Payez. Échangez.',
     'welcome.subtitle': 'La solution financière complète pour l\'Afrique',
-    'welcome.fee': '0.7% de frais',
+    'welcome.fee': 'Frais affichés avant validation',
     'welcome.bonus': 'Bonus 10 USD',
     'welcome.login': 'Se connecter',
     'welcome.signup': 'Créer un compte',
@@ -53,7 +53,7 @@ const translations: Record<string, TranslationDict> = {
     'welcome.installing': 'Installation...',
     'welcome.services': 'Nos Services',
     'welcome.good_to_know': 'Bon à savoir',
-    'welcome.good_to_know_text': '0.7% de frais • Bonus 10 USD • Transferts internationaux • API développeur',
+    'welcome.good_to_know_text': 'Frais transparents • Bonus 10 USD • Transferts Trait • API développeur',
     'welcome.services.transfers': 'Transferts Internationaux',
     'welcome.services.transfers_desc': 'Envoyez de l\'argent partout dans le monde',
     'welcome.services.mobile_money': 'Wallet Trait',
@@ -544,7 +544,7 @@ const translations: Record<string, TranslationDict> = {
     'support.faq_q2': 'Comment devenir Agent Trait Fintech ?',
     'support.faq_a2': 'Cliquez sur "Créer un compte Agent" et suivez les étapes.',
     'support.faq_q3': 'Quels sont les frais de transfert ?',
-    'support.faq_a3': 'Seulement 0.7% de frais sur chaque transfert.',
+    'support.faq_a3': 'Les frais applicables sont affichés avant la confirmation de chaque opération.',
 
     // ── Enhanced Welcome ──
     'welcome.contact': 'Nous contacter',
@@ -769,7 +769,7 @@ const translations: Record<string, TranslationDict> = {
     'welcome.feature_cards_desc': 'Découvrez notre gamme complète de services financiers',
     'welcome.instant_desc': 'Envoi instantané, reçu en quelques secondes',
     'welcome.worldwide_desc': 'Transférez vers plus de 50 pays',
-    'welcome.low_fees_desc': 'Seulement 0.7% de frais par transaction',
+    'welcome.low_fees_desc': 'Frais clairement affichés avant chaque opération',
     'welcome.cards_title': 'Cartes numériques',
     'welcome.cards_desc': 'Cartes Trait Fintech USD et CDF avec QR code',
     'welcome.barter_desc': 'Échangez biens et services sans argent',
@@ -790,7 +790,7 @@ const translations: Record<string, TranslationDict> = {
     // ── Welcome Screen ──
     'welcome.tagline': 'Transfer. Pay. Exchange.',
     'welcome.subtitle': 'The complete financial solution for Africa',
-    'welcome.fee': '0.7% fees',
+    'welcome.fee': 'Fees shown before confirmation',
     'welcome.bonus': '$10 Bonus',
     'welcome.login': 'Log In',
     'welcome.signup': 'Create Account',
@@ -806,7 +806,7 @@ const translations: Record<string, TranslationDict> = {
     'welcome.installing': 'Installing...',
     'welcome.services': 'Our Services',
     'welcome.good_to_know': 'Good to know',
-    'welcome.good_to_know_text': '0.7% fees • $10 Bonus • International transfers • Developer API',
+    'welcome.good_to_know_text': 'Transparent fees • $10 Bonus • TRAIT transfers • Developer API',
     'welcome.services.transfers': 'International Transfers',
     'welcome.services.transfers_desc': 'Send money anywhere in the world',
     'welcome.services.mobile_money': 'Trait Wallet',
@@ -1206,7 +1206,7 @@ const translations: Record<string, TranslationDict> = {
     'support.faq_q2': 'How to become a Trait Fintech Agent?',
     'support.faq_a2': 'Click "Create Agent Account" and follow the steps.',
     'support.faq_q3': 'What are the transfer fees?',
-    'support.faq_a3': 'Only 0.7% fee on each transfer.',
+    'support.faq_a3': 'Applicable fees are shown before you confirm each operation.',
 
     // ── Enhanced Welcome ──
     'welcome.contact': 'Contact Us',
@@ -1246,7 +1246,7 @@ const translations: Record<string, TranslationDict> = {
     'welcome.feature_cards_desc': 'Discover our complete range of financial services',
     'welcome.instant_desc': 'Instant sending, received in seconds',
     'welcome.worldwide_desc': 'Transfer to over 50 countries',
-    'welcome.low_fees_desc': 'Only 0.7% fee per transaction',
+    'welcome.low_fees_desc': 'Fees clearly shown before every operation',
     'welcome.cards_title': 'Digital Cards',
     'welcome.cards_desc': 'Trait Fintech USD and CDF cards with QR code',
     'welcome.barter_desc': 'Exchange goods and services without money',
@@ -1287,7 +1287,7 @@ const translations: Record<string, TranslationDict> = {
   ln: {
     'welcome.tagline': 'Kolisa. Peleka. Sombana.',
     'welcome.subtitle': 'Mokambi ya mbongo ya malamu mpo na Afrika',
-    'welcome.fee': '0.7% ya malili',
+    'welcome.fee': 'Frais emonanami liboso ya kondimisa',
     'welcome.bonus': 'Bonus 10 USD',
     'welcome.login': 'Kondima',
     'welcome.signup': 'Kobanda kompte',
@@ -1435,7 +1435,7 @@ const translations: Record<string, TranslationDict> = {
   sw: {
     'welcome.tagline': 'Tuma. Lipa. Badilisha.',
     'welcome.subtitle': 'Suluhisho kamili kwa kifedha kwa Afrika',
-    'welcome.fee': '0.7% ada',
+    'welcome.fee': 'Ada huonyeshwa kabla ya uthibitisho',
     'welcome.bonus': 'Bonus USD 10',
     'welcome.login': 'Ingia',
     'welcome.signup': 'Unda Akaunti',
@@ -1583,7 +1583,7 @@ const translations: Record<string, TranslationDict> = {
   tl: {
     'welcome.tagline': 'Tangisha. Peleka. Sanganisa.',
     'welcome.subtitle': 'Solution ya malamu ya mali mu Afrika',
-    'welcome.fee': '0.7% ya malili',
+    'welcome.fee': 'Frais emonanami liboso ya kondimisa',
     'welcome.bonus': 'Bonus 10 USD',
     'welcome.login': 'Kutangila',
     'welcome.signup': 'Kujula akawunti',
@@ -1710,7 +1710,7 @@ const translations: Record<string, TranslationDict> = {
   kg: {
     'welcome.tagline': 'Somba. Landa. Futila.',
     'welcome.subtitle': 'Solution ya ngolo ya mali mu Afrika',
-    'welcome.fee': '0.7% ya malili',
+    'welcome.fee': 'Frais emonanami liboso ya kondimisa',
     'welcome.bonus': 'Bonus 10 USD',
     'welcome.login': 'Kutanga',
     'welcome.signup': 'Kujula akawunti',

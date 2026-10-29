@@ -128,6 +128,7 @@ export async function POST(request: NextRequest) {
         hasCompletedOnboarding: user.hasCompletedOnboarding,
         pinSet: !!user.pin,
         biometricEnabled: true,
+        unlockMethod: user.unlockMethod,
         referralCode: user.referralCode,
         agentCode: user.agentCode,
         agentNumber: user.agentNumber,

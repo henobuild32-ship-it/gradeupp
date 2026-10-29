@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const skip = cursor ? 1 : (page - 1) * PAGE_SIZE
+    const skip = cursor ? 0 : Math.max(0, (page - 1) * PAGE_SIZE)
     const take = PAGE_SIZE + 1
 
     type HistoryItem = {
@@ -44,9 +44,16 @@ export async function GET(request: NextRequest) {
     }
 
     const userInclude = { select: { id: true, phone: true, name: true, pseudo: true, deletedAt: true } }
-    const orderBy = { createdAt: 'desc' as const }
-
-    const cursorFilter = cursor ? { createdAt: { lt: new Date(cursor) } } : {}
+    const orderBy = [{ createdAt: 'desc' as const }, { id: 'desc' as const }]
+    const separator = cursor?.lastIndexOf('|') ?? -1
+    const cursorDateText = separator > 0 ? cursor!.slice(0, separator) : cursor
+    const cursorId = separator > 0 ? cursor!.slice(separator + 1) : null
+    const cursorDate = cursorDateText ? new Date(cursorDateText) : null
+    const cursorFilter = cursorDate && Number.isFinite(cursorDate.getTime())
+      ? cursorId
+        ? { OR: [{ createdAt: { lt: cursorDate } }, { createdAt: cursorDate, id: { lt: cursorId } }] }
+        : { createdAt: { lt: cursorDate } }
+      : {}
 
     // Transferts uniquement — dépôts/retraits viennent des tables dédiées (pas de doublon)
     const sentTransactions = await db.transaction.findMany({
@@ -147,11 +154,15 @@ export async function GET(request: NextRequest) {
       allItems = allItems.filter((item) => item.type === type)
     }
 
-    allItems.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    allItems.sort((a, b) => {
+      const dateOrder = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      return dateOrder || b.id.localeCompare(a.id)
+    })
 
     const hasMore = allItems.length > PAGE_SIZE
     const history = allItems.slice(0, PAGE_SIZE)
-    const nextCursor = hasMore ? history[history.length - 1]?.createdAt.toISOString() : null
+    const lastItem = history[history.length - 1]
+    const nextCursor = hasMore && lastItem ? `${lastItem.createdAt.toISOString()}|${lastItem.id}` : null
 
     return NextResponse.json({
       success: true,

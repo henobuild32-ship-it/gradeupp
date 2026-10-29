@@ -11,6 +11,7 @@
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
+    "admin:reset-password": "node scripts/reset-admin-password.js",
     "db:reset": "prisma migrate reset"
   },
   "dependencies": {

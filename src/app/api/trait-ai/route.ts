@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getUsdCdfExchangeRate } from '@/lib/currency-server'
 import { getAuthUser } from '@/lib/auth'
+import { getFinancialPolicy } from '@/lib/financial-policy'
 
 // L'IA conversationnelle a besoin de temps (modèle + contexte base)
 export const maxDuration = 30
@@ -54,7 +55,7 @@ function reply(lang: 'fr' | 'en' | 'es' | 'ar' | 'pt' | 'other', fr: string, en:
   return en
 }
 
-function matchMessage(message: string): MatchResult | null {
+async function matchMessage(message: string): Promise<MatchResult | null> {
   const lower = message.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
   const lang = detectLang(message)
 
@@ -112,16 +113,19 @@ function matchMessage(message: string): MatchResult | null {
 
   // ── FEES (5 variants) ──────────────────────────────────────
   if (lower.match(/(frais|commiss|coute|cout|tarif|price|fee|cost|how much|combien|cuanto|precio|menuhir|ثمن|preco)/)) {
+    const policy = await getFinancialPolicy()
+    const withdrawalPercent = (policy.withdrawalFeeBasisPoints / 100).toLocaleString('fr-FR')
+    const internationalPercent = (policy.internationalSendFeeBasisPoints / 100).toLocaleString('fr-FR')
     return {
       response: pick([
         reply(lang,
-          `Les frais sur TRAIT sont très avantageux ${pick(['💰', '💸', '✅'])}\n\n• Dépôt : **Gratuit** ✅\n• Retrait : **0.7%**\n• Transfert : **0.7%**\n\n${pick(['C\'est l\'un des meilleurs tarifs du marché!', 'Des tarifs imbattables!', 'Le meilleur rapport qualité-prix!'])}`,
-          `TRAIT fees are very competitive ${pick(['💰', '💸', '✅'])}\n\n• Deposit: **Free** ✅\n• Withdrawal: **0.7%**\n• Transfer: **0.7%**\n\n${pick(['One of the best rates available!', 'Unbeatable prices!', 'Best value for your money!'])}`,
-          `Las tarifas en TRAIT son muy competitivas ${pick(['💰', '💸', '✅'])}\n\n• Depósito: **Gratis** ✅\n• Retiro: **0.7%**\n• Transferencia: **0.7%**\n\n${pick(['¡Es una de las mejores tarifas del mercado!', '¡Precios inmejorables!'])}`,
+          `Frais TRAIT ${pick(['💰', '💸', '✅'])}\n\n• Dépôt : **Gratuit** ✅\n• Retrait : **${withdrawalPercent}%**\n• Envoi international vers un compte TRAIT : **${internationalPercent}%**\n• Envoi local entre comptes TRAIT : **sans frais**\n\nLes frais exacts sont affichés avant confirmation.`,
+          `TRAIT fees ${pick(['💰', '💸', '✅'])}\n\n• Deposit: **Free** ✅\n• Withdrawal: **${withdrawalPercent}%**\n• International send to a TRAIT account: **${internationalPercent}%**\n• Local TRAIT send: **no fee**\n\nThe exact fee is shown before confirmation.`,
+          `Tarifas TRAIT ${pick(['💰', '💸', '✅'])}\n\n• Depósito: **Gratis** ✅\n• Retiro: **${withdrawalPercent}%**\n• Envío internacional a una cuenta TRAIT: **${internationalPercent}%**\n• Envío local TRAIT: **sin comisión**\n\nEl importe exacto aparece antes de confirmar.`,
         ),
         reply(lang,
-          `Voici nos frais ${pick(['💰', '📊'])} :\n\n• Dépôt : **GRATUIT** ${pick(['🎉', '✅', '💪'])}\n• Retrait : **0.7%** du montant\n• Transfert : **0.7%** du montant\n\n${pick(['Pas de frais cachés!', 'Tout est transparent!', 'Des frais minimes!'])}`,
-          `Here are our fees ${pick(['💰', '📊'])}:\n\n• Deposit: **FREE** ${pick(['🎉', '✅', '💪'])}\n• Withdrawal: **0.7%**\n• Transfer: **0.7%**\n\n${pick(['No hidden fees!', 'Everything is transparent!', 'Minimal fees!'])}`,
+          `Frais configurés ${pick(['💰', '📊'])} :\n\n• Dépôt : **GRATUIT** ${pick(['🎉', '✅', '💪'])}\n• Retrait : **${withdrawalPercent}%**\n• Envoi international vers un compte TRAIT : **${internationalPercent}%**\n• Envoi local entre comptes TRAIT : **sans frais**\n\nLe montant exact est affiché avant validation.`,
+          `Current fees ${pick(['💰', '📊'])}:\n\n• Deposit: **FREE** ${pick(['🎉', '✅', '💪'])}\n• Withdrawal: **${withdrawalPercent}%**\n• International send to a TRAIT account: **${internationalPercent}%**\n• Local TRAIT send: **no fee**\n\nThe exact amount is shown before confirmation.`,
         ),
       ]),
       actions: [{ label: PAGES.send, page: 'send' }, { label: PAGES.withdraw, page: 'withdraw' }],
@@ -133,9 +137,9 @@ function matchMessage(message: string): MatchResult | null {
     return {
       response: pick([
         reply(lang,
-          `Pour envoyer de l'argent sur TRAIT ${pick(['📤', '💸', '💰'])}\n\n1️⃣ Appuyez sur « Envoyer »\n2️⃣ Entrez le montant\n3️⃣ Choisissez le destinataire\n4️⃣ Confirmez avec votre PIN\n\n${pick(['Le transfert est instantané!', 'C\'est rapide et sécurisé!', 'En quelques secondes!'])} Frais: 0.7%.`,
-          `How to send money on TRAIT ${pick(['📤', '💸', '💰'])}\n\n1️⃣ Tap « Send »\n2️⃣ Enter the amount\n3️⃣ Choose the recipient\n4️⃣ Confirm with your PIN\n\n${pick(['Transfer is instant!', 'Fast and secure!', 'In just seconds!'])} Fee: 0.7%.`,
-          `Para enviar dinero en TRAIT ${pick(['📤', '💸', '💰'])}\n\n1️⃣ Toca « Enviar »\n2️⃣ Ingresa el monto\n3️⃣ Elige al destinatario\n4️⃣ Confirma con tu PIN\n\n${pick(['¡La transferencia es instantánea!', '¡Rápido y seguro!', '¡En segundos!'])} Comisión: 0.7%.`,
+          `Pour envoyer de l'argent sur TRAIT ${pick(['📤', '💸', '💰'])}\n\n1️⃣ Appuyez sur « Envoyer »\n2️⃣ Entrez le montant\n3️⃣ Choisissez le destinataire\n4️⃣ Confirmez avec votre PIN\n\nLes frais applicables sont affichés avant la confirmation.`,
+          `How to send money on TRAIT ${pick(['📤', '💸', '💰'])}\n\n1️⃣ Tap « Send »\n2️⃣ Enter the amount\n3️⃣ Choose the recipient\n4️⃣ Confirm with your PIN\n\nAny applicable fee is shown before confirmation.`,
+          `Para enviar dinero en TRAIT ${pick(['📤', '💸', '💰'])}\n\n1️⃣ Toca « Enviar »\n2️⃣ Ingresa el monto\n3️⃣ Elige al destinatario\n4️⃣ Confirma con tu PIN\n\nLa comisión aplicable aparece antes de confirmar.`,
         ),
         reply(lang,
           `Envoyer de l'argent est simple ${pick(['📤', '⚡'])} :\n\n• Allez dans « Envoyer »\n• Sélectionnez un contact ou entrez un numéro\n• Indiquez le montant en USD ou FC\n• Validez avec votre code PIN\n\n${pick(['Transfert instantané!', 'Argent reçu en quelques secondes!', 'Ça arrive tout de suite!'])}`,
@@ -148,16 +152,18 @@ function matchMessage(message: string): MatchResult | null {
 
   // ── WITHDRAWAL (5 variants) ────────────────────────────────
   if (lower.match(/(retrait|retirer|withdraw|cash|retirar|sacar|سحب|retir|atm|guichet)/)) {
+    const policy = await getFinancialPolicy()
+    const withdrawalPercent = (policy.withdrawalFeeBasisPoints / 100).toLocaleString('fr-FR')
     return {
       response: pick([
         reply(lang,
-          `Pour retirer du cash ${pick(['💵', '🏧', '💰'])}\n\n1️⃣ Allez dans « Retirer »\n2️⃣ Entrez le montant\n3️⃣ Trouvez un agent TRAIT proche\n4️⃣ Confirmez avec votre PIN\n5️⃣ Récupérez votre cash\n\n${pick(['Frais: 0.7%', 'Seulement 0.7% de commission!'])}`,
-          `To withdraw cash ${pick(['💵', '🏧', '💰'])}\n\n1️⃣ Go to « Withdraw »\n2️⃣ Enter the amount\n3️⃣ Find a nearby TRAIT agent\n4️⃣ Confirm with your PIN\n5️⃣ Get your cash\n\n${pick(['Fee: 0.7%', 'Only 0.7% commission!'])}`,
-          `Para retirar efectivo ${pick(['💵', '🏧', '💰'])}\n\n1️⃣ Ve a « Retirar »\n2️⃣ Ingresa el monto\n3️⃣ Encuentra un agente cerca\n4️⃣ Confirma con tu PIN\n5️⃣ Recibe tu efectivo\n\n${pick(['Comisión: 0.7%', '¡Solo 0.7%!'])}`,
+          `Pour retirer du cash ${pick(['💵', '🏧', '💰'])}\n\n1️⃣ Allez dans « Retirer »\n2️⃣ Entrez le montant\n3️⃣ Trouvez un agent TRAIT proche\n4️⃣ Confirmez avec votre PIN\n5️⃣ Récupérez votre cash\n\nFrais : ${withdrawalPercent} %, affichés avant confirmation.`,
+          `To withdraw cash ${pick(['💵', '🏧', '💰'])}\n\n1️⃣ Go to « Withdraw »\n2️⃣ Enter the amount\n3️⃣ Find a nearby TRAIT agent\n4️⃣ Confirm with your PIN\n5️⃣ Get your cash\n\nFee: ${withdrawalPercent}%, shown before confirmation.`,
+          `Para retirar efectivo ${pick(['💵', '🏧', '💰'])}\n\n1️⃣ Ve a « Retirar »\n2️⃣ Ingresa el monto\n3️⃣ Encuentra un agente TRAIT cercano\n4️⃣ Confirma con tu PIN\n5️⃣ Recibe el efectivo\n\nComisión: ${withdrawalPercent}%, visible antes de confirmar.`,
         ),
         reply(lang,
-          `Retirer du cash ${pick(['💵', '🏪'])}:\n\n• Cherchez un agent TRAIT près de chez vous\n• Montrez le montant à retirer\n• Entrez votre code PIN\n• Recevez votre cash\n\n${pick(['Simple et rapide!', 'En quelques minutes!', 'Frais: seulement 0.7%!'])}`,
-          `Withdraw cash ${pick(['💵', '🏪'])}:\n\n• Find a TRAIT agent near you\n• Show the withdrawal amount\n• Enter your PIN code\n• Receive your cash\n\n${pick(['Simple and fast!', 'In just minutes!', 'Fee: only 0.7%!'])}`,
+          `Retirer du cash ${pick(['💵', '🏪'])}:\n\n• Cherchez un agent TRAIT près de chez vous\n• Montrez le montant à retirer\n• Entrez votre code PIN\n• Recevez votre cash\n\nFrais : ${withdrawalPercent} %, affichés avant confirmation.`,
+          `Withdraw cash ${pick(['💵', '🏪'])}:\n\n• Find a TRAIT agent near you\n• Show the withdrawal amount\n• Enter your PIN code\n• Receive your cash\n\nFee: ${withdrawalPercent}%, shown before confirmation.`,
         ),
       ]),
       actions: [{ label: '💵 Retirer', page: 'withdraw' }],
@@ -545,8 +551,8 @@ function buildSystemPrompt(context: string): string {
 
 # Connaissance complète de TRAIT
 - Dépôt d'espèces via agent TRAIT : GRATUIT.
-- Retrait d'espèces via agent : 0,7 % du montant.
-- Transfert vers un autre numéro TRAIT : 0,7 %, instantané, en USD ou CDF.
+- Retrait d'espèces via agent : le taux configuré est affiché avant confirmation.
+- Envoi vers un autre compte TRAIT : sans frais localement; l'envoi international est calculé avec le taux configuré et affiché avant confirmation, en USD ou CDF.
 - Deux comptes de solde, USD et CDF, plus un solde bonus ; conversion selon le taux de change (fourni dans le contexte).
 - Cartes : carte virtuelle sécurisée (numéro, CCV), carte enfant avec plafonds, demande de carte, paiement par carte.
 - Factures : électricité, eau, internet, recharge téléphonique.
@@ -695,7 +701,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 3) Repli : réponses locales prédéfinies (hors ligne / quota IA)
-    const localMatch = matchMessage(message)
+    const localMatch = await matchMessage(message)
     if (localMatch) {
       return NextResponse.json({ success: true, message: localMatch.response, actions: localMatch.actions || [] })
     }

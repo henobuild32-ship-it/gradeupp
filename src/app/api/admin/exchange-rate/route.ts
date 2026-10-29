@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { getUsdCdfExchangeRate, setUsdCdfExchangeRate } from '@/lib/currency-server'
+import { getFinancialPolicy, setFinancialPolicy } from '@/lib/financial-policy'
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,7 +18,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const policy = await getFinancialPolicy()
     await setUsdCdfExchangeRate(rate)
+    await setFinancialPolicy({
+      ...policy,
+      dailyWithdrawalLimitCdf: Number((policy.dailyWithdrawalLimitUsd * rate).toFixed(2)),
+    })
 
     return NextResponse.json({ success: true, message: 'Taux USD/CDF mis à jour', rate, baseCurrency: 'USD', quoteCurrency: 'CDF' })
   } catch (error) {

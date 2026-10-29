@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CountrySelect } from '@/components/shared/CountrySelect'
 import { getCountry, normalizeInternationalPhone } from '@/lib/countries'
-import { calculateTransferFee, convertCurrencyAmount, DEFAULT_USD_CDF_RATE, formatCurrencyAmount, formatExchangeRate, normalizeCurrency, type Currency } from '@/lib/currency'
+import { calculateCurrencyFee, convertCurrencyAmount, DEFAULT_USD_CDF_RATE, formatCurrencyAmount, formatExchangeRate, normalizeCurrency, type Currency } from '@/lib/currency'
 import { useAppStore } from '@/lib/store'
 import { toast } from 'sonner'
 
@@ -29,13 +29,14 @@ export default function InternationalTransferScreen() {
   const [method, setMethod] = useState<TransferMethod>('wallet')
   const [note, setNote] = useState('')
   const [rate, setRate] = useState(DEFAULT_USD_CDF_RATE)
+  const [internationalFeeBasisPoints, setInternationalFeeBasisPoints] = useState(150)
   const [rateReady, setRateReady] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   const normalizedPhone = useMemo(() => normalizeInternationalPhone(phone, country), [phone, country])
   const numericAmount = useMemo(() => Number(amount) || 0, [amount])
-  const fee = useMemo(() => calculateTransferFee(numericAmount), [numericAmount])
+  const fee = useMemo(() => calculateCurrencyFee(numericAmount, internationalFeeBasisPoints, sendingCurrency), [numericAmount, internationalFeeBasisPoints, sendingCurrency])
   const receivedAmount = useMemo(
     () => convertCurrencyAmount(numericAmount, sendingCurrency, receivingCurrency, rate),
     [numericAmount, sendingCurrency, receivingCurrency, rate],
@@ -50,6 +51,10 @@ export default function InternationalTransferScreen() {
       .then((data) => { if (mounted && data.success && Number(data.rate) > 0) setRate(Number(data.rate)) })
       .catch(() => { if (mounted) setRate(DEFAULT_USD_CDF_RATE) })
       .finally(() => { if (mounted) setRateReady(true) })
+    fetch('/api/transfer/limits', { credentials: 'include' })
+      .then((response) => response.json())
+      .then((data) => { if (mounted && data.success) setInternationalFeeBasisPoints(data.limits.fees.internationalSendBasisPoints) })
+      .catch(() => {})
     return () => { mounted = false }
   }, [])
 
@@ -269,7 +274,7 @@ export default function InternationalTransferScreen() {
             <div className="space-y-2"><Label htmlFor="trait-transfer-amount">Montant envoyé</Label><div className="relative"><Input id="trait-transfer-amount" type="number" inputMode="decimal" min="0.01" step="0.01" placeholder="0,00" value={amount} onChange={(event) => setAmount(event.target.value)} className="h-12 pr-16 text-lg tabular-nums" /><span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">{sendingCurrency}</span></div></div>
             {numericAmount > 0 && <div className="rounded-xl bg-muted/40 p-4 text-sm">
               <div className="flex justify-between gap-4 py-1"><span className="text-muted-foreground">Montant envoyé</span><span className="font-medium">{formatCurrencyAmount(numericAmount, sendingCurrency)}</span></div>
-              <div className="flex justify-between gap-4 py-1"><span className="text-muted-foreground">Frais Trait (0,7 %)</span><span className="font-medium">{formatCurrencyAmount(fee, sendingCurrency)}</span></div>
+              <div className="flex justify-between gap-4 py-1"><span className="text-muted-foreground">Frais Trait ({(internationalFeeBasisPoints / 100).toLocaleString('fr-FR')} %)</span><span className="font-medium">{formatCurrencyAmount(fee, sendingCurrency)}</span></div>
               {sendingCurrency !== receivingCurrency && <div className="flex justify-between gap-4 py-1"><span className="text-muted-foreground">Taux appliqué</span><span className="text-right font-medium">1 USD = {formatExchangeRate(rate)} CDF</span></div>}
               <div className="mt-2 flex justify-between gap-4 border-t pt-3"><span className="font-semibold">Bénéficiaire reçoit</span><span className="font-bold text-primary">{formatCurrencyAmount(receivedAmount, receivingCurrency)}</span></div>
               <div className="flex justify-between gap-4 pt-2"><span className="text-muted-foreground">Total débité</span><span className="font-semibold">{formatCurrencyAmount(totalDebit, sendingCurrency)}</span></div>

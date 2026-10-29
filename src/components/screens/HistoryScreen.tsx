@@ -88,6 +88,16 @@ function formatDate(dateStr: string) {
   }).format(date);
 }
 
+function formatDayGroup(dateStr: string) {
+  const date = new Date(dateStr);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (date.toDateString() === today.toDateString()) return 'Aujourd’hui';
+  if (date.toDateString() === yesterday.toDateString()) return 'Hier';
+  return new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(date);
+}
+
 export default function HistoryScreen() {
   const { user, navigateTo } = useAppStore();
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -268,8 +278,11 @@ export default function HistoryScreen() {
               className="space-y-2"
             >
               {filteredHistory.map((tx, index) => (
+                <div key={tx.id}>
+                {(index === 0 || formatDayGroup(filteredHistory[index - 1].createdAt) !== formatDayGroup(tx.createdAt)) && (
+                  <h3 className="px-1 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{formatDayGroup(tx.createdAt)}</h3>
+                )}
                 <motion.div
-                  key={tx.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2, delay: Math.min(index * 0.03, 0.3) }}
@@ -297,6 +310,7 @@ export default function HistoryScreen() {
                     )}
                   </div>
                 </motion.div>
+                </div>
               ))}
 
               {hasMore && (

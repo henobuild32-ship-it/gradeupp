@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
         twoFactorRecoveryCodes: true,
         pin: true,
         biometricEnabled: true,
+        unlockMethod: true,
         referralCode: true,
         suspended: true,
         suspensionReason: true,
@@ -130,6 +131,7 @@ export async function POST(request: NextRequest) {
         twoFactorEnabled: user.twoFactorEnabled,
         pinSet: !!user.pin,
         biometricEnabled: user.biometricEnabled,
+        unlockMethod: user.unlockMethod,
         referralCode: user.referralCode,
       },
     })

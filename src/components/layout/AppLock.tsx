@@ -1,11 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Fingerprint, ScanFace, Lock, ShieldAlert, LogOut, Loader2 } from 'lucide-react';
 import { useAppStore, type User } from '@/lib/store';
 import { toast } from 'sonner';
-import { authenticateBiometric, checkBiometricSupport, describeBiometricError, isNativePlatform, storedCredentialId } from '@/lib/biometric';
 import { markFreshAuth } from '@/lib/session-flag';
 
 /**
@@ -21,7 +20,6 @@ const BIOMETRIC_COOLDOWN_MS = 1500;
 export default function AppLock({ onUnlock }: { onUnlock: (verifiedUser?: User) => void }) {
   const user = useAppStore((s) => s.user);
   const setUser = useAppStore((s) => s.setUser);
-  const setToken = useAppStore((s) => s.setToken);
   const logout = useAppStore((s) => s.logout);
   const navigateTo = useAppStore((s) => s.navigateTo);
 
@@ -34,12 +32,15 @@ export default function AppLock({ onUnlock }: { onUnlock: (verifiedUser?: User) 
   const [verifyingPin, setVerifyingPin] = useState(false);
   const [sessionAlive, setSessionAlive] = useState<boolean | null>(null);
   const [sessionCheckError, setSessionCheckError] = useState(false);
-  const [showPinPad, setShowPinPad] = useState(false);
+  const [showPinPad, setShowPinPad] = useState(user?.unlockMethod === 'pin' || (!user?.unlockMethod && !user?.biometricEnabled));
+  const [showPasswordFallback, setShowPasswordFallback] = useState(false);
+  const [fallbackPassword, setFallbackPassword] = useState('');
+  const [fallbackError, setFallbackError] = useState('');
+  const [verifyingPassword, setVerifyingPassword] = useState(false);
   const pinRef = useRef('');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const triedAutoBiometric = useRef(false);
-
-  const isBiometricEnrolled = !!user?.biometricEnabled;
+  const unlockMethod = user?.unlockMethod ?? (user?.biometricEnabled ? 'biometric' : user?.pinSet ? 'pin' : 'none');
+  const isBiometricEnrolled = unlockMethod === 'biometric' && !!user?.biometricEnabled;
 
   // Session encore valide ? (le cookie peut avoir expiré depuis la fermeture)
   useEffect(() => {
@@ -47,9 +48,18 @@ export default function AppLock({ onUnlock }: { onUnlock: (verifiedUser?: User) 
     (async () => {
       try {
         const res = await fetch('/api/auth/profile', { credentials: 'include' });
+        const profile = await res.json().catch(() => ({}));
         if (!cancelled) {
           setSessionAlive(res.ok ? true : [401, 403, 404].includes(res.status) ? false : null);
           setSessionCheckError(!res.ok && ![401, 403, 404].includes(res.status));
+          if (res.ok && profile.success && profile.user) {
+            setUser(profile.user as User);
+            const serverMethod = profile.user.unlockMethod ?? (profile.user.biometricEnabled ? 'biometric' : profile.user.pinSet ? 'pin' : 'none');
+            if (serverMethod === 'none') {
+              markFreshAuth();
+              onUnlock(profile.user as User);
+            }
+          }
         }
       } catch {
         if (!cancelled) {
@@ -63,34 +73,11 @@ export default function AppLock({ onUnlock }: { onUnlock: (verifiedUser?: User) 
     };
   }, []);
 
-  // Détection biométrie + prompt automatique à l'ouverture
-  useEffect(() => {
-    if (triedAutoBiometric.current) return;
-    triedAutoBiometric.current = true;
-    (async () => {
-      try {
-        const support = await checkBiometricSupport();
-        if (!support.supported || !isBiometricEnrolled) {
-          setShowPinPad(true);
-          return;
-        }
-        setBiometricAvailable(true);
-        setBiometricLabel(support.label);
-        // Prompt automatique (comportement bancaire standard)
-        setTimeout(() => {
-          runBiometric();
-        }, 400);
-      } catch {
-        setShowPinPad(true);
-      }
-    })();
-     
-  }, []);
-
   const runBiometric = useCallback(async () => {
     if (prompting || cooldown) return;
     setPrompting(true);
     try {
+      const { authenticateBiometric } = await import('@/lib/biometric');
       const unlockedUser = await authenticateBiometric();
       if (unlockedUser) {
         markFreshAuth();
@@ -103,18 +90,83 @@ export default function AppLock({ onUnlock }: { onUnlock: (verifiedUser?: User) 
         onUnlock(unlockedUser);
       }
     } catch (err: any) {
+      const { describeBiometricError } = await import('@/lib/biometric');
       const msg = describeBiometricError(err);
-      const cancelled = /cancel|annul|dismiss|fall back|fallback|not allowed/i.test(msg);
-      if (!cancelled) {
-        toast.error(msg);
-      }
-      setShowPinPad(true);
+      setFallbackError(msg || 'La biométrie a échoué. Vérifiez votre mot de passe TRAIT.');
+      setShowPasswordFallback(true);
       setCooldown(true);
       setTimeout(() => setCooldown(false), BIOMETRIC_COOLDOWN_MS);
     } finally {
       setPrompting(false);
     }
   }, [prompting, cooldown, onUnlock, setUser, navigateTo]);
+
+  const runBiometricRef = useRef<() => void>(() => undefined);
+  useEffect(() => {
+    runBiometricRef.current = () => { void runBiometric(); };
+  }, [runBiometric]);
+
+  // Le verrou reste visible immédiatement; les modules biométriques lourds
+  // sont chargés seulement après le premier rendu et uniquement si choisis.
+  useEffect(() => {
+    if (unlockMethod === 'none') return;
+    if (unlockMethod === 'pin') {
+      setShowPinPad(true);
+      setShowPasswordFallback(false);
+      return;
+    }
+    setShowPinPad(false);
+    let cancelled = false;
+    let promptTimer: ReturnType<typeof setTimeout> | undefined;
+    void import('@/lib/biometric').then(({ checkBiometricSupport }) => checkBiometricSupport()).then((support) => {
+      if (cancelled) return;
+      if (!support.supported || !isBiometricEnrolled) {
+        setFallbackError('La biométrie n’est pas disponible. Utilisez le mot de passe de votre compte.');
+        setShowPasswordFallback(true);
+        return;
+      }
+      setBiometricAvailable(true);
+      setBiometricLabel(support.label);
+      promptTimer = setTimeout(() => runBiometricRef.current(), 400);
+    }).catch(() => {
+      if (!cancelled) {
+        setFallbackError('La biométrie ne peut pas être utilisée sur cet appareil. Saisissez le mot de passe du compte.');
+        setShowPasswordFallback(true);
+      }
+    });
+    return () => { cancelled = true; if (promptTimer) clearTimeout(promptTimer); };
+  }, [unlockMethod, isBiometricEnrolled]);
+
+  const submitPasswordFallback = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!user?.phone || !fallbackPassword || verifyingPassword) return;
+    setVerifyingPassword(true);
+    setFallbackError('');
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: user.phone, password: fallbackPassword }),
+      });
+      const data = await response.json();
+      if (data.requiresTwoFactor) {
+        logout();
+        navigateTo('auth-login');
+        toast.info('Une vérification supplémentaire est requise. Reconnectez-vous pour terminer le contrôle 2FA.');
+        return;
+      }
+      if (!response.ok || !data.success || !data.user) throw new Error(data.message || 'Mot de passe incorrect.');
+      markFreshAuth();
+      setFallbackPassword('');
+      setUser(data.user as User);
+      onUnlock(data.user as User);
+    } catch (error) {
+      setFallbackError(error instanceof Error ? error.message : 'Vérification du mot de passe impossible.');
+    } finally {
+      setVerifyingPassword(false);
+    }
+  };
 
   const submitPin = useCallback(async (value: string) => {
     if (verifyingPin || value.length < 4) return;
@@ -237,7 +289,7 @@ export default function AppLock({ onUnlock }: { onUnlock: (verifiedUser?: User) 
           </motion.button>
         )}
 
-        {/* Repli : code PIN TRAIT (ou configuration si jamais créé) */}
+        {/* Le PIN est présenté uniquement si l'utilisateur l'a choisi comme méthode. */}
         {showPinPad && user?.pinSet === false && (
           <div className="w-full max-w-[300px] flex flex-col items-center gap-4 text-center">
             <p className="text-sm text-muted-foreground">
@@ -313,14 +365,24 @@ export default function AppLock({ onUnlock }: { onUnlock: (verifiedUser?: User) 
           </div>
         )}
 
-        {/* Lien vers le clavier PIN si biométrie en cours / disponible */}
-        {!showPinPad && biometricAvailable && (
-          <button
-            onClick={() => setShowPinPad(true)}
-            className="text-sm font-medium text-muted-foreground hover:text-foreground underline underline-offset-2 cursor-pointer"
-          >
-            Utiliser le code PIN
-          </button>
+        {unlockMethod === 'biometric' && showPasswordFallback && (
+          <form onSubmit={submitPasswordFallback} className="w-full max-w-sm space-y-3 text-left">
+            <label htmlFor="unlock-account-password" className="block text-sm font-medium">Mot de passe du compte TRAIT</label>
+            <input
+              id="unlock-account-password"
+              type="password"
+              autoComplete="current-password"
+              value={fallbackPassword}
+              onChange={(event) => setFallbackPassword(event.target.value)}
+              className="h-12 w-full rounded-xl border border-border bg-background px-4 text-foreground"
+              disabled={verifyingPassword}
+              required
+            />
+            {fallbackError && <p role="alert" className="text-sm text-red-600">{fallbackError}</p>}
+            <button type="submit" disabled={verifyingPassword || !fallbackPassword} className="h-12 w-full rounded-xl bg-[#0D5C63] font-semibold text-white disabled:opacity-60">
+              {verifyingPassword ? 'Vérification…' : 'Vérifier et déverrouiller'}
+            </button>
+          </form>
         )}
       </div>
 
@@ -329,7 +391,7 @@ export default function AppLock({ onUnlock }: { onUnlock: (verifiedUser?: User) 
         <div className="px-6 pb-10 flex flex-col items-center gap-3">
           <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 rounded-xl px-4 py-2.5 text-sm">
             <ShieldAlert className="h-4 w-4 shrink-0" />
-            <span>Votre session a expiré. Déverrouillez par biométrie ou reconnectez-vous.</span>
+            <span>Votre session a expiré. Reconnectez-vous avec le mot de passe du compte.</span>
           </div>
           <button
             onClick={handleLogout}
@@ -348,7 +410,7 @@ export default function AppLock({ onUnlock }: { onUnlock: (verifiedUser?: User) 
       )}
 
       <p className="pb-6 text-center text-xs text-muted-foreground">
-        Sécurisé par {isNativePlatform() ? 'le verrouillage de votre appareil' : 'votre appareil'} — TRAIT
+        Sécurisé par l’authentification de votre appareil ou de votre compte — TRAIT
       </p>
     </motion.div>
   );

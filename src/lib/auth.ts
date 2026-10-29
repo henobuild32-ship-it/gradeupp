@@ -17,7 +17,7 @@ function getSecret() {
   return SECRET
 }
 
-export async function signToken(payload: { userId: string; role: string }) {
+export async function signToken(payload: { userId: string; role: string; authVersion?: number }) {
   const enc = getSecret()
   return new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
@@ -30,7 +30,7 @@ export async function verifyToken(token: string) {
   try {
     const enc = getSecret()
     const { payload } = await jwtVerify(token, enc);
-    return payload as { userId: string; role: string };
+    return payload as { userId: string; role: string; authVersion?: number };
   } catch {
     return null;
   }
@@ -225,9 +225,9 @@ export async function requireAdmin(request: NextRequest) {
     }
     const currentAdmin = await db.admin.findUnique({
       where: { id: payload.userId },
-      select: { id: true, role: true },
+      select: { id: true, role: true, authVersion: true },
     })
-    if (!currentAdmin || !['admin', 'super_admin'].includes(currentAdmin.role)) {
+    if (!currentAdmin || !['admin', 'super_admin'].includes(currentAdmin.role) || (payload.authVersion ?? 0) !== currentAdmin.authVersion) {
       return NextResponse.json({ success: false, message: 'Non autorisé' }, { status: 401 })
     }
     return { userId: currentAdmin.id, role: currentAdmin.role }

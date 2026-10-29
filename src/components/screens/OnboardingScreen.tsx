@@ -17,7 +17,7 @@ const slides = [
   {
     emoji: '💸',
     title: 'Envoyez de l\'argent',
-    description: 'Transférez de l\'argent instantanément avec seulement 0.7% de frais.',
+    description: 'Les frais applicables sont toujours affichés clairement avant la confirmation.',
     bg: 'from-amber-50 to-amber-100/50',
   },
   {

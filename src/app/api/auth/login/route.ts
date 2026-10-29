@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const isValid = await verifyAndMigratePassword(user.id, password.trim(), user.password)
+    const isValid = await verifyAndMigratePassword(user.id, password, user.password)
 
     if (!isValid) {
       await logSecurityEvent({
@@ -163,6 +163,7 @@ export async function POST(request: NextRequest) {
         twoFactorEnabled: user.twoFactorEnabled,
         pinSet: !!user.pin,
         biometricEnabled: user.biometricEnabled,
+        unlockMethod: user.unlockMethod,
         referralCode: user.referralCode,
       },
     })

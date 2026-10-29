@@ -41,6 +41,7 @@ export async function GET(request: NextRequest) {
         hasCompletedOnboarding: true,
         pin: true,
         biometricEnabled: true,
+        unlockMethod: true,
         twoFactorEnabled: true,
         kycStatus: true,
         parentId: true,

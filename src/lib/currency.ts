@@ -37,9 +37,8 @@ export function roundCurrencyAmount(amount: number | string): number {
 }
 
 export function calculateTransferFee(amount: number | string): number {
-  // Transfer fee is 0.7% (7/1000), rounded half-up to the nearest currency cent.
-  const amountMinor = decimalToMinor(amount)
-  return minorToAmount(divideAndRoundHalfUp(amountMinor * BigInt(7), BigInt(1000)))
+  // Default TRAIT outgoing transfer fee: 1.5%, rounded to cents.
+  return calculatePercentageFee(amount, 150)
 }
 
 export function calculatePercentageFee(amount: number | string, basisPoints: number): number {
@@ -48,6 +47,19 @@ export function calculatePercentageFee(amount: number | string, basisPoints: num
   }
   const amountMinor = decimalToMinor(amount)
   return minorToAmount(divideAndRoundHalfUp(amountMinor * BigInt(basisPoints), BigInt(10_000)))
+}
+
+/** Calculate a fee with financial rounding for the selected currency. USD is
+ * rounded to cents; CDF fees are rounded to whole francs. */
+export function calculateCurrencyFee(amount: number | string, basisPoints: number, currency: Currency): number {
+  if (!Number.isInteger(basisPoints) || basisPoints < 0 || basisPoints > 10_000) {
+    throw new Error('Pourcentage invalide')
+  }
+  const amountMinor = decimalToMinor(amount)
+  const feeMinor = divideAndRoundHalfUp(amountMinor * BigInt(basisPoints), BigInt(10_000))
+  return currency === 'CDF'
+    ? minorToAmount(divideAndRoundHalfUp(feeMinor, BigInt(100)) * BigInt(100))
+    : minorToAmount(feeMinor)
 }
 
 export function convertCurrencyAmount(

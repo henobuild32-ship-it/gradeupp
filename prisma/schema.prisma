@@ -82,6 +82,7 @@ model User {
   securityLogs           SecurityLog[]
   biometricCredentials   BiometricCredential[]
   biometricEnabled       Boolean                 @default(false)
+  unlockMethod           String                  @default("none")
   cards                  TraitCard[]
   agentTransactions      Transaction[]           @relation("AgentTransactions")
   receivedTransactions   Transaction[]           @relation("ReceiverTransactions")
@@ -111,6 +112,9 @@ model Admin {
   id                  String               @id @default(cuid())
   username            String               @unique
   password            String
+  failedLoginAttempts Int                  @default(0)
+  lockedUntil         DateTime?
+  authVersion         Int                  @default(0)
   name                String
   role                String               @default("admin")
   lastLogin           DateTime?

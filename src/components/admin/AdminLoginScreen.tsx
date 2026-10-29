@@ -38,7 +38,7 @@ export default function AdminLoginScreen() {
       const data = await res.json();
 
       if (!res.ok) {
-        toast.error(data.error || 'Identifiants incorrects');
+        toast.error(data.message || 'Identifiants incorrects');
         setLoading(false);
         return;
       }

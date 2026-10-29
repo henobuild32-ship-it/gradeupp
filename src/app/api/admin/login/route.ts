@@ -3,7 +3,7 @@ import { db } from '@/lib/db';
 import { logSecurityEvent } from '@/lib/security';
 import { signToken, setTokenCookie } from '@/lib/auth';
 import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
-import bcrypt from 'bcryptjs';
+import { isAdminTemporarilyLocked, normalizeAdminUsername, verifyAdminPassword } from '@/lib/admin-auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,23 +11,25 @@ export async function POST(request: NextRequest) {
     const rl = checkRateLimit({ windowMs: 60000, maxRequests: 5, key: `admin_login:${ip}` })
     if (!rl.allowed) return rateLimitResponse(rl.resetIn)
 
-    const { username, password } = await request.json();
+    const body = await request.json().catch(() => ({}));
+    const username = normalizeAdminUsername(body?.username);
+    const password = body?.password;
 
-    if (!username || !password) {
+    if (!username || typeof password !== 'string' || password.length === 0 || password.length > 128) {
       return NextResponse.json(
         { success: false, message: "Nom d'utilisateur et mot de passe requis" },
         { status: 400 }
       );
     }
 
-    const admin = await db.admin.findUnique({
-      where: { username },
+    const admin = await db.admin.findFirst({
+      where: { username: { equals: username, mode: 'insensitive' } },
     });
 
     if (!admin) {
       await logSecurityEvent({
         action: 'login_failed',
-        details: JSON.stringify({ username, reason: 'user_not_found' }),
+        details: JSON.stringify({ reason: 'admin_login_failed' }),
         riskLevel: 'medium',
       });
 
@@ -37,30 +39,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const isPasswordValid = await bcrypt.compare(password, admin.password);
+    if (isAdminTemporarilyLocked(admin.lockedUntil)) {
+      return NextResponse.json({ success: false, code: 'ACCOUNT_TEMPORARILY_LOCKED', message: 'Compte verrouillé temporairement. Réessayez plus tard.' }, { status: 423 });
+    }
 
-    // Bootstrap: if password mismatch and ADMIN_BOOTSTRAP_PASSWORD matches, migrate hash
-    if (!isPasswordValid && process.env.ADMIN_BOOTSTRAP_PASSWORD && password === process.env.ADMIN_BOOTSTRAP_PASSWORD) {
-      const newHash = await bcrypt.hash(password, 12);
-      await db.admin.update({ where: { id: admin.id }, data: { password: newHash } });
-      admin.password = newHash;
-    } else if (!isPasswordValid) {
+    const isPasswordValid = await verifyAdminPassword(password, admin.password);
+    if (!isPasswordValid) {
+      const failedLoginAttempts = admin.failedLoginAttempts + 1;
+      const lockedUntil = failedLoginAttempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null;
+      await db.admin.update({ where: { id: admin.id }, data: { failedLoginAttempts, lockedUntil } });
       await logSecurityEvent({
         adminId: admin.id,
         action: 'login_failed',
-        details: JSON.stringify({ username, reason: 'invalid_password' }),
+        details: JSON.stringify({ reason: 'invalid_password' }),
         riskLevel: 'medium',
       });
 
       return NextResponse.json(
-        { success: false, message: 'Identifiants incorrects' },
-        { status: 401 }
+        { success: false, code: lockedUntil ? 'ACCOUNT_TEMPORARILY_LOCKED' : 'INVALID_CREDENTIALS', message: lockedUntil ? 'Compte verrouillé temporairement. Réessayez plus tard.' : 'Identifiants incorrects' },
+        { status: lockedUntil ? 423 : 401 }
       );
     }
 
     await db.admin.update({
       where: { id: admin.id },
-      data: { lastLogin: new Date() },
+      data: { lastLogin: new Date(), failedLoginAttempts: 0, lockedUntil: null },
     });
 
     await db.adminActivityLog.create({
@@ -79,7 +82,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Sign JWT for admin
-    const token = await signToken({ userId: admin.id, role: admin.role });
+    const token = await signToken({ userId: admin.id, role: admin.role, authVersion: admin.authVersion });
 
     const response = NextResponse.json({
       success: true,
