@@ -154,6 +154,7 @@ interface NavigationState {
   navigationStack: Array<{ page: PageName; params?: Record<string, any> }>;
   navigateTo: (page: PageName, params?: Record<string, any>) => void;
   goBack: () => void;
+  goBackTo: (fallbackPage?: PageName) => void;
 }
 
 interface AuthState {
@@ -286,22 +287,30 @@ export const useAppStore = create<AppStore>()(
         });
       },
 
-      goBack: () => {
+      goBack: () => get().goBackTo(),
+
+      goBackTo: (fallbackPage) => {
         const { navigationStack, user, admin } = get();
-        if (navigationStack.length === 0) {
+        const previous = navigationStack[navigationStack.length - 1];
+        const target = previous && !nonRestorablePages.has(previous.page)
+          ? previous
+          : fallbackPage
+            ? { page: fallbackPage, params: {} }
+            : null;
+
+        if (!target) {
           set({ currentPage: 'welcome', pageParams: {} });
           return;
         }
-        const previous = navigationStack[navigationStack.length - 1];
         const activeAccountId = admin?.id || user?.id || null;
-        const shouldRestore = !!activeAccountId && !nonRestorablePages.has(previous.page) && previous.page !== 'admin-login';
+        const shouldRestore = !!activeAccountId && !nonRestorablePages.has(target.page) && target.page !== 'admin-login';
         set({
-          currentPage: previous.page,
-          pageParams: previous.params ?? {},
+          currentPage: target.page,
+          pageParams: target.params ?? {},
           navigationStack: navigationStack.slice(0, -1),
           ...(shouldRestore ? {
-            lastAuthenticatedPage: previous.page,
-            lastAuthenticatedPageParams: safeRouteParams(previous.params),
+            lastAuthenticatedPage: target.page,
+            lastAuthenticatedPageParams: safeRouteParams(target.params),
             lastAuthenticatedAccountId: activeAccountId,
           } : {}),
         });

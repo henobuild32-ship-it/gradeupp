@@ -5,13 +5,9 @@ import { useAppStore } from '@/lib/store';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Shield, Sparkles, ArrowRight, RefreshCw, Download } from 'lucide-react';
+import { Shield, RefreshCw, Download } from 'lucide-react';
 
 const API_VERSION = '/api/app/version';
 const DEPLOY_KEY = 'trait_last_deploy_id';
@@ -25,10 +21,8 @@ function setStoredDeployId(id: string) {
 }
 
 export function UpdateNotice() {
-  const { user, setLastSeenVersion } = useAppStore();
-  const [appVersion, setAppVersion] = useState<string | null>(null);
+  const { user } = useAppStore();
   const [deployId, setDeployId] = useState<string | null>(null);
-  const [changelog, setChangelog] = useState<string[]>([]);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [showUpdate, setShowUpdate] = useState(false);
   const [installing, setInstalling] = useState(false);
@@ -45,9 +39,7 @@ export function UpdateNotice() {
       const res = await fetch(API_VERSION + '?t=' + Date.now(), { cache: 'no-store' });
       const data = await res.json();
       if (data.success) {
-        setAppVersion(data.version);
         setDeployId(data.deployId);
-        setChangelog(data.changelog || []);
         setDownloadUrl(data.downloadUrl || null);
 
         const storedId = getStoredDeployId();
@@ -84,7 +76,6 @@ export function UpdateNotice() {
   const handleDismiss = () => {
     if (deployId) {
       setStoredDeployId(deployId);
-      setLastSeenVersion(appVersion || '');
     }
     setShowUpdate(false);
   };
@@ -132,7 +123,7 @@ export function UpdateNotice() {
     }
   };
 
-  if (!showUpdate || !appVersion) return null;
+  if (!showUpdate || !deployId) return null;
 
   return (
     <Dialog open={showUpdate} onOpenChange={() => handleDismiss()}>
@@ -147,37 +138,13 @@ export function UpdateNotice() {
             <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center mx-auto mb-4 border border-white/20">
               <Shield className="w-7 h-7 text-white" />
             </div>
-            <h2 className="text-white text-lg font-bold tracking-wide">Administration TRAIT</h2>
-            <p className="text-white/70 text-xs mt-1 tracking-wider uppercase">Nouvelle version disponible</p>
+            <h2 className="text-white text-lg font-bold tracking-wide">Nouvelle mise à jour disponible</h2>
           </div>
         </div>
 
         {/* Content */}
         <div className="px-6 -mt-4 relative z-10">
           <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-lg border border-zinc-100 dark:border-zinc-800 p-5">
-            {/* Version badge */}
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <Badge className="bg-[#0D5C63]/10 text-[#0D5C63] dark:bg-[#0D5C63]/20 dark:text-[#00D4AA] font-mono text-sm px-3 py-1">
-                v{appVersion}
-              </Badge>
-              <Sparkles className="w-4 h-4 text-amber-400" />
-            </div>
-
-            <p className="text-center text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed mb-4">
-              L&apos;administration TRAIT a déployé une nouvelle version avec des améliorations et corrections importantes.
-            </p>
-
-            {changelog.length > 0 && (
-              <div className="space-y-2 mb-4 max-h-36 overflow-y-auto">
-                {changelog.map((item, i) => (
-                  <div key={i} className="flex items-start gap-2 text-xs">
-                    <ArrowRight className="w-3 h-3 mt-0.5 text-[#0D5C63] dark:text-[#00D4AA] shrink-0" />
-                    <span className="text-zinc-600 dark:text-zinc-400">{item}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
             <div className="space-y-2.5">
               {isPWA ? (
                 <Button

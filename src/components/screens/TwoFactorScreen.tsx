@@ -7,7 +7,7 @@ import { useAppStore } from '@/lib/store'
 import { useTranslation } from '@/lib/i18n'
 
 export default function TwoFactorScreen() {
-  const { user, goBack, setUser } = useAppStore()
+  const { user, goBackTo, setUser } = useAppStore()
   const { t } = useTranslation()
   const [step, setStep] = useState<'loading' | 'setup' | 'verify' | 'enabled' | 'disable' | 'recovery-verify' | 'recovery'>('loading')
   const [secret, setSecret] = useState('')
@@ -18,6 +18,8 @@ export default function TwoFactorScreen() {
   const [copied, setCopied] = useState(false)
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([])
   const setupStarted = useRef(false)
+
+  const returnToSettings = () => goBackTo('settings')
 
   useEffect(() => {
     if (user?.twoFactorEnabled) {
@@ -61,7 +63,7 @@ export default function TwoFactorScreen() {
           setStep(codes.length ? 'recovery' : 'enabled')
         } else {
           setUser({ ...user!, twoFactorEnabled: false })
-          goBack()
+          returnToSettings()
         }
       } else {
         setError(data.message || 'Code invalide')
@@ -114,7 +116,7 @@ export default function TwoFactorScreen() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0D5C63] to-[#083A3E]">
       <div className="flex items-center gap-3 p-4 pb-2">
-        <button onClick={() => step === 'recovery' ? (setRecoveryCodes([]), setStep('enabled')) : goBack()} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/10 text-white">
+        <button onClick={() => step === 'recovery' ? (setRecoveryCodes([]), setStep('enabled')) : returnToSettings()} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/10 text-white">
           <ArrowLeft className="w-5 h-5" />
         </button>
         <h1 className="text-white text-lg font-bold">{t('settings.enable_2fa')}</h1>

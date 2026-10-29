@@ -341,6 +341,9 @@ export default function TraitApp() {
   const { currentPage, user, admin, navigateTo } = useAppStore();
   const Screen = screenMap[currentPage];
   const [appLocked, setAppLocked] = useState(false);
+  const [storeHydrated, setStoreHydrated] = useState(false);
+  const [sessionRestoreError, setSessionRestoreError] = useState(false);
+  const [sessionRestoreAttempt, setSessionRestoreAttempt] = useState(0);
   const needsRestoreUnlock = !!user && !isFreshAuth();
   const handleAppUnlock = (verifiedUser?: User) => {
     if (verifiedUser) {
@@ -355,6 +358,21 @@ export default function TraitApp() {
 
   useEffect(() => {
     clearRetiredOfflineData();
+  }, []);
+
+  useEffect(() => {
+    const markStoreHydrated = () => setStoreHydrated(true);
+    try {
+      const persistence = useAppStore.persist;
+      if (!persistence) {
+        markStoreHydrated();
+        return;
+      }
+      if (persistence.hasHydrated()) markStoreHydrated();
+      return persistence.onFinishHydration(markStoreHydrated);
+    } catch {
+      markStoreHydrated();
+    }
   }, []);
 
   // Verrouillage à la réouverture de l'app (rechargement / cold start APK) :
@@ -380,6 +398,7 @@ export default function TraitApp() {
   useEffect(() => {
     if (!user || currentPage !== 'welcome') return;
     let cancelled = false;
+    setSessionRestoreError(false);
     (async () => {
       try {
         const res = await fetch('/api/auth/profile', { credentials: 'include' });
@@ -394,19 +413,28 @@ export default function TraitApp() {
             useAppStore.getState().logout();
             return;
           }
-          if (!cancelled) toast.error('Session non vérifiée. Votre espace reste verrouillé; réessayez quand le réseau sera disponible.');
+          if (!cancelled) {
+            setSessionRestoreError(true);
+            toast.error('Session non vérifiée. Votre espace reste verrouillé; réessayez quand le réseau sera disponible.');
+          }
           return;
         }
-        if (!cancelled) toast.error('Impossible de vérifier la session. Votre espace reste verrouillé.');
+        if (!cancelled) {
+          setSessionRestoreError(true);
+          toast.error('Impossible de vérifier la session. Votre espace reste verrouillé.');
+        }
       } catch {
-        if (!cancelled) toast.error('Connexion indisponible. Réessayez pour restaurer votre session.');
+        if (!cancelled) {
+          setSessionRestoreError(true);
+          toast.error('Connexion indisponible. Réessayez pour restaurer votre session.');
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
      
-  }, [user?.id, currentPage]);
+  }, [user?.id, currentPage, sessionRestoreAttempt, navigateTo]);
 
   // Un profil administrateur local n'est jamais une preuve de session.
   useEffect(() => {
@@ -596,6 +624,42 @@ export default function TraitApp() {
     const timer = setTimeout(syncPushSubscription, 2000)
     return () => clearTimeout(timer)
   }, [user])
+
+  if (!storeHydrated || (user && currentPage === 'welcome' && !sessionRestoreError)) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background px-6">
+        <div className="text-center" role="status" aria-live="polite">
+          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+          <p className="text-sm text-muted-foreground">Restauration de votre espace…</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (user && currentPage === 'welcome' && sessionRestoreError) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background px-6">
+        <div className="w-full max-w-sm space-y-4 text-center">
+          <h1 className="text-lg font-semibold">Votre espace est temporairement inaccessible</h1>
+          <p className="text-sm text-muted-foreground">La session n’a pas pu être vérifiée. Réessayez quand la connexion sera disponible.</p>
+          <button
+            type="button"
+            onClick={() => setSessionRestoreAttempt((attempt) => attempt + 1)}
+            className="w-full rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground"
+          >
+            Réessayer
+          </button>
+          <button
+            type="button"
+            onClick={() => { setSessionRestoreError(false); useAppStore.getState().logout(); }}
+            className="w-full rounded-xl px-5 py-3 text-sm font-medium text-muted-foreground"
+          >
+            Se reconnecter
+          </button>
+        </div>
+      </main>
+    );
+  }
 
   if (!Screen) {
     return (

@@ -312,7 +312,7 @@ export default function SettingsScreen() {
       if (res.ok) {
         const data = await res.json();
         if (data.hasUpdate) {
-          toast.success(t('settings.update_available').replace('{version}', data.latestVersion));
+          toast.success(t('settings.update_available'));
           try {
             const { AppUpdate } = await import('@/plugins/app-update');
             await AppUpdate.downloadAndInstall({ url: data.downloadUrl || '/downloads/trait.apk' });
