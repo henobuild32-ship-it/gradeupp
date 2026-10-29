@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const deployId = process.env.VERCEL_DEPLOYMENT_ID || String(Date.now());
 
     const changelog = latest?.description
-      ? latest.description.split('\n').filter(Boolean)
+      ? latest.description.split('\n').map((entry) => entry.trim()).filter((entry) => entry && !/\bUSSD\b/i.test(entry))
       : [
           'Nouveau design Super App premium dark',
           'Solde hero avec masquer/afficher',
