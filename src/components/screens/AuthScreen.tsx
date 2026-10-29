@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   User, Building2, Store, ArrowLeft, Eye, EyeOff, Loader2,
@@ -102,6 +102,22 @@ export default function AuthScreen() {
   const [googleModalOpen, setGoogleModalOpen] = useState(false);
   const [googleData, setGoogleData] = useState<any>(null);
   const [googleIdToken, setGoogleIdToken] = useState('');
+  const handleGoogleNeedsProfile = useCallback((data: any, idToken: string) => {
+    setGoogleData(data);
+    setGoogleIdToken(idToken);
+    setGoogleModalOpen(true);
+  }, []);
+  const closeGoogleSignup = useCallback(() => {
+    setGoogleModalOpen(false);
+    setGoogleData(null);
+    setGoogleIdToken('');
+  }, []);
+  const handleGoogleTwoFactor = useCallback((token: string) => {
+    setMode('login');
+    setChallengeToken(token);
+    setTwoFactorCode('');
+    toast.info('Saisissez votre code de vérification pour terminer la connexion Google.');
+  }, []);
 
   // Biometric functionality removed
 
@@ -579,16 +595,8 @@ export default function AuthScreen() {
                 <GoogleAuthButton
                   mode="login"
                   selectedRole={selectedRole}
-                  onNeedsProfile={(data, idToken) => {
-                    if (selectedRole === 'seller') {
-                      toast.info('Créez votre espace commerçant avec le formulaire complet.');
-                      navigateTo('seller-register');
-                      return;
-                    }
-                    setGoogleData(data);
-                    setGoogleIdToken(idToken);
-                    setGoogleModalOpen(true);
-                  }}
+                  onNeedsProfile={handleGoogleNeedsProfile}
+                  onRequiresTwoFactor={handleGoogleTwoFactor}
                 />
               </>}
                 </>
@@ -856,11 +864,8 @@ export default function AuthScreen() {
               <GoogleAuthButton
                 mode="register"
                 selectedRole={selectedRole}
-                onNeedsProfile={(data, idToken) => {
-                  setGoogleData(data);
-                  setGoogleIdToken(idToken);
-                  setGoogleModalOpen(true);
-                }}
+                onNeedsProfile={handleGoogleNeedsProfile}
+                onRequiresTwoFactor={handleGoogleTwoFactor}
               />
               </>}
             </motion.div>
@@ -891,7 +896,7 @@ export default function AuthScreen() {
       {/* Google Signup Completion Modal */}
       <GoogleSignupModal
         open={googleModalOpen}
-        onClose={() => setGoogleModalOpen(false)}
+        onClose={closeGoogleSignup}
         googleData={googleData || {}}
         idToken={googleIdToken}
         selectedRole={selectedRole}

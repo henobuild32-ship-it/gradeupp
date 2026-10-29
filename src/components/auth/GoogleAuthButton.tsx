@@ -8,11 +8,14 @@ import { routeAfterAuth } from '@/lib/route-after-auth';
 import { markFreshAuth } from '@/lib/session-flag';
 import { toast } from 'sonner';
 
+const EMPTY_PAYLOAD: Record<string, unknown> = Object.freeze({});
+
 interface GoogleAuthButtonProps {
   mode: 'login' | 'register';
   selectedRole?: string;
   onSuccess?: (data: any) => void;
   onNeedsProfile?: (googleData: any, idToken: string) => void;
+  onRequiresTwoFactor?: (challengeToken: string) => void;
   extraPayload?: Record<string, any>;
   className?: string;
 }
@@ -22,7 +25,8 @@ export default function GoogleAuthButton({
   selectedRole = 'client',
   onSuccess,
   onNeedsProfile,
-  extraPayload = {},
+  onRequiresTwoFactor,
+  extraPayload = EMPTY_PAYLOAD,
   className = '',
 }: GoogleAuthButtonProps) {
   const { setUser, setToken, navigateTo } = useAppStore();
@@ -32,6 +36,7 @@ export default function GoogleAuthButton({
     async (idToken: string) => {
       const res = await fetch('/api/auth/google', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           idToken,
@@ -48,13 +53,22 @@ export default function GoogleAuthButton({
 
       const data = await res.json();
 
-      if (res.status === 206) {
+      if (res.status === 206 || data.needsProfile) {
         // New user — needs profile completion (phone, country, etc.)
         onNeedsProfile?.(data.googleData, idToken);
         return;
       }
 
-      if (!data.success) {
+      if (data.requiresTwoFactor) {
+        if (typeof data.challengeToken !== 'string' || !data.challengeToken) {
+          toast.error('La vérification en deux étapes n’a pas pu démarrer. Réessayez.');
+          return;
+        }
+        onRequiresTwoFactor?.(data.challengeToken);
+        return;
+      }
+
+      if (!res.ok || !data.success) {
         toast.error(data.message || 'Erreur Google');
         return;
       }
@@ -72,17 +86,26 @@ export default function GoogleAuthButton({
       toast.success(data.isNewUser ? 'Compte créé avec Google !' : 'Connecté avec Google !');
       onSuccess?.(data);
     },
-    [mode, selectedRole, extraPayload, setUser, setToken, navigateTo, onSuccess, onNeedsProfile]
+    [mode, selectedRole, extraPayload, setUser, setToken, navigateTo, onSuccess, onNeedsProfile, onRequiresTwoFactor]
   );
 
   // Check for redirect result on mount (mobile flow)
   useEffect(() => {
-    completeGoogleRedirect().then((result) => {
-      if (result) {
-        setLoading(true);
-        handleBackendCall(result.idToken).finally(() => setLoading(false));
+    let active = true;
+    completeGoogleRedirect().then(async (result) => {
+      if (!active || !result) return;
+      setLoading(true);
+      try {
+        await handleBackendCall(result.idToken);
+      } catch (error) {
+        handleGoogleError(error);
+      } finally {
+        if (active) setLoading(false);
       }
-    }).catch(() => {});
+    }).catch((error) => {
+      if (active) handleGoogleError(error);
+    });
+    return () => { active = false; };
   }, [handleBackendCall]);
 
   const handleClick = async () => {
@@ -97,7 +120,8 @@ export default function GoogleAuthButton({
     } catch (err: any) {
       handleGoogleError(err);
     } finally {
-      setLoading(false);
+      // A redirect navigates away; popup flow always returns here.
+      if (typeof window !== 'undefined' && !window.location.href.includes('__/auth/handler')) setLoading(false);
     }
   };
 
@@ -134,6 +158,16 @@ function handleGoogleError(err: any) {
     toast.info('Connexion annulée');
   } else if (code === 'auth/account-exists-with-different-credential') {
     toast.error('Ce compte existe déjà avec une autre méthode.');
+  } else if (code === 'auth/unauthorized-domain') {
+    toast.error('Ce domaine doit être ajouté aux domaines autorisés de Firebase Authentication.');
+  } else if (code === 'auth/operation-not-allowed') {
+    toast.error('La connexion Google n’est pas activée dans Firebase Authentication.');
+  } else if (code === 'auth/api-key-not-valid.-please-pass-a-valid-api-key.') {
+    toast.error('La configuration Firebase de Google est invalide. Contactez le support.');
+  } else if (code === 'auth/network-request-failed') {
+    toast.error('Connexion Google impossible pour le moment. Vérifiez le réseau puis réessayez.');
+  } else if (err?.name === 'GoogleAuthNotConfiguredError') {
+    toast.error('La connexion Google n’est pas configurée pour cette application.');
   } else if (err?.message === 'invalid-response') {
     toast.error('Problème de connexion. Veuillez réessayer.');
     console.error('Google auth: non-JSON response from /api/auth/google');
