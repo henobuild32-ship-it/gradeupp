@@ -1,5 +1,14 @@
 import { initializeApp, getApps, getApp } from '@firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, browserLocalPersistence, setPersistence } from '@firebase/auth';
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  browserLocalPersistence,
+  setPersistence,
+  type Auth,
+} from '@firebase/auth';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -10,14 +19,41 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+const hasRequiredConfig = () =>
+  Boolean(firebaseConfig.apiKey?.trim() && firebaseConfig.authDomain?.trim() &&
+    firebaseConfig.projectId?.trim() && firebaseConfig.appId?.trim());
 
-// Ensure local persistence (session survives reload)
-setPersistence(auth, browserLocalPersistence).catch(() => {});
+let authInstance: Auth | null = null;
+let googleProvider: GoogleAuthProvider | null = null;
 
-export const googleProvider = new GoogleAuthProvider();
-googleProvider.setCustomParameters({ prompt: 'select_account' });
+/** Google is an optional sign-in provider; missing config must never break Trait auth. */
+export function isGoogleAuthConfigured(): boolean {
+  return hasRequiredConfig();
+}
+
+function getFirebaseAuth(): Auth {
+  if (!hasRequiredConfig()) {
+    const error = new Error('Google authentication is not configured');
+    error.name = 'GoogleAuthNotConfiguredError';
+    throw error;
+  }
+
+  if (!authInstance) {
+    const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    authInstance = getAuth(app);
+    // Ensure Google sessions can survive a page reload where browser storage permits it.
+    void setPersistence(authInstance, browserLocalPersistence).catch(() => {});
+  }
+  return authInstance;
+}
+
+function getGoogleProvider(): GoogleAuthProvider {
+  if (!googleProvider) {
+    googleProvider = new GoogleAuthProvider();
+    googleProvider.setCustomParameters({ prompt: 'select_account' });
+  }
+  return googleProvider;
+}
 
 export function isMobileDevice(): boolean {
   if (typeof window === 'undefined') return false;
@@ -33,13 +69,15 @@ export function isMobileDevice(): boolean {
 }
 
 export async function signInWithGoogle(): Promise<{ idToken: string; uid: string } | null> {
+  const auth = getFirebaseAuth();
+  const provider = getGoogleProvider();
   if (isMobileDevice()) {
-    await signInWithRedirect(auth, googleProvider);
+    await signInWithRedirect(auth, provider);
     return null;
   }
 
   try {
-    const result = await signInWithPopup(auth, googleProvider);
+    const result = await signInWithPopup(auth, provider);
     const idToken = await result.user.getIdToken();
     return { idToken, uid: result.user.uid };
   } catch (err: any) {
@@ -48,14 +86,15 @@ export async function signInWithGoogle(): Promise<{ idToken: string; uid: string
       throw err;
     }
     // popup-blocked, network-request-failed, internal-error, unauthorized-domain → try redirect
-    await signInWithRedirect(auth, googleProvider);
+    await signInWithRedirect(auth, provider);
     return null;
   }
 }
 
 export async function completeGoogleRedirect(): Promise<{ idToken: string; uid: string } | null> {
+  if (!hasRequiredConfig()) return null;
   try {
-    const result = await getRedirectResult(auth);
+    const result = await getRedirectResult(getFirebaseAuth());
     if (result?.user) {
       const idToken = await result.user.getIdToken();
       return { idToken, uid: result.user.uid };

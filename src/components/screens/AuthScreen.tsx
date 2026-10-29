@@ -27,6 +27,7 @@ import { toast } from 'sonner';
 import Image from 'next/image';
 import GoogleAuthButton from '@/components/auth/GoogleAuthButton';
 import GoogleSignupModal from '@/components/auth/GoogleSignupModal';
+import { isGoogleAuthConfigured } from '@/lib/firebase';
 import { CountrySelect } from '@/components/shared/CountrySelect';
 import { getCountry, normalizeInternationalPhone } from '@/lib/countries';
 
@@ -568,17 +569,16 @@ export default function AuthScreen() {
                 </Button>
               </form>
 
-              {/* Divider */}
-              <div className="flex items-center gap-3 my-5">
-                <div className="flex-1 h-px bg-border" />
-                <span className="text-xs text-muted-foreground font-medium">{t('auth.or')}</span>
-                <div className="flex-1 h-px bg-border" />
-              </div>
+              {isGoogleAuthConfigured() && <>
+                <div className="my-5 flex items-center gap-3">
+                  <div className="h-px flex-1 bg-border" />
+                  <span className="text-xs font-medium text-muted-foreground">{t('auth.or')}</span>
+                  <div className="h-px flex-1 bg-border" />
+                </div>
 
-              {/* Google Login */}
-              <GoogleAuthButton
-                mode="login"
-                selectedRole={selectedRole}
+                <GoogleAuthButton
+                  mode="login"
+                  selectedRole={selectedRole}
                   onNeedsProfile={(data, idToken) => {
                     if (selectedRole === 'seller') {
                       toast.info('Créez votre espace commerçant avec le formulaire complet.');
@@ -589,7 +589,8 @@ export default function AuthScreen() {
                     setGoogleIdToken(idToken);
                     setGoogleModalOpen(true);
                   }}
-              />
+                />
+              </>}
                 </>
               )}
             </motion.div>
@@ -844,7 +845,7 @@ export default function AuthScreen() {
               )}
 
               {/* Divider */}
-              {selectedRole !== 'seller' && <>
+              {selectedRole !== 'seller' && isGoogleAuthConfigured() && <>
               <div className="flex items-center gap-3 my-5">
                 <div className="flex-1 h-px bg-border" />
                 <span className="text-xs text-muted-foreground font-medium">{t('auth.or')}</span>
