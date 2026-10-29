@@ -1,5 +1,27 @@
 apply plugin: 'com.android.application'
 
+def signingProperties = new Properties()
+def signingPropertiesFile = rootProject.file('key.properties')
+if (signingPropertiesFile.exists()) {
+    signingPropertiesFile.withInputStream { signingProperties.load(it) }
+}
+
+def releaseStorePath = System.getenv('TRAIT_ANDROID_KEYSTORE_PATH') ?: signingProperties.getProperty('storeFile')
+def releaseStorePassword = System.getenv('TRAIT_ANDROID_KEYSTORE_PASSWORD') ?: signingProperties.getProperty('storePassword')
+def releaseKeyAlias = System.getenv('TRAIT_ANDROID_KEY_ALIAS') ?: signingProperties.getProperty('keyAlias')
+def releaseKeyPassword = System.getenv('TRAIT_ANDROID_KEY_PASSWORD') ?: signingProperties.getProperty('keyPassword')
+def releaseStoreFile = releaseStorePath
+        ? (new File(releaseStorePath).isAbsolute() ? new File(releaseStorePath) : rootProject.file(releaseStorePath))
+        : null
+def releaseSigningConfigured = releaseStoreFile?.isFile() && releaseStorePassword && releaseKeyAlias && releaseKeyPassword
+def releaseArtifactRequested = gradle.startParameter.taskNames.any { requestedTask ->
+    def taskName = requestedTask.toLowerCase()
+    taskName.contains('release') && (taskName.contains('assemble') || taskName.contains('bundle'))
+}
+if (releaseArtifactRequested && !releaseSigningConfigured) {
+    throw new GradleException('Android release signing is not configured. Use the ignored android/key.properties file or TRAIT_ANDROID_* environment variables.')
+}
+
 android {
     namespace = "com.trait.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -17,16 +39,20 @@ android {
         }
     }
     signingConfigs {
-        release {
-            storeFile file('trait-release.keystore')
-            storePassword 'trait2026'
-            keyAlias 'trait'
-            keyPassword 'trait2026'
+        if (releaseSigningConfigured) {
+            release {
+                storeFile releaseStoreFile
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
         }
     }
     buildTypes {
         release {
-            signingConfig signingConfigs.release
+            if (releaseSigningConfigured) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

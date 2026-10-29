@@ -63,6 +63,7 @@ server.log
 /android/captures/
 /android/local.properties
 /android/app/trait-release.keystore
+/android/key.properties
 *.apk
 !/public/downloads/*.apk
 # Skills directory

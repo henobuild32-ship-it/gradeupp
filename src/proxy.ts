@@ -12,7 +12,7 @@ const securityHeaders: Record<string, string> = {
   'X-Permitted-Cross-Domain-Policies': 'none',
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const response = NextResponse.next()
   const { pathname } = request.nextUrl
 

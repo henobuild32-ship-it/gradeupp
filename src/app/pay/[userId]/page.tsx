@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import {
   User,
   ArrowRight,
@@ -22,6 +22,7 @@ interface PublicUser {
 
 export default function PayPage() {
   const params = useParams()
+  const router = useRouter()
   const userId = params.userId as string
 
   const [user, setUser] = useState<PublicUser | null>(null)
@@ -60,15 +61,15 @@ export default function PayPage() {
   const openApp = () => {
     setAppOpened(true)
     // Try native app deep link
-    window.location.href = `trait://pay/${userId}`
+    window.location.assign(`trait://pay/${userId}`)
     // Fallback: after 800ms, redirect to PWA home with pay param
     setTimeout(() => {
-      window.location.href = `/?pay=${userId}`
+      router.push(`/?pay=${encodeURIComponent(userId)}`)
     }, 800)
   }
 
   const handlePay = () => {
-    window.location.href = `/?pay=${userId}`
+    router.push(`/?pay=${encodeURIComponent(userId)}`)
   }
 
   if (loading) {

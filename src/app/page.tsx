@@ -2,6 +2,7 @@
 
 import '@/lib/api';
 import { useEffect, Suspense, lazy, Component, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAppStore, PageName, User } from '@/lib/store';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OfflineBanner } from '@/components/layout/OfflineBanner';
@@ -336,6 +337,7 @@ function routeAuthenticatedUser(
 }
 
 export default function TraitApp() {
+  const router = useRouter();
   const { currentPage, user, admin, navigateTo } = useAppStore();
   const Screen = screenMap[currentPage];
   const [appLocked, setAppLocked] = useState(false);
@@ -534,13 +536,13 @@ export default function TraitApp() {
       if (user) {
         // Clean URL and go to checkout page
         window.history.replaceState({}, '', '/')
-        window.location.href = `/pay/link/${payLinkCode}`
+        router.push(`/pay/link/${encodeURIComponent(payLinkCode)}`)
       } else {
         // Force user to welcome screen to authenticate
         navigateTo('welcome')
       }
     }
-  }, [user, navigateTo])
+  }, [user, navigateTo, router])
 
   // Open the confirmed payment receipt after a public payment link returns to the app.
   useEffect(() => {
