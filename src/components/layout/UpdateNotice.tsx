@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Shield, RefreshCw, Download } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
 
 const API_VERSION = '/api/app/version';
 const DEPLOY_KEY = 'trait_last_deploy_id';
@@ -26,12 +27,10 @@ export function UpdateNotice() {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [showUpdate, setShowUpdate] = useState(false);
   const [installing, setInstalling] = useState(false);
-  const [isPWA, setIsPWA] = useState(false);
+  const [isNativeApp, setIsNativeApp] = useState(false);
 
   useEffect(() => {
-    const standalone = window.matchMedia('(display-mode: standalone)').matches;
-    const iosStandalone = (window.navigator as any).standalone === true;
-    setIsPWA(standalone || iosStandalone);
+    setIsNativeApp(Capacitor.isNativePlatform());
   }, []);
 
   const checkVersion = useCallback(async () => {
@@ -146,25 +145,7 @@ export function UpdateNotice() {
         <div className="px-6 -mt-4 relative z-10">
           <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-lg border border-zinc-100 dark:border-zinc-800 p-5">
             <div className="space-y-2.5">
-              {isPWA ? (
-                <Button
-                  onClick={handleReload}
-                  className="w-full bg-[#0D5C63] hover:bg-[#0A4A50] text-white font-semibold h-11 rounded-xl shadow-md shadow-[#0D5C63]/25"
-                  disabled={installing}
-                >
-                  {installing ? (
-                    <span className="flex items-center gap-2">
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      Mise à jour en cours...
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-2">
-                      <RefreshCw className="w-4 h-4" />
-                      Recharger et mettre à jour
-                    </span>
-                  )}
-                </Button>
-              ) : (
+              {isNativeApp ? (
                 <Button
                   onClick={handleInstallAPK}
                   className="w-full bg-[#0D5C63] hover:bg-[#0A4A50] text-white font-semibold h-11 rounded-xl shadow-md shadow-[#0D5C63]/25"
@@ -179,6 +160,24 @@ export function UpdateNotice() {
                     <span className="flex items-center gap-2">
                       <Download className="w-4 h-4" />
                       Télécharger la mise à jour
+                    </span>
+                  )}
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleReload}
+                  className="w-full bg-[#0D5C63] hover:bg-[#0A4A50] text-white font-semibold h-11 rounded-xl shadow-md shadow-[#0D5C63]/25"
+                  disabled={installing}
+                >
+                  {installing ? (
+                    <span className="flex items-center gap-2">
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Mise à jour en cours...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <RefreshCw className="w-4 h-4" />
+                      Recharger et mettre à jour
                     </span>
                   )}
                 </Button>
