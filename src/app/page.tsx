@@ -674,6 +674,8 @@ export default function TraitApp() {
 
   const showNav = user && pagesWithNav.includes(currentPage);
   const isAdminPage = adminPages.includes(currentPage);
+  const showPwaInstallBanner = !!user && !isAdminPage &&
+    ['home', 'agent-dashboard', 'seller-dashboard'].includes(currentPage);
 
   return (
     <div className="relative min-h-screen bg-background flex flex-col">
@@ -690,11 +692,9 @@ export default function TraitApp() {
           <BottomNavigation />
         </Suspense>
       )}
-      {!isAdminPage && (
-        <Suspense fallback={null}>
-          <PWAInstallBanner />
-        </Suspense>
-      )}
+      <Suspense fallback={null}>
+        <PWAInstallBanner visible={showPwaInstallBanner} />
+      </Suspense>
       <Suspense fallback={null}>
         <UpdateNotice />
       </Suspense>

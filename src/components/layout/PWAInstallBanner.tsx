@@ -6,13 +6,13 @@ import { Button } from '@/components/ui/button';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
 import { useState } from 'react';
 
-export function PWAInstallBanner() {
+export function PWAInstallBanner({ visible = true }: { visible?: boolean }) {
   const { canInstall, isIOS, isInstalled, isStandalone, isOnline, installApp, dismiss } = usePWAInstall();
   const [showIOSInstructions, setShowIOSInstructions] = useState(false);
   const [installing, setInstalling] = useState(false);
 
   // Don't show if already installed or in standalone mode
-  if (isStandalone || isInstalled || !canInstall) return null;
+  if (!visible || isStandalone || isInstalled || !canInstall) return null;
 
   const handleInstall = async () => {
     setInstalling(true);
