@@ -28,6 +28,8 @@ export const LoginSchema = z.object({
   phone: z.string().min(8).max(20).optional(),
   email: z.string().max(200).optional(),
   password: z.string().min(1),
+}).refine((data) => Boolean(data.phone || data.email), {
+  message: 'Entrez votre numéro de téléphone ou votre adresse email.',
 })
 
 export const RegisterSchema = z.object({
