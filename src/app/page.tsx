@@ -9,6 +9,7 @@ import { OfflineBanner } from '@/components/layout/OfflineBanner';
 import { PushPermissionBanner } from '@/components/layout/PushPermissionBanner';
 import AppLock from '@/components/layout/AppLock';
 import { useRealtime } from '@/hooks/useRealtime';
+import { useGoogleRedirect } from '@/hooks/useGoogleRedirect';
 import { toast } from 'sonner';
 import { resetSessionExpiredFlag } from '@/lib/api';
 import { isFreshAuth } from '@/lib/session-flag';
@@ -355,6 +356,10 @@ export default function TraitApp() {
 
   // Enable real-time WebSocket for notifications and balance updates
   useRealtime();
+
+  // Google redirect return (mobile / popup blocked) is handled at app level:
+  // the user may come back on any screen, not only the auth screen.
+  useGoogleRedirect();
 
   useEffect(() => {
     clearRetiredOfflineData();

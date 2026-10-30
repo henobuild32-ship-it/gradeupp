@@ -56,7 +56,12 @@ export default function AuthScreen() {
   const setPhoneNumber = useAppStore((s) => s.setPhoneNumber);
   const setRegistrationPassword = useAppStore((s) => s.setRegistrationPassword);
   const user = useAppStore((s) => s.user);
-  const pageParams = useAppStore((s) => s.pageParams) as { mode?: string; role?: string };
+  const pageParams = useAppStore((s) => s.pageParams) as {
+    mode?: string;
+    role?: string;
+    googleSignup?: { googleData: any; idToken: string };
+    twoFactorChallenge?: string;
+  };
   const { t } = useTranslation();
 
   const [mode, setMode] = useState<AuthMode>(pageParams?.mode === 'register' ? 'register' : 'login');
@@ -74,7 +79,18 @@ export default function AuthScreen() {
       setSelectedRole(pageParams.role as Role);
       if (!pageParams?.mode) setMode('register');
     }
-  }, [pageParams?.mode, pageParams?.role]);
+    // Retour du flux Google en redirect : ouvrir directement la bonne étape.
+    if (pageParams?.googleSignup?.idToken) {
+      setGoogleData(pageParams.googleSignup.googleData || {});
+      setGoogleIdToken(pageParams.googleSignup.idToken);
+      setGoogleModalOpen(true);
+    }
+    if (pageParams?.twoFactorChallenge) {
+      setMode('login');
+      setChallengeToken(pageParams.twoFactorChallenge);
+      setTwoFactorCode('');
+    }
+  }, [pageParams?.mode, pageParams?.role, pageParams?.googleSignup, pageParams?.twoFactorChallenge]);
 
   // Login fields
   const [loginCountryCode, setLoginCountryCode] = useState('');

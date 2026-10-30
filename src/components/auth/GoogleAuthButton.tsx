@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { Loader2 } from 'lucide-react';
-import { signInWithGoogle, completeGoogleRedirect } from '@/lib/firebase';
+import { signInWithGoogle } from '@/lib/firebase';
 import { useAppStore } from '@/lib/store';
 import { routeAfterAuth } from '@/lib/route-after-auth';
 import { markFreshAuth } from '@/lib/session-flag';
@@ -88,25 +88,6 @@ export default function GoogleAuthButton({
     },
     [mode, selectedRole, extraPayload, setUser, setToken, navigateTo, onSuccess, onNeedsProfile, onRequiresTwoFactor]
   );
-
-  // Check for redirect result on mount (mobile flow)
-  useEffect(() => {
-    let active = true;
-    completeGoogleRedirect().then(async (result) => {
-      if (!active || !result) return;
-      setLoading(true);
-      try {
-        await handleBackendCall(result.idToken);
-      } catch (error) {
-        handleGoogleError(error);
-      } finally {
-        if (active) setLoading(false);
-      }
-    }).catch((error) => {
-      if (active) handleGoogleError(error);
-    });
-    return () => { active = false; };
-  }, [handleBackendCall]);
 
   const handleClick = async () => {
     if (loading) return;
