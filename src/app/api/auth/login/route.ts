@@ -5,6 +5,7 @@ import { verifyAndMigratePassword, signToken, signLoginChallengeToken, setTokenC
 import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { LoginSchema, validateRequest } from '@/lib/validations'
 import { normalizeInternationalPhone } from '@/lib/countries'
+import { isValidEmail, normalizeEmail } from '@/lib/email/service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,24 +26,66 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: validation.error }, { status: 400 })
     }
 
-    const { phone, password } = validation.data
-    const normalizedPhone = normalizeInternationalPhone(phone)
-    if (!normalizedPhone) return NextResponse.json({ success: false, message: 'Numéro de téléphone international invalide.' }, { status: 400 })
+    const { phone, email, password } = validation.data
 
-    let user = await db.user.findUnique({
-      where: { phone: normalizedPhone, deletedAt: null },
-    })
+    let user: any = null
+    let identifierKind: 'phone' | 'email' = 'phone'
+    if (email) {
+      identifierKind = 'email'
+      if (phone) {
+        return NextResponse.json(
+          { success: false, message: 'Connectez-vous soit avec votre numéro, soit avec votre email.' },
+          { status: 400 }
+        )
+      }
+      const normalizedEmail = normalizeEmail(email)
+      if (!normalizedEmail || !isValidEmail(normalizedEmail)) {
+        return NextResponse.json(
+          { success: false, message: 'Adresse email invalide.' },
+          { status: 400 }
+        )
+      }
+      const matches = await db.user.findMany({
+        where: { email: { equals: normalizedEmail, mode: 'insensitive' }, deletedAt: null },
+        select: { id: true },
+        take: 2,
+      })
+      if (matches.length > 1) {
+        return NextResponse.json(
+          { success: false, message: 'Cette adresse email correspond à plusieurs profils. Contactez le support.' },
+          { status: 409 }
+        )
+      }
+      user = matches[0] ?? null
+      if (!user) {
+        return NextResponse.json(
+          { success: false, message: 'Email ou mot de passe incorrect' },
+          { status: 404 }
+        )
+      }
+    } else if (phone) {
+      const normalizedPhone = normalizeInternationalPhone(phone)
+      if (!normalizedPhone) return NextResponse.json({ success: false, message: 'Numéro de téléphone international invalide.' }, { status: 400 })
 
-    if (!user) {
-      const digits = normalizedPhone.replace(/\D/g, '')
-      user = await db.user.findFirst({ where: { deletedAt: null, OR: [{ phone: digits }, { phone: `+${digits}` }] } })
-    }
+      user = await db.user.findUnique({
+        where: { phone: normalizedPhone, deletedAt: null },
+      })
 
-    if (!user) {
-      // Try create-from-bootstrap path not applicable for users
+      if (!user) {
+        const digits = normalizedPhone.replace(/\D/g, '')
+        user = await db.user.findFirst({ where: { deletedAt: null, OR: [{ phone: digits }, { phone: `+${digits}` }] } })
+      }
+
+      if (!user) {
+        return NextResponse.json(
+          { success: false, message: 'Numéro ou mot de passe incorrect' },
+          { status: 404 }
+        )
+      }
+    } else {
       return NextResponse.json(
-        { success: false, message: 'Numéro ou mot de passe incorrect' },
-        { status: 404 }
+        { success: false, message: 'Entrez votre numéro de téléphone ou votre adresse email.' },
+        { status: 400 }
       )
     }
 
@@ -59,7 +102,7 @@ export async function POST(request: NextRequest) {
       await logSecurityEvent({
         userId: user.id,
         action: 'login_failed',
-        details: JSON.stringify({ phone: phone.trim(), reason: 'invalid_password' }),
+        details: JSON.stringify({ identifier: identifierKind === 'email' ? (email ?? '').trim() : (phone ?? '').trim(), kind: identifierKind, reason: 'invalid_password' }),
         riskLevel: 'medium',
       })
       return NextResponse.json(

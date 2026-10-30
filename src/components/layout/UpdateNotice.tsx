@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useAppStore } from '@/lib/store';
 import {
   Dialog,
   DialogContent,
@@ -22,7 +21,6 @@ function setStoredDeployId(id: string) {
 }
 
 export function UpdateNotice() {
-  const { user } = useAppStore();
   const [deployId, setDeployId] = useState<string | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [showUpdate, setShowUpdate] = useState(false);
@@ -43,6 +41,12 @@ export function UpdateNotice() {
 
         const storedId = getStoredDeployId();
         if (data.deployId && data.deployId !== storedId) {
+          if (storedId === null) {
+            // Premier passage sur ce navigateur/webview : la page elle-même
+            // est déjà la nouvelle version, rien à installer.
+            setStoredDeployId(data.deployId);
+            return;
+          }
           setShowUpdate(true);
         }
       }
@@ -52,15 +56,12 @@ export function UpdateNotice() {
   }, []);
 
   useEffect(() => {
-    if (user) {
-      checkVersion();
-      const interval = setInterval(checkVersion, 3 * 60 * 1000);
-      return () => clearInterval(interval);
-    }
-  }, [user, checkVersion]);
+    checkVersion();
+    const interval = setInterval(checkVersion, 3 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [checkVersion]);
 
   useEffect(() => {
-    if (!user) return;
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'SW_UPDATE_AVAILABLE') {
         checkVersion();
@@ -70,7 +71,7 @@ export function UpdateNotice() {
     return () => {
       navigator.serviceWorker?.removeEventListener('message', handleMessage);
     };
-  }, [user, checkVersion]);
+  }, [checkVersion]);
 
   const handleDismiss = () => {
     if (deployId) {
@@ -145,41 +146,34 @@ export function UpdateNotice() {
         <div className="px-6 -mt-4 relative z-10">
           <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-lg border border-zinc-100 dark:border-zinc-800 p-5">
             <div className="space-y-2.5">
-              {isNativeApp ? (
+              <Button
+                onClick={handleReload}
+                className="w-full bg-[#0D5C63] hover:bg-[#0A4A50] text-white font-semibold h-11 rounded-xl shadow-md shadow-[#0D5C63]/25"
+                disabled={installing}
+              >
+                {installing ? (
+                  <span className="flex items-center gap-2">
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Mise à jour en cours...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <RefreshCw className="w-4 h-4" />
+                    Recharger et mettre à jour
+                  </span>
+                )}
+              </Button>
+              {isNativeApp && downloadUrl && (
                 <Button
                   onClick={handleInstallAPK}
-                  className="w-full bg-[#0D5C63] hover:bg-[#0A4A50] text-white font-semibold h-11 rounded-xl shadow-md shadow-[#0D5C63]/25"
+                  variant="outline"
+                  className="w-full h-10 rounded-xl border-border text-foreground font-semibold text-sm"
                   disabled={installing}
                 >
-                  {installing ? (
-                    <span className="flex items-center gap-2">
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      Téléchargement...
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-2">
-                      <Download className="w-4 h-4" />
-                      Télécharger la mise à jour
-                    </span>
-                  )}
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleReload}
-                  className="w-full bg-[#0D5C63] hover:bg-[#0A4A50] text-white font-semibold h-11 rounded-xl shadow-md shadow-[#0D5C63]/25"
-                  disabled={installing}
-                >
-                  {installing ? (
-                    <span className="flex items-center gap-2">
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      Mise à jour en cours...
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-2">
-                      <RefreshCw className="w-4 h-4" />
-                      Recharger et mettre à jour
-                    </span>
-                  )}
+                  <span className="flex items-center gap-2">
+                    <Download className="w-4 h-4" />
+                    Nouveau fichier APK (TRAIT)
+                  </span>
                 </Button>
               )}
               <Button

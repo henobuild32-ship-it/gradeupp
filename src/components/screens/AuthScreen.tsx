@@ -95,6 +95,8 @@ export default function AuthScreen() {
   // Login fields
   const [loginCountryCode, setLoginCountryCode] = useState('');
   const [loginPhone, setLoginPhone] = useState('');
+  const [loginMethod, setLoginMethod] = useState<'phone' | 'email'>('phone');
+  const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [challengeToken, setChallengeToken] = useState<string | null>(null);
@@ -139,10 +141,24 @@ export default function AuthScreen() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const fullPhone = normalizeInternationalPhone(loginPhone, loginCountryCode);
-    if (!fullPhone) {
-      toast.error(t('validation.phone_required'));
-      return;
+    const emailMode = loginMethod === 'email';
+    let fullPhone: string | null = null;
+    if (emailMode) {
+      const trimmedEmail = loginEmail.trim();
+      if (!trimmedEmail) {
+        toast.error(t('validation.email_required'));
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+        toast.error(t('validation.email_invalid'));
+        return;
+      }
+    } else {
+      fullPhone = normalizeInternationalPhone(loginPhone, loginCountryCode);
+      if (!fullPhone) {
+        toast.error(loginPhone.trim() ? t('validation.phone_invalid') : t('validation.phone_required'));
+        return;
+      }
     }
     if (!loginPassword.trim()) {
       toast.error(t('validation.password_required'));
@@ -153,12 +169,14 @@ export default function AuthScreen() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: fullPhone, password: loginPassword, role: selectedRole }),
+        body: JSON.stringify(emailMode
+          ? { email: loginEmail.trim(), password: loginPassword, role: selectedRole }
+          : { phone: fullPhone, password: loginPassword, role: selectedRole }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
         if (data.verificationRequired && data.email) {
-          setPhoneNumber(fullPhone);
+          if (fullPhone) setPhoneNumber(fullPhone);
           toast.info('Vérifiez votre adresse email pour terminer la connexion.');
           navigateTo('auth-otp', { email: data.email, mode: 'verify' });
           return;
@@ -260,7 +278,7 @@ export default function AuthScreen() {
       return;
     }
     if (!fullPhone) {
-      toast.error(t('validation.phone_required'));
+      toast.error(regPhone.trim() ? t('validation.phone_invalid') : t('validation.phone_required'));
       return;
     }
     if (!regPassword.trim() || regPassword.length < 8) {
@@ -533,24 +551,62 @@ export default function AuthScreen() {
               </div>
 
               <form onSubmit={handleLogin} className="flex flex-col gap-5">
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="login-phone" className="text-foreground font-medium">
-                    {t('auth.phone')}
-                  </Label>
-                  <div className="flex gap-2">
-                    <CountrySelect value={loginCountryCode} onValueChange={setLoginCountryCode} className="w-[46%] shrink-0" />
+                <div className="flex gap-2 p-1 rounded-xl bg-muted border border-border" role="tablist">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={loginMethod === 'phone'}
+                    onClick={() => setLoginMethod('phone')}
+                    className={`flex-1 h-9 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${loginMethod === 'phone' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    {t('auth.login_method_phone')}
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={loginMethod === 'email'}
+                    onClick={() => setLoginMethod('email')}
+                    className={`flex-1 h-9 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${loginMethod === 'email' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    {t('auth.login_method_email')}
+                  </button>
+                </div>
+                {loginMethod === 'email' ? (
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="login-email" className="text-foreground font-medium">
+                      {t('auth.email')}
+                    </Label>
                     <Input
-                      id="login-phone"
-                      type="tel"
-                      placeholder={t('common.phone_placeholder')}
-                      value={loginPhone}
-                      onChange={(e) => setLoginPhone(e.target.value)}
-                      className="flex-1 focus-visible:border-blue-500 focus-visible:ring-blue-500/20 h-12 text-base"
+                      id="login-email"
+                      type="email"
+                      placeholder="nom@exemple.com"
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
+                      className="w-full focus-visible:border-blue-500 focus-visible:ring-blue-500/20 h-12 text-base"
+                      autoComplete="email"
+                      disabled={loginLoading}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="login-phone" className="text-foreground font-medium">
+                      {t('auth.phone')}
+                    </Label>
+                    <div className="flex gap-2">
+                      <CountrySelect value={loginCountryCode} onValueChange={setLoginCountryCode} className="w-[46%] shrink-0" />
+                      <Input
+                        id="login-phone"
+                        type="tel"
+                        placeholder={t('common.phone_placeholder')}
+                        value={loginPhone}
+                        onChange={(e) => setLoginPhone(e.target.value)}
+                        className="flex-1 focus-visible:border-blue-500 focus-visible:ring-blue-500/20 h-12 text-base"
                       autoComplete="tel-national"
                       disabled={loginLoading}
                     />
                   </div>
                 </div>
+                )}
 
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="login-password" className="text-foreground font-medium">

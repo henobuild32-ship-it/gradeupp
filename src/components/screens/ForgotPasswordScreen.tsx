@@ -13,6 +13,8 @@ import {
   InputOTPSeparator,
 } from '@/components/ui/input-otp';
 import { useAppStore } from '@/lib/store';
+import { routeAfterAuth } from '@/lib/route-after-auth';
+import { markFreshAuth } from '@/lib/session-flag';
 import { toast } from 'sonner';
 import Image from 'next/image';
 
@@ -42,6 +44,8 @@ function maskEmail(email: string): string {
 export default function ForgotPasswordScreen() {
   const goBack = useAppStore((s) => s.goBack);
   const navigateTo = useAppStore((s) => s.navigateTo);
+  const setToken = useAppStore((s) => s.setToken);
+  const setUser = useAppStore((s) => s.setUser);
   const pageParams = useAppStore((s) => s.pageParams) as { email?: string; code?: string };
 
   const [step, setStep] = useState<Step>('email');
@@ -186,6 +190,13 @@ export default function ForgotPasswordScreen() {
         return;
       }
       toast.success('Mot de passe réinitialisé avec succès');
+      if (data.user) {
+        if (data.token) setToken(data.token);
+        setUser(data.user);
+        markFreshAuth();
+        routeAfterAuth(navigateTo, data.user);
+        return;
+      }
       navigateTo('auth-login');
     } catch {
       toast.error('Erreur de connexion');

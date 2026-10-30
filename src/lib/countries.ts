@@ -35,7 +35,27 @@ export function normalizeInternationalPhone(input: string, countryCode?: string)
     : countryCode && PHONE_COUNTRIES.has(countryCode.toUpperCase())
       ? parsePhoneNumberFromString(value, countryCode.toUpperCase() as CountryCode)
       : undefined
-  return parsed?.isValid() ? parsed.number : null
+  if (parsed?.isValid()) return parsed.number
+
+  // Formats internationaux saisis sans « + » : « 243 810 000 001 » ou « 00 243 810 000 001 »
+  const digits = value.replace(/\D/g, '')
+  if (!digits) return null
+  if (countryCode) {
+    const callingCode = getCallingCode(countryCode)
+    if (callingCode && digits.startsWith(callingCode.replace('+', ''))) {
+      const asIntl = parsePhoneNumberFromString(`+${digits}`)
+      if (asIntl?.isValid()) return asIntl.number
+    }
+  }
+  if (digits.startsWith('00')) {
+    const asIntl = parsePhoneNumberFromString(`+${digits.slice(2)}`)
+    if (asIntl?.isValid()) return asIntl.number
+  }
+  if (digits.length >= 9) {
+    const asIntl = parsePhoneNumberFromString(`+${digits}`)
+    if (asIntl?.isValid()) return asIntl.number
+  }
+  return null
 }
 
 /** Build an exact, active-account lookup. Never route by a phone suffix. */

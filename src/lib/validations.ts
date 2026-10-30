@@ -25,7 +25,8 @@ export const DepositSchema = z.object({
 })
 
 export const LoginSchema = z.object({
-  phone: z.string().min(8).max(20),
+  phone: z.string().min(8).max(20).optional(),
+  email: z.string().max(200).optional(),
   password: z.string().min(1),
 })
 

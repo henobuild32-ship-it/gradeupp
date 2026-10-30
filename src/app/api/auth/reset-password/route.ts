@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { timingSafeEqual } from 'crypto';
 import { db } from '@/lib/db';
-import { hashPassword } from '@/lib/auth';
+import { hashPassword, signToken, setTokenCookie } from '@/lib/auth';
+import { sanitizeSafeUser } from '@/lib/sanitize';
 import { isValidEmail, normalizeEmail } from '@/lib/email/service';
 import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
@@ -65,6 +66,19 @@ export async function POST(request: NextRequest) {
     });
 
     if (!reset) return NextResponse.json({ success: false, message: 'Code invalide ou expiré' }, { status: 400 });
+
+    // Ouverture directe de la session : le code email a déjà prouvé l'identité.
+    const freshUser = await db.user.findUnique({ where: { id: users[0].id } });
+    if (freshUser && !freshUser.deletedAt && !freshUser.suspended && !freshUser.tempBlocked) {
+      const token = await signToken({ userId: freshUser.id, role: freshUser.role });
+      const response = NextResponse.json({
+        success: true,
+        message: 'Mot de passe réinitialisé avec succès',
+        user: sanitizeSafeUser(freshUser),
+      });
+      setTokenCookie(response, token);
+      return response;
+    }
 
     return NextResponse.json({ success: true, message: 'Mot de passe réinitialisé avec succès' });
   } catch (error) {

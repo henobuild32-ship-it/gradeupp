@@ -144,6 +144,10 @@ const translations: Record<string, TranslationDict> = {
 
     // ── Validation Messages ──
     'validation.phone_required': 'Veuillez entrer un numéro de téléphone valide',
+    'validation.phone_invalid': 'Numéro de téléphone invalide. Utilisez le format international (+243…) et vérifiez le pays sélectionné.',
+    'validation.email_invalid': 'Adresse email invalide.',
+    'auth.login_method_phone': 'Téléphone',
+    'auth.login_method_email': 'Email',
     'validation.password_required': 'Veuillez entrer votre mot de passe',
     'validation.password_min': 'Le mot de passe doit contenir au moins 8 caractères',
     'validation.password_mismatch': 'Les mots de passe ne correspondent pas',
@@ -897,6 +901,10 @@ const translations: Record<string, TranslationDict> = {
 
     // ── Validation Messages ──
     'validation.phone_required': 'Please enter a valid phone number',
+    'validation.phone_invalid': 'Invalid phone number. Use the international format (+243…) and check the selected country.',
+    'validation.email_invalid': 'Invalid email address.',
+    'auth.login_method_phone': 'Phone number',
+    'auth.login_method_email': 'Email',
     'validation.password_required': 'Please enter your password',
     'validation.password_min': 'Password must be at least 8 characters',
     'validation.password_mismatch': 'Passwords do not match',

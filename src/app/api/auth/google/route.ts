@@ -4,6 +4,7 @@ import { clearTokenCookie, setTokenCookie, signLoginChallengeToken, signToken } 
 import { verifyFirebaseIdToken } from '@/lib/firebase-admin';
 import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { getCountry, normalizeInternationalPhone } from '@/lib/countries';
+import { sanitizeSafeUser } from '@/lib/sanitize';
 import { canUseGoogleIdentityForNewAccount, isGoogleAccountRole, missingGoogleProfileFields, shouldRequestGoogleProfile } from '@/lib/google-auth-policy';
 import crypto from 'node:crypto';
 
@@ -46,7 +47,7 @@ async function respondForUser(user: any, expectedRole: unknown, isNewUser: boole
   }
 
   const token = await signToken({ userId: user.id, role: user.role });
-  const response = NextResponse.json({ success: true, isNewUser, user: sanitizeUser(user) });
+  const response = NextResponse.json({ success: true, isNewUser, user: sanitizeSafeUser(user) });
   setTokenCookie(response, token);
   return response;
 }
@@ -240,39 +241,4 @@ export async function POST(request: NextRequest) {
     console.error('Google authentication failed:', error?.code || 'UNKNOWN');
     return NextResponse.json({ success: false, message: 'Connexion Google momentanément impossible. Réessayez.' }, { status: 500 });
   }
-}
-
-function sanitizeUser(user: any) {
-  return {
-    id: user.id,
-    phone: user.phone,
-    name: user.name,
-    pseudo: user.pseudo,
-    email: user.email,
-    gender: user.gender,
-    city: user.city,
-    country: user.country,
-    role: user.role,
-    agentCode: user.agentCode,
-    agentNumber: user.agentNumber,
-    businessName: user.businessName,
-    businessType: user.businessType,
-    location: user.location,
-    validationStatus: user.validationStatus,
-    validationRejectReason: user.validationRejectReason,
-    realBalance: user.realBalance,
-    realBalanceFC: user.realBalanceFC,
-    bonusBalance: user.bonusBalance,
-    bonusBalanceFC: user.bonusBalanceFC,
-    isVerified: user.isVerified,
-    parentId: user.parentId,
-    hasCompletedOnboarding: user.hasCompletedOnboarding,
-    pinSet: Boolean(user.pin),
-    biometricEnabled: Boolean(user.biometricEnabled),
-    unlockMethod: user.unlockMethod || 'none',
-    twoFactorEnabled: Boolean(user.twoFactorEnabled),
-    referralCode: user.referralCode,
-    photoUrl: user.photoUrl,
-    authProvider: user.authProvider,
-  };
 }
