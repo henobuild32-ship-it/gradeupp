@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CountrySelect } from '@/components/shared/CountrySelect'
 import { getCountry, normalizeInternationalPhone } from '@/lib/countries'
 import { calculateCurrencyFee, convertCurrencyAmount, DEFAULT_USD_CDF_RATE, formatCurrencyAmount, formatExchangeRate, normalizeCurrency, type Currency } from '@/lib/currency'
+import { TRAIT_WALLET_FEE_BASIS_POINTS } from '@/lib/financial-policy-core'
 import { useAppStore } from '@/lib/store'
 import { toast } from 'sonner'
 
@@ -29,13 +30,13 @@ export default function InternationalTransferScreen() {
   const [method, setMethod] = useState<TransferMethod>('wallet')
   const [note, setNote] = useState('')
   const [rate, setRate] = useState(DEFAULT_USD_CDF_RATE)
-  const [internationalFeeBasisPoints, setInternationalFeeBasisPoints] = useState(150)
   const [rateReady, setRateReady] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   const normalizedPhone = useMemo(() => normalizeInternationalPhone(phone, country), [phone, country])
   const numericAmount = useMemo(() => Number(amount) || 0, [amount])
+  const internationalFeeBasisPoints = TRAIT_WALLET_FEE_BASIS_POINTS
   const fee = useMemo(() => calculateCurrencyFee(numericAmount, internationalFeeBasisPoints, sendingCurrency), [numericAmount, internationalFeeBasisPoints, sendingCurrency])
   const receivedAmount = useMemo(
     () => convertCurrencyAmount(numericAmount, sendingCurrency, receivingCurrency, rate),
@@ -51,10 +52,6 @@ export default function InternationalTransferScreen() {
       .then((data) => { if (mounted && data.success && Number(data.rate) > 0) setRate(Number(data.rate)) })
       .catch(() => { if (mounted) setRate(DEFAULT_USD_CDF_RATE) })
       .finally(() => { if (mounted) setRateReady(true) })
-    fetch('/api/transfer/limits', { credentials: 'include' })
-      .then((response) => response.json())
-      .then((data) => { if (mounted && data.success) setInternationalFeeBasisPoints(data.limits.fees.internationalSendBasisPoints) })
-      .catch(() => {})
     return () => { mounted = false }
   }, [])
 

@@ -8,6 +8,7 @@ import { formatAmount } from '@/lib/tx-labels';
 import { getUsdCdfExchangeRate } from '@/lib/currency-server';
 import { calculateCurrencyFee, normalizeCurrency, roundCurrencyAmount } from '@/lib/currency';
 import { checkDailyTransactionLimit, checkDailyWithdrawalLimit, getDayWindow, getFinancialPolicy, getUserDailyLimits, lockDailyFinancialOperations } from '@/lib/financial-policy';
+import { TRAIT_WALLET_FEE_BASIS_POINTS } from '@/lib/financial-policy-core';
 
 function conflictResponse() {
   return NextResponse.json({ success: false, message: 'Cette référence de demande est déjà associée à une autre opération.' }, { status: 409 });
@@ -158,7 +159,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const fee = calculateCurrencyFee(amount, policy.withdrawalFeeBasisPoints, cur);
+    const fee = calculateCurrencyFee(amount, TRAIT_WALLET_FEE_BASIS_POINTS, cur);
     const cashField = cur === 'CDF' ? 'realBalanceFC' : 'realBalance';
     const bonusField = cur === 'CDF' ? 'bonusBalanceFC' : 'bonusBalance';
     const agentName = agent.agentCode || agent.agentNumber || agent.name || 'TRAIT';
@@ -211,6 +212,7 @@ export async function POST(request: NextRequest) {
             type: 'withdrawal',
             amount,
             fee,
+            feeFromBonus,
             currency: cur,
             status: 'pending',
             senderId: userId,

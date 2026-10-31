@@ -205,6 +205,7 @@ model Withdrawal {
   userId            String
   amount            Float
   fee               Float    @default(0)
+  feeFromBonus      Boolean?
   currency          String   @default("USD")
   method            String   @default("mobile_money")
   status            String   @default("pending")

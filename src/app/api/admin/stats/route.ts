@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAdmin } from '@/lib/auth';
+import { normalizeCurrency } from '@/lib/currency';
+
+function sumFeesByCurrency(rows: Array<{ currency: string; _sum: { fee: number | null } }>) {
+  return rows.reduce((totals, row) => {
+    const currency = normalizeCurrency(row.currency);
+    totals[currency] += row._sum.fee ?? 0;
+    return totals;
+  }, { USD: 0, CDF: 0 });
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -70,6 +79,27 @@ export async function GET(request: NextRequest) {
       .filter((t) => t.type === 'send')
       .reduce((s, t) => s + t.amount, 0);
 
+    const [completedSendFees, completedWithdrawalFees, pendingWithdrawalFees] = await Promise.all([
+      db.transaction.groupBy({
+        by: ['currency'],
+        where: { type: 'send', status: 'completed', fee: { gt: 0 } },
+        _sum: { fee: true },
+      }),
+      db.withdrawal.groupBy({
+        by: ['currency'],
+        where: { status: 'completed', fee: { gt: 0 } },
+        _sum: { fee: true },
+      }),
+      db.withdrawal.groupBy({
+        by: ['currency'],
+        where: { status: 'pending', fee: { gt: 0 } },
+        _sum: { fee: true },
+      }),
+    ]);
+    const sendFeeTotals = sumFeesByCurrency(completedSendFees);
+    const withdrawalFeeTotals = sumFeesByCurrency(completedWithdrawalFees);
+    const pendingWithdrawalFeeTotals = sumFeesByCurrency(pendingWithdrawalFees);
+
     const recentLogs = await db.adminActivityLog.findMany({
       take: 10,
       orderBy: { createdAt: 'desc' },
@@ -118,6 +148,10 @@ export async function GET(request: NextRequest) {
         openReports,
         totalVolume,
         sendVolume,
+        traitFeesUsd: Number((sendFeeTotals.USD + withdrawalFeeTotals.USD).toFixed(2)),
+        traitFeesCdf: Number((sendFeeTotals.CDF + withdrawalFeeTotals.CDF).toFixed(2)),
+        pendingWithdrawalFeesUsd: Number(pendingWithdrawalFeeTotals.USD.toFixed(2)),
+        pendingWithdrawalFeesCdf: Number(pendingWithdrawalFeeTotals.CDF.toFixed(2)),
         monthlyTransactions,
         monthlyDepositVolume: monthlyDeposits._sum.amount ?? 0,
         monthlyWithdrawalVolume: monthlyWithdrawals._sum.amount ?? 0,

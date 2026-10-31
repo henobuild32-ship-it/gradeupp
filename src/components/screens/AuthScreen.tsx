@@ -643,7 +643,7 @@ export default function AuthScreen() {
 
                 <Button
                   type="submit"
-                  disabled={loginLoading || !loginPhone.trim() || !loginPassword.trim()}
+                  disabled={loginLoading || (loginMethod === 'email' ? !loginEmail.trim() : !loginPhone.trim()) || !loginPassword.trim()}
                   className="w-full h-12 text-base font-semibold bg-[#0D5C63] hover:bg-[#083A3E] text-white rounded-xl shadow-lg shadow-blue-900/10 disabled:opacity-50 cursor-pointer mt-1"
                 >
                   {loginLoading ? (

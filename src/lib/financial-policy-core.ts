@@ -1,11 +1,13 @@
 import { convertCurrencyAmount, normalizeCurrency, roundCurrencyAmount } from './currency.ts'
 
+export const TRAIT_WALLET_FEE_BASIS_POINTS = 100
+
 export const FINANCIAL_POLICY = Object.freeze({
   dailyTransactionLimit: 30,
   dailyWithdrawalLimitUsd: 9_900,
   dailyWithdrawalLimitCdf: 22_770_000,
-  withdrawalFeeBasisPoints: 100,
-  internationalSendFeeBasisPoints: 150,
+  withdrawalFeeBasisPoints: TRAIT_WALLET_FEE_BASIS_POINTS,
+  internationalSendFeeBasisPoints: TRAIT_WALLET_FEE_BASIS_POINTS,
   timezone: 'Africa/Kinshasa',
 })
 

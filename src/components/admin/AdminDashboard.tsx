@@ -7,6 +7,7 @@ import {
   Bot,
   ArrowLeftRight,
   DollarSign,
+  Coins,
   ShoppingBag,
   Handshake,
   Ban,
@@ -48,6 +49,10 @@ interface DashboardStats {
   totalBarterOffers: number;
   suspendedUsers: number;
   todayUsers: number;
+  traitFeesUsd: number;
+  traitFeesCdf: number;
+  pendingWithdrawalFeesUsd: number;
+  pendingWithdrawalFeesCdf: number;
   [key: string]: number;
 }
 
@@ -80,6 +85,10 @@ const statsConfig: (StatCard & { page?: PageName })[] = [
   { label: 'Agents en attente', key: 'pendingAgents', icon: Clock, color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-100 dark:bg-amber-900/40', page: 'admin-agents' },
   { label: 'Développeurs', key: 'approvedDevelopers', icon: Code, color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-100 dark:bg-violet-900/40' },
   { label: 'Revenus API', key: 'totalApiCommission', icon: DollarSign, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-900/40' },
+  { label: 'Frais TRAIT retenus · USD', key: 'traitFeesUsd', icon: Coins, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-900/40', page: 'admin-fees' },
+  { label: 'Frais TRAIT retenus · CDF', key: 'traitFeesCdf', icon: Coins, color: 'text-teal-600 dark:text-teal-400', bgColor: 'bg-teal-100 dark:bg-teal-900/40', page: 'admin-fees' },
+  { label: 'Retraits en attente · USD', key: 'pendingWithdrawalFeesUsd', icon: Clock, color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-100 dark:bg-amber-900/40', page: 'admin-fees' },
+  { label: 'Retraits en attente · CDF', key: 'pendingWithdrawalFeesCdf', icon: Clock, color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-100 dark:bg-amber-900/40', page: 'admin-fees' },
 ];
 
 interface QuickAction {
@@ -98,6 +107,7 @@ const quickActions: QuickAction[] = [
   { label: 'Cartes', page: 'admin-cards', icon: CreditCard, color: 'text-sky-600 dark:text-sky-400', bgColor: 'bg-sky-100 dark:bg-sky-900/40' },
   { label: 'Demandes de Cartes', page: 'admin-card-requests', icon: Clock, color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-100 dark:bg-amber-900/40' },
   { label: 'Transactions', page: 'admin-transactions', icon: ArrowLeftRight, color: 'text-purple-600 dark:text-purple-400', bgColor: 'bg-purple-100 dark:bg-purple-900/40' },
+  { label: 'Frais TRAIT retenus', page: 'admin-fees', icon: Coins, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-900/40' },
   { label: 'Market', page: 'admin-market', icon: ShoppingBag, color: 'text-pink-600 dark:text-pink-400', bgColor: 'bg-pink-100 dark:bg-pink-900/40' },
   { label: 'Troc', page: 'admin-barter', icon: Handshake, color: 'text-teal-600 dark:text-teal-400', bgColor: 'bg-teal-100 dark:bg-teal-900/40' },
   { label: 'Notifications', page: 'admin-notifications', icon: Bell, color: 'text-orange-600 dark:text-orange-400', bgColor: 'bg-orange-100 dark:bg-orange-900/40' },
@@ -113,6 +123,12 @@ const quickActions: QuickAction[] = [
 ];
 
 function formatStatValue(key: keyof DashboardStats, value: number): string {
+  if (key === 'traitFeesUsd' || key === 'pendingWithdrawalFeesUsd') {
+    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(value);
+  }
+  if (key === 'traitFeesCdf' || key === 'pendingWithdrawalFeesCdf') {
+    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'CDF', maximumFractionDigits: 2 }).format(value);
+  }
   if (key === 'totalVolume') {
     if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
     if (value >= 1_000) return `$${(value / 1_000).toFixed(1)}K`;
@@ -292,7 +308,7 @@ export default function AdminDashboard() {
           </h2>
           {loading ? (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {Array.from({ length: 11 }).map((_, i) => (
+              {Array.from({ length: statsConfig.length }).map((_, i) => (
                 <Card key={i} className="border-border">
                   <CardContent className="p-4">
                     <Skeleton className="h-8 w-8 rounded-lg mb-3" />
@@ -379,14 +395,14 @@ export default function AdminDashboard() {
                 <Input type="number" min="1" step="0.01" value={financialPolicy.dailyWithdrawalLimitUsd} disabled={policyLoading || policySaving} onChange={(event) => setFinancialPolicy((value) => ({ ...value, dailyWithdrawalLimitUsd: Number(event.target.value), dailyWithdrawalLimitCdf: Number((Number(event.target.value) * Number(exchangeRate)).toFixed(2)) }))} />
               </label>
               <label className="space-y-1 text-sm">Frais de retrait (%)
-                <Input type="number" min="0" max="100" step="0.01" value={financialPolicy.withdrawalFeeBasisPoints / 100} disabled={policyLoading || policySaving} onChange={(event) => setFinancialPolicy((value) => ({ ...value, withdrawalFeeBasisPoints: Math.round(Number(event.target.value) * 100) }))} />
+                <Input type="number" value="1" disabled />
               </label>
-              <label className="space-y-1 text-sm">Frais d’envoi international (%)
-                <Input type="number" min="0" max="100" step="0.01" value={financialPolicy.internationalSendFeeBasisPoints / 100} disabled={policyLoading || policySaving} onChange={(event) => setFinancialPolicy((value) => ({ ...value, internationalSendFeeBasisPoints: Math.round(Number(event.target.value) * 100) }))} />
+              <label className="space-y-1 text-sm">Frais d’envoi TRAIT (%)
+                <Input type="number" value="1" disabled />
               </label>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Plafond correspondant : {Number(financialPolicy.dailyWithdrawalLimitCdf).toLocaleString('fr-FR')} CDF au taux affiché ci-dessus. Fuseau de calcul : Africa/Kinshasa.
+              Plafond correspondant : {Number(financialPolicy.dailyWithdrawalLimitCdf).toLocaleString('fr-FR')} CDF au taux affiché ci-dessus. Les envois et retraits TRAIT prélèvent un taux fixe de 1 %. Fuseau de calcul : Africa/Kinshasa.
             </p>
             <Button className="mt-3 min-h-11" onClick={saveFinancialPolicy} disabled={policyLoading || policySaving}>
               {policyLoading ? 'Chargement…' : policySaving ? 'Enregistrement…' : 'Enregistrer les règles financières'}

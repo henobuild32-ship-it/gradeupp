@@ -11,6 +11,7 @@ import { calculateCurrencyFee, convertCurrencyAmount, DEFAULT_USD_CDF_RATE, norm
 import { getUsdCdfExchangeRate } from '@/lib/currency-server'
 import { normalizeInternationalPhone } from '@/lib/countries'
 import { checkDailyTransactionLimit, getDayWindow, getFinancialPolicy, getUserDailyLimits, lockDailyFinancialOperations } from '@/lib/financial-policy'
+import { TRAIT_WALLET_FEE_BASIS_POINTS } from '@/lib/financial-policy-core'
 
 export async function POST(request: NextRequest) {
   try {
@@ -153,9 +154,7 @@ export async function POST(request: NextRequest) {
     }
 
     const policy = await getFinancialPolicy()
-    const feeBps = sender.country && receiver.country && sender.country.toUpperCase() !== receiver.country.toUpperCase()
-      ? policy.internationalSendFeeBasisPoints : 0
-    const fee = calculateCurrencyFee(amount, feeBps, cur)
+    const fee = calculateCurrencyFee(amount, TRAIT_WALLET_FEE_BASIS_POINTS, cur)
 
     if (traitCardTransfer) {
       const [senderCard, receiverCard] = await Promise.all([
@@ -234,6 +233,7 @@ export async function POST(request: NextRequest) {
             type: 'send',
             amount,
             fee,
+            feeFromBonus: canChargeFeeFromBonus,
             currency: cur,
             receivingCurrency: receiveCur,
             amountReceived: receivedAmount,
@@ -258,7 +258,7 @@ export async function POST(request: NextRequest) {
           data: {
             userId: senderId,
             title: 'Transfert envoyé',
-            message: `Vous avez envoyé ${amount.toFixed(2)} ${cur} à ${receiver.phone || receiver.name || 'Inconnu'}${receiveCur !== cur ? ` ; reçu ${receivedAmount.toFixed(2)} ${receiveCur}` : ''}`,
+            message: `Vous avez envoyé ${amount.toFixed(2)} ${cur} à ${receiver.phone || receiver.name || 'Inconnu'} (frais de 1 % : ${fee.toFixed(2)} ${cur})${receiveCur !== cur ? ` ; reçu ${receivedAmount.toFixed(2)} ${receiveCur}` : ''}`,
             type: 'transfer_sent',
           },
         })

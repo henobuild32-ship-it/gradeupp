@@ -54,6 +54,7 @@ const AdminDashboard = lazy(() => import('@/components/admin/AdminDashboard'));
 const AdminUsersScreen = lazy(() => import('@/components/admin/AdminUsersScreen'));
 const AdminAgentsScreen = lazy(() => import('@/components/admin/AdminAgentsScreen'));
 const AdminTransactionsScreen = lazy(() => import('@/components/admin/AdminTransactionsScreen'));
+const AdminFeesScreen = lazy(() => import('@/components/admin/AdminFeesScreen'));
 const AdminMarketScreen = lazy(() => import('@/components/admin/AdminMarketScreen'));
 const AdminBarterScreen = lazy(() => import('@/components/admin/AdminBarterScreen'));
 const AdminNotificationsScreen = lazy(() => import('@/components/admin/AdminNotificationsScreen'));
@@ -212,6 +213,7 @@ const screenMap: Record<PageName, React.LazyExoticComponent<React.ComponentType>
   'admin-users': AdminUsersScreen,
   'admin-agents': AdminAgentsScreen,
   'admin-transactions': AdminTransactionsScreen,
+  'admin-fees': AdminFeesScreen,
   'admin-market': AdminMarketScreen,
   'admin-barter': AdminBarterScreen,
   'admin-notifications': AdminNotificationsScreen,
@@ -276,7 +278,7 @@ const screenMap: Record<PageName, React.LazyExoticComponent<React.ComponentType>
 
 const pagesWithNav: PageName[] = ['home', 'send', 'withdraw', 'deposit', 'history', 'marketplace', 'marketplace-detail', 'marketplace-sell', 'orders', 'barter', 'barter-detail', 'barter-create', 'barter-chats', 'notifications', 'settings', 'profile', 'agent-dashboard', 'agent-deposit', 'agent-withdraw-validate', 'agent-activity', 'agent-messages', 'card-request', 'card-payment', 'card', 'virtual-card', 'kyc-verification', 'seller-dashboard', 'seller-products', 'child-sponsorship'];
 
-const adminPages: PageName[] = ['admin-login', 'admin-dashboard', 'admin-users', 'admin-agents', 'admin-transactions', 'admin-market', 'admin-barter', 'admin-notifications', 'admin-activity-log', 'admin-bonus', 'admin-bonus-adjust', 'admin-bonus-history', 'admin-bonus-campaigns', 'admin-agent-validation', 'admin-messages', 'admin-developers', 'admin-card-requests', 'admin-cards', 'admin-client-messages', 'admin-seller-validation', 'admin-sellers', 'admin-children', 'admin-kyc', 'admin-support', 'admin-reports'];
+const adminPages: PageName[] = ['admin-login', 'admin-dashboard', 'admin-users', 'admin-agents', 'admin-transactions', 'admin-fees', 'admin-market', 'admin-barter', 'admin-notifications', 'admin-activity-log', 'admin-bonus', 'admin-bonus-adjust', 'admin-bonus-history', 'admin-bonus-campaigns', 'admin-agent-validation', 'admin-messages', 'admin-developers', 'admin-card-requests', 'admin-cards', 'admin-client-messages', 'admin-seller-validation', 'admin-sellers', 'admin-children', 'admin-kyc', 'admin-support', 'admin-reports'];
 
 const sellerPendingPages: PageName[] = [
   'seller-pending', 'settings', 'support', 'notifications', 'profile',

@@ -38,6 +38,7 @@ export type PageName =
   | 'admin-users'
   | 'admin-agents'
   | 'admin-transactions'
+  | 'admin-fees'
   | 'admin-market'
   | 'admin-barter'
   | 'admin-notifications'

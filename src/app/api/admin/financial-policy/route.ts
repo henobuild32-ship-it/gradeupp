@@ -20,6 +20,9 @@ export async function PUT(request: NextRequest) {
     if (!policy || typeof policy !== 'object') {
       return NextResponse.json({ success: false, message: 'Configuration financière invalide.' }, { status: 400 })
     }
+    if (Number(policy.withdrawalFeeBasisPoints) !== 100 || Number(policy.internationalSendFeeBasisPoints) !== 100) {
+      return NextResponse.json({ success: false, message: 'Les frais d’envoi et de retrait TRAIT sont fixés à 1 %.' }, { status: 400 })
+    }
     const rate = await getUsdCdfExchangeRate()
     const coherentCdfLimit = Number(policy.dailyWithdrawalLimitUsd) * rate
     if (Math.abs(Number(policy.dailyWithdrawalLimitCdf) - coherentCdfLimit) > 0.01) {

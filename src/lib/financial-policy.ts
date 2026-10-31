@@ -1,6 +1,6 @@
 import type { Prisma } from '@prisma/client'
 import { db } from '@/lib/db'
-import { calculateWithdrawalUsage, FINANCIAL_POLICY, getDayWindow, isWithinDailyTransactionLimit, type DayWindow, type FinancialPolicy } from './financial-policy-core'
+import { calculateWithdrawalUsage, FINANCIAL_POLICY, getDayWindow, isWithinDailyTransactionLimit, TRAIT_WALLET_FEE_BASIS_POINTS, type DayWindow, type FinancialPolicy } from './financial-policy-core'
 
 export { FINANCIAL_POLICY, getDayWindow, type DayWindow, type FinancialPolicy } from './financial-policy-core'
 
@@ -29,7 +29,9 @@ export async function getFinancialPolicy(): Promise<FinancialPolicy> {
     const row = await db.systemConfig.findUnique({ where: { key: FINANCIAL_POLICY_CONFIG_KEY } })
     if (!row) return FINANCIAL_POLICY
     const parsed: unknown = JSON.parse(row.value)
-    return validPolicy(parsed) ? parsed : FINANCIAL_POLICY
+    return validPolicy(parsed)
+      ? { ...parsed, withdrawalFeeBasisPoints: TRAIT_WALLET_FEE_BASIS_POINTS, internationalSendFeeBasisPoints: TRAIT_WALLET_FEE_BASIS_POINTS }
+      : FINANCIAL_POLICY
   } catch {
     return FINANCIAL_POLICY
   }
@@ -37,6 +39,9 @@ export async function getFinancialPolicy(): Promise<FinancialPolicy> {
 
 export async function setFinancialPolicy(value: unknown): Promise<FinancialPolicy> {
   if (!validPolicy(value)) throw new Error('Configuration financière invalide')
+  if (value.withdrawalFeeBasisPoints !== TRAIT_WALLET_FEE_BASIS_POINTS || value.internationalSendFeeBasisPoints !== TRAIT_WALLET_FEE_BASIS_POINTS) {
+    throw new Error('Les frais d’envoi et de retrait TRAIT sont fixés à 1 %')
+  }
   await db.systemConfig.upsert({
     where: { key: FINANCIAL_POLICY_CONFIG_KEY },
     update: { value: JSON.stringify(value) },
@@ -108,8 +113,8 @@ export async function getUserDailyLimits(userId: string, now = new Date()) {
   return {
     timezone: policy.timezone,
     fees: {
-      withdrawalBasisPoints: policy.withdrawalFeeBasisPoints,
-      internationalSendBasisPoints: policy.internationalSendFeeBasisPoints,
+      withdrawalBasisPoints: TRAIT_WALLET_FEE_BASIS_POINTS,
+      internationalSendBasisPoints: TRAIT_WALLET_FEE_BASIS_POINTS,
     },
     transactions: { used: count, limit: policy.dailyTransactionLimit, remaining: Math.max(0, policy.dailyTransactionLimit - count) },
     withdrawal: {

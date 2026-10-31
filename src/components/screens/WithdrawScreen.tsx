@@ -27,6 +27,7 @@ import { useTranslation } from '@/lib/i18n';
 import { toast } from 'sonner';
 import { formatAgentCodeInput } from '@/lib/agent-format';
 import { calculateCurrencyFee, normalizeCurrency, roundCurrencyAmount } from '@/lib/currency';
+import { TRAIT_WALLET_FEE_BASIS_POINTS } from '@/lib/financial-policy-core';
 
 function fmtCur(amount: number, currency: string) {
   if (currency === 'FC' || currency === 'CDF') return `${amount.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} CDF`;
@@ -137,7 +138,7 @@ export default function WithdrawScreen() {
 
   const isFC = currency === 'FC';
   const numericAmount = roundCurrencyAmount(Number(amount) || 0);
-  const withdrawalFeeBasisPoints = dailyLimits?.fees?.withdrawalBasisPoints ?? 100;
+  const withdrawalFeeBasisPoints = TRAIT_WALLET_FEE_BASIS_POINTS;
   const fee = calculateCurrencyFee(numericAmount, withdrawalFeeBasisPoints, normalizeCurrency(currency));
   const total = numericAmount + fee;
   const realBalance = isFC

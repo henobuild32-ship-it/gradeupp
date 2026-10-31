@@ -37,8 +37,8 @@ export function roundCurrencyAmount(amount: number | string): number {
 }
 
 export function calculateTransferFee(amount: number | string): number {
-  // Default TRAIT outgoing transfer fee: 1.5%, rounded to cents.
-  return calculatePercentageFee(amount, 150)
+  // Default TRAIT outgoing transfer fee: 1%, rounded to cents.
+  return calculatePercentageFee(amount, 100)
 }
 
 export function calculatePercentageFee(amount: number | string, basisPoints: number): number {

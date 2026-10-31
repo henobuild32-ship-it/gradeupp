@@ -29,6 +29,7 @@ import { CountrySelect } from '@/components/shared/CountrySelect';
 import { getCountry, normalizeInternationalPhone } from '@/lib/countries';
 import { parsePhoneNumberFromString } from 'libphonenumber-js/max';
 import { calculateCurrencyFee, convertCurrencyAmount, DEFAULT_USD_CDF_RATE, formatCurrencyAmount, formatExchangeRate, normalizeCurrency, type Currency } from '@/lib/currency';
+import { TRAIT_WALLET_FEE_BASIS_POINTS } from '@/lib/financial-policy-core';
 
 function fmtCur(amount: number, currency: string) {
   return formatCurrencyAmount(amount, currency);
@@ -40,7 +41,6 @@ export default function SendScreen() {
   const [receiverPhone, setReceiverPhone] = useState('');
   const [receiverCountry, setReceiverCountry] = useState('');
   const [receiverName, setReceiverName] = useState('');
-  const [receiverAccountCountry, setReceiverAccountCountry] = useState('');
   const [lookingUp, setLookingUp] = useState(false);
   const [lookupDone, setLookupDone] = useState(false);
   const [amount, setAmount] = useState('');
@@ -65,7 +65,6 @@ export default function SendScreen() {
   useEffect(() => {
     if (!normalizedReceiverPhone) {
       setReceiverName('');
-      setReceiverAccountCountry('');
       setLookupDone(false);
       return;
     }
@@ -77,10 +76,8 @@ export default function SendScreen() {
         .then(data => {
           if (data.success && data.found && data.user) {
             setReceiverName(data.user.name);
-            setReceiverAccountCountry(data.user.country || '');
           } else {
             setReceiverName('');
-            setReceiverAccountCountry('');
           }
           setLookupDone(true);
         })
@@ -133,10 +130,7 @@ export default function SendScreen() {
 
   const isFC = currency === 'CDF';
   const numericAmount = parseFloat(amount) || 0;
-  const senderCountry = (getCountry(user?.country)?.code || user?.country || '').toUpperCase();
-  const resolvedReceiverCountry = (receiverAccountCountry || receiverCountry).toUpperCase();
-  const internationalSend = !!senderCountry && !!resolvedReceiverCountry && senderCountry !== resolvedReceiverCountry;
-  const sendFeeBasisPoints = internationalSend ? (dailyLimits?.fees?.internationalSendBasisPoints ?? 150) : 0;
+  const sendFeeBasisPoints = TRAIT_WALLET_FEE_BASIS_POINTS;
   const fee = calculateCurrencyFee(numericAmount, sendFeeBasisPoints, currency);
   const total = numericAmount + fee;
   const receivedAmount = convertCurrencyAmount(numericAmount, currency, receivingCurrency, exchangeRate);
@@ -313,7 +307,7 @@ export default function SendScreen() {
               <Label htmlFor="receiver" className="text-sm font-medium">
                 {t('send.recipient_phone')}
               </Label>
-              <CountrySelect value={receiverCountry} onValueChange={(next) => { setReceiverCountry(next); setReceiverAccountCountry(''); setReceiverPhone('') }} />
+              <CountrySelect value={receiverCountry} onValueChange={(next) => { setReceiverCountry(next); setReceiverPhone('') }} />
               <div className="relative">
                 <Input
                   id="receiver"
@@ -442,7 +436,7 @@ export default function SendScreen() {
               <span className="font-medium">{fmtCur(numericAmount, currency)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">{t('send.fees')}</span>
+              <span className="text-muted-foreground">{t('send.fees')} (1 %)</span>
               <span className="font-medium">{fmtCur(fee, currency)}</span>
             </div>
             {currency !== receivingCurrency && <div className="flex justify-between text-sm"><span className="text-muted-foreground">Taux appliqué</span><span>1 USD = {formatExchangeRate(exchangeRate)} CDF</span></div>}
